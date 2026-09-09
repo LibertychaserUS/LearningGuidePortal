@@ -58,6 +58,10 @@ export function AccountMenu({ locale, displayName, avatarUrl, labels }: AccountM
         <span className="portal-header-avatar">
           {avatarUrl ? <img src={avatarUrl} alt="" /> : initial}
         </span>
+        <span className="account-menu-user">
+          <strong>{displayName || "Learner"}</strong>
+          <span>{labels.myLearning}</span>
+        </span>
         <ChevronDown className={open ? "account-menu-chevron open" : "account-menu-chevron"} size={15} aria-hidden="true" />
       </button>
       {open ? (

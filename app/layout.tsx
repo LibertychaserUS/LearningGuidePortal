@@ -6,6 +6,7 @@ import "@fontsource/inter/700.css";
 import "katex/dist/katex.min.css";
 import "./styles.css";
 import "./portal-design.css";
+import "./dmit-ui.css";
 
 export const metadata: Metadata = {
   title: "Learning Guide",

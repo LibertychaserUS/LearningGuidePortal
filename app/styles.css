@@ -1,13 +1,13 @@
 :root {
-  --color-primary: #0b63f6;
-  --color-primary-hover: #0757d8;
-  --color-primary-soft: #eaf2ff;
-  --color-text-main: #0b1437;
-  --color-text-muted: #5d6880;
-  --color-border: #d9e2f1;
+  --color-primary: #467fcf;
+  --color-primary-hover: #3568b0;
+  --color-primary-soft: #e8f0fb;
+  --color-text-main: #343a40;
+  --color-text-muted: #868e96;
+  --color-border: #e6ebf1;
   --color-surface: #ffffff;
-  --color-page-bg: #f8fafe;
-  --color-success: #16b364;
+  --color-page-bg: #f5f7fb;
+  --color-success: #5eba00;
 }
 
 @media (max-width: 640px) {
@@ -1974,13 +1974,13 @@ input:focus {
 
 /* Learning Guide public interface: aligned to the supplied Figma reference */
 :root {
-  --lg-blue: #2161f5;
-  --lg-blue-dark: #174bd0;
-  --lg-ink: #101828;
-  --lg-muted: #667085;
-  --lg-line: #e4e7ec;
-  --lg-pale-blue: #eaf1ff;
-  --lg-slate: #344054;
+  --lg-blue: #467fcf;
+  --lg-blue-dark: #3568b0;
+  --lg-ink: #343a40;
+  --lg-muted: #868e96;
+  --lg-line: #e6ebf1;
+  --lg-pale-blue: #eef3fb;
+  --lg-slate: #1e3170;
 }
 
 body { background: #fff; color: var(--lg-ink); }

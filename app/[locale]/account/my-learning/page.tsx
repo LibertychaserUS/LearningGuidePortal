@@ -92,7 +92,7 @@ export default async function MyLearningPage({ params }: { params: Promise<{ loc
                   </>}
                 </>}
               </div>
-              {href && label ? <Link className={`portal-button ${primary ? "portal-button-primary" : "portal-button-secondary"} account-learning-action`} href={href}>{label}</Link> : null}
+              {href && label ? <Link className={`portal-button ${item.cta === "view_plans" ? "portal-button-accent" : primary ? "portal-button-primary" : "portal-button-secondary"} account-learning-action`} href={href}>{label}</Link> : null}
             </article>;
           })}</div> : <div className="account-empty-state"><p>{emptyCopy}</p><Link prefetch={false} className="portal-button portal-button-primary" href={`/${locale}/portal/courses`}>{messages.portal.viewCourses}</Link></div>}
           {overview.courses.length ? <p className="overview-list-caption">{design.allCourses}</p> : null}

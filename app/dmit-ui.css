@@ -1,0 +1,542 @@
+/* Visual language translated from DMIT, Inc. client area + marketing site.
+   Source: https://www.dmit.io/clientarea.php (Safari tab) and https://www.dmit.io/
+   Theme: dmit_theme_2020 / Tabler tokens. Adaptive shell — no 1440 x/y locks. */
+
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
+
+:root {
+  --blue: #467fcf;
+  --indigo: #6574cd;
+  --pink: #f66d9b;
+  --success: #5eba00;
+  --azure: #45aaf2;
+  --gray: #868e96;
+  --gray-dark: #343a40;
+  --light: #f8f9fa;
+  --dark: #343a40;
+  --primary: #467fcf;
+  --dmit-canvas: #f5f7fb;
+  --dmit-sidebar: #1e3170;
+  --dmit-sidebar-mid: #243c78;
+  --dmit-sidebar-hot: #304884;
+  --dmit-ink: #495057;
+  --dmit-card: #ffffff;
+  --dmit-line: #e6ebf1;
+  --dmit-pink: #f66d9b;
+  --dmit-pink-deep: #e46c90;
+  --dmit-success-soft: #e8f6d8;
+  --dmit-primary-soft: #e8f0fb;
+  --dmit-shadow: 0 1px 2px rgba(30, 49, 112, .06);
+  --dmit-shadow-hover: 0 8px 22px rgba(30, 49, 112, .12);
+  --dmit-radius: 8px;
+  --dmit-radius-sm: 4px;
+  --dmit-duration: 150ms;
+  --dmit-ease: ease-in-out;
+  --lg-blue: #467fcf;
+  --lg-blue-dark: #3568b0;
+  --lg-ink: #343a40;
+  --lg-muted: #868e96;
+  --lg-line: #e6ebf1;
+  --lg-pale-blue: #eef3fb;
+  --lg-slate: #1e3170;
+}
+
+html, body {
+  background: var(--dmit-canvas);
+  color: var(--dmit-ink);
+  font-family: "Source Sans 3", "Source Sans Pro", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.portal-page {
+  background: var(--dmit-canvas);
+  color: var(--dmit-ink);
+}
+
+.portal-page.portal-auth-page {
+  background:
+    linear-gradient(rgb(30 49 112 / 42%), rgb(30 49 112 / 42%)),
+    url("/portal/auth-library.jpg") center / cover;
+  color: #fff;
+}
+
+/* —— Motion (Tabler / dmit_theme_2020: 150ms ease-in-out) —— */
+.portal-button,
+.portal-course-card,
+.account-learning-card,
+.course-lesson-row,
+.course-access-card,
+.portal-header a,
+.account-nav a,
+.portal-category-filter a,
+.account-menu-links a,
+.account-menu-links button {
+  transition:
+    background-color var(--dmit-duration) var(--dmit-ease),
+    border-color var(--dmit-duration) var(--dmit-ease),
+    color var(--dmit-duration) var(--dmit-ease),
+    box-shadow var(--dmit-duration) var(--dmit-ease),
+    transform var(--dmit-duration) var(--dmit-ease);
+}
+
+@keyframes dmit-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.account-dashboard,
+.portal-section-courses,
+.portal-catalog-courses,
+.portal-course-detail-body,
+.account-settings-page {
+  animation: dmit-enter 200ms ease-out;
+}
+
+/* —— Header / toolsbar —— */
+.portal-header {
+  min-height: 64px;
+  padding: 0 clamp(16px, 3vw, 32px);
+  background: #fff;
+  border-bottom: 1px solid var(--dmit-line);
+  box-shadow: var(--dmit-shadow);
+}
+
+.portal-header-inner {
+  min-height: 64px;
+  width: min(1280px, 100%);
+  gap: clamp(12px, 2vw, 28px);
+}
+
+.portal-nav a {
+  min-height: 64px;
+  color: #495057;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.portal-nav a:hover,
+.portal-nav a.active { color: var(--primary); }
+
+.portal-nav a.active::after { background: var(--primary); height: 3px; }
+
+.portal-brand { color: #1e3170 !important; font-weight: 700 !important; letter-spacing: .01em; }
+
+.portal-language {
+  min-height: 32px;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: var(--dmit-radius-sm);
+  background: transparent;
+  color: #495057 !important;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.portal-language:hover { background: var(--dmit-primary-soft); color: var(--primary) !important; }
+
+.portal-header-cta,
+.portal-button-primary {
+  background: var(--primary);
+  border-radius: var(--dmit-radius-sm);
+  box-shadow: none;
+}
+
+.portal-header-cta { min-height: 36px; padding: 8px 16px; border-radius: var(--dmit-radius-sm); font-weight: 600; }
+
+.portal-button {
+  min-height: 38px;
+  border-radius: var(--dmit-radius-sm);
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+.portal-button:hover { transform: translateY(-1px); }
+
+.portal-button-primary { background: var(--primary); color: #fff !important; }
+.portal-button-primary:hover { background: #3568b0; }
+
+.portal-button-secondary {
+  border: 1px solid #ced4da;
+  background: #fff;
+  color: #343a40 !important;
+}
+
+.portal-button-secondary:hover { border-color: var(--primary); color: var(--primary) !important; background: #fff; }
+
+/* Pink is promo / commercial CTA only — same role as DMIT .btn-pink */
+.portal-button-accent {
+  background: var(--dmit-pink);
+  color: #fff !important;
+  border: 0;
+}
+
+.portal-button-accent:hover { background: #e4568a; }
+
+/* —— Account shell: navy icon rail (DMIT sidebar) —— */
+.portal-account-page {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  background: var(--dmit-canvas);
+}
+
+.portal-account-page > .portal-header {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.portal-account-page > .account-nav {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  width: 104px;
+  max-width: 104px;
+  margin: 0;
+  padding: 18px 8px 24px;
+  background: var(--dmit-sidebar);
+  border: 0;
+  border-right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.account-nav-title {
+  margin: 0 0 14px;
+  padding: 4px 0 12px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+
+.portal-account-page > .account-nav > a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 72px;
+  padding: 10px 4px;
+  border-radius: var(--dmit-radius);
+  color: rgba(255, 255, 255, .72);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+}
+
+.portal-account-page > .account-nav > a:hover {
+  background: var(--dmit-sidebar-hot);
+  color: #fff;
+}
+
+.portal-page.portal-account-page > .account-nav > a[aria-current="page"] {
+  background: var(--dmit-sidebar-hot);
+  color: #fff;
+  font-weight: 700;
+}
+
+.account-nav-icon { display: block; flex: none; }
+
+.account-nav-support {
+  margin-top: auto;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, .08);
+  border-radius: var(--dmit-radius);
+  color: rgba(255, 255, 255, .82);
+}
+
+.account-nav-support strong { display: block; font-size: 11px; color: #fff; }
+.account-nav-support p { display: none; }
+.account-nav-support a { color: var(--dmit-pink) !important; font-size: 11px; font-weight: 700; }
+
+.portal-account-page > .portal-section,
+.portal-account-page > .account-dashboard {
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 28px clamp(20px, 3.5vw, 48px) 64px;
+  min-height: 0;
+  background: transparent;
+}
+
+.portal-account-page.overview-design-page > .account-dashboard,
+.portal-account-page.subscription-design-page > .portal-section,
+.portal-account-page.settings-design-page > .account-settings-page {
+  padding: 28px clamp(20px, 3.5vw, 48px) 64px;
+  min-height: 0;
+}
+
+.portal-account-page > .portal-footer {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.portal-account-page h1 { color: #343a40; font-weight: 600; }
+
+.overview-heading { min-height: 0; align-items: center; }
+.overview-heading h1 { line-height: 1.25; }
+.overview-heading p { color: var(--gray); }
+
+.overview-access {
+  background: var(--dmit-primary-soft);
+  color: var(--primary);
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.overview-section-heading h2 { color: #343a40; }
+
+.portal-account-page .account-learning-card,
+.portal-account-page .account-learning-card.overview-course {
+  grid-template-columns: minmax(132px, 172px) minmax(0, 1fr) minmax(140px, 190px);
+  gap: clamp(16px, 2.5vw, 30px);
+  padding: 20px 22px;
+  background: var(--dmit-card);
+  border: 1px solid var(--dmit-line);
+  border-radius: var(--dmit-radius);
+  box-shadow: var(--dmit-shadow);
+  min-height: 0;
+}
+
+.portal-account-page .account-learning-card:hover,
+.account-learning-card.overview-course:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--dmit-shadow-hover);
+}
+
+.overview-course-progress {
+  width: min(316px, 100%);
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 999px;
+}
+
+.overview-course-progress > span {
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+.overview-course .account-learning-action {
+  align-self: center;
+  margin: 0;
+  width: min(190px, 100%);
+  border-radius: var(--dmit-radius-sm);
+}
+
+.account-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--dmit-line);
+  border-radius: var(--dmit-radius);
+  background: #fff;
+  box-shadow: var(--dmit-shadow);
+}
+
+/* —— Catalogue / home cards —— */
+.portal-course-card {
+  border: 1px solid var(--dmit-line);
+  border-radius: var(--dmit-radius);
+  box-shadow: var(--dmit-shadow);
+  background: #fff;
+}
+
+.portal-course-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--dmit-shadow-hover);
+}
+
+.portal-course-link { color: var(--primary); font-weight: 600; }
+.portal-course-link:hover { color: #3568b0; }
+
+.portal-category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 24px;
+}
+
+.portal-category-filter a {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--dmit-line);
+  border-radius: var(--dmit-radius-sm);
+  background: #fff;
+  color: #495057;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.portal-category-filter a:hover,
+.portal-category-filter a.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.portal-section { width: min(1240px, calc(100% - 48px)); }
+
+.portal-home-hero {
+  background: linear-gradient(90deg, rgba(30, 49, 112, .82), rgba(30, 49, 112, .28)), url('/portal/auth-library.jpg') center 45% / cover;
+}
+
+.portal-benefits,
+.portal-quick-guide { background: var(--dmit-primary-soft); }
+
+.portal-why-band {
+  background: var(--dmit-sidebar);
+  color: #fff;
+}
+
+.portal-why-band .portal-eyebrow { color: var(--dmit-pink); }
+
+.portal-footer {
+  background: var(--dmit-sidebar);
+  color: #fff;
+}
+
+.portal-footer p,
+.portal-footer a { color: rgba(255, 255, 255, .72); }
+
+.portal-footer a:hover { color: #fff; }
+
+.pricing-design-page .portal-footer { background: var(--dmit-sidebar); }
+
+/* —— Course detail —— */
+.course-detail-hero { background: var(--dmit-sidebar); }
+
+.course-detail-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: var(--dmit-radius-sm);
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+  font-weight: 600;
+}
+
+.course-access-card {
+  border: 1px solid var(--dmit-line);
+  border-radius: var(--dmit-radius);
+  background: #fff;
+  box-shadow: var(--dmit-shadow);
+}
+
+.course-lesson-row {
+  border: 1px solid var(--dmit-line);
+  border-radius: var(--dmit-radius);
+  background: #fff;
+  box-shadow: none;
+}
+
+.course-lesson-row:hover { border-color: #c5d4ee; box-shadow: var(--dmit-shadow); }
+
+.course-lesson-row .lesson-access-open {
+  color: #3b7a00;
+  background: var(--dmit-success-soft);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-weight: 600;
+}
+
+.subscription-record,
+.settings-design-section,
+.pricing-design-card,
+.pricing-information-grid > div {
+  border-color: var(--dmit-line);
+  box-shadow: var(--dmit-shadow);
+}
+
+.pricing-term-switch button[aria-pressed=true],
+.pricing-category-switch button[aria-pressed=true] {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.account-menu-popover { border-radius: var(--dmit-radius); box-shadow: var(--dmit-shadow-hover); }
+
+.account-menu-user {
+  display: none;
+  grid-template-rows: auto auto;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.account-menu-user strong { color: #343a40; font-size: 13px; font-weight: 600; }
+.account-menu-user span { color: var(--gray); font-size: 11px; }
+
+@media (min-width: 900px) {
+  .account-menu-trigger { gap: 10px; }
+  .account-menu-user { display: grid; }
+}
+
+@media (max-width: 1100px) {
+  .portal-account-page { grid-template-columns: 88px minmax(0, 1fr); }
+  .portal-account-page > .account-nav { width: 88px; max-width: 88px; padding: 14px 6px; }
+  .portal-account-page .account-learning-card,
+  .portal-account-page .account-learning-card.overview-course {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+  .overview-course .account-learning-action { grid-column: 2; width: auto; justify-self: start; }
+}
+
+@media (max-width: 720px) {
+  .portal-account-page { display: block; }
+  .portal-account-page > .account-nav {
+    width: 100%;
+    max-width: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 12px;
+    border-bottom: 0;
+  }
+  .account-nav-title { flex-basis: 100%; margin: 0 0 6px; padding: 0 0 8px; }
+  .portal-account-page > .account-nav > a {
+    flex-direction: column;
+    min-height: 58px;
+    min-width: 64px;
+    padding: 8px 6px;
+  }
+  .account-nav-support { display: none; }
+  .portal-account-page > .portal-section,
+  .portal-account-page > .account-dashboard,
+  .portal-account-page.overview-design-page > .account-dashboard,
+  .portal-account-page.subscription-design-page > .portal-section,
+  .portal-account-page.settings-design-page > .account-settings-page {
+    padding: 20px 16px 48px;
+  }
+  .portal-account-page .account-learning-card,
+  .portal-account-page .account-learning-card.overview-course {
+    display: block;
+  }
+  .overview-course .account-learning-action { width: 100%; margin-top: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-button,
+  .portal-course-card,
+  .account-learning-card,
+  .course-lesson-row,
+  .account-nav a,
+  .portal-header a { transition: none !important; }
+  .account-dashboard,
+  .portal-section-courses,
+  .portal-catalog-courses,
+  .portal-course-detail-body,
+  .account-settings-page { animation: none; }
+  .portal-button:hover,
+  .portal-course-card:hover,
+  .account-learning-card:hover { transform: none; }
+}
