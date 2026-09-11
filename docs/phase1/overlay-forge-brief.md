@@ -166,7 +166,7 @@ apprunner-deploy.yml ──不自动──► App Runner
 - 不要自动 App Runner。
 - 不要打 `ilovelearningguide.com`。
 
-`overlay select --branch main` 仍只选 armed，只作记录。workflow **每条** suite `product_command` 都跑；源仓若没有 `tests/io`，在 runner 里拉取，不跳过、不标 blocked。跑了 0 条必须失败。
+`overlay select --branch main` 仍只选 armed，只作记录。workflow **每条** suite `product_command` 都跑；`tests/io` 必须在本仓，不从功能分支回拉。不跳过、不标 blocked。跑了 0 条必须失败。
 
 ---
 
