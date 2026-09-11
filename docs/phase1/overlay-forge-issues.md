@@ -137,6 +137,19 @@
 
 ---
 
+## F. 2026-09-11 20:44 Oliver 拍板（覆盖 D 节里对应条目）
+
+1. 采用 A 路线：fork 上建 `dev`；agent / 开发 PR → `dev`（CI required，不要人批）；`dev → main` 升级 PR 由 `forge promote` 开/更新（1 人批 + CODEOWNERS，merge commit）。`dev` 与 `main` 都上 Ruleset。→ OF-01 用 `FORGE_SUBMIT_TOKEN` 环境密钥让 `submit` / `promote` 成真；OF-10 定为做 Dev；OF-08 AIOps 与 fork 都 apply。
+2. Overlay 去掉 `armed`：状态只剩 `active | blocked`，删 `reviewed_by / reviewed_at / armed_reason`；人审改为 PR 审批 + CODEOWNERS（`suites/**`、`inbox/**`、`.github/workflows/**`）；`blocked` 必须带链接的 `blocked_reason`。agent 分支不得把套件改成 `blocked`（`forge check` 的 `suite_guard`）。→ OF-11 / OF-12 关闭方式。
+3. 版本：`overlay-v2.0.0`（契约破坏）+ `forge-v1.1.0`。AIOps 这轮由 agent 直推 `main`、打 tag、建 Release（Oliver 明示授权）；之后 AIOps 也建 `dev` 吃自己的药。→ OF-09 / OF-13 / OF-14。
+4. 文档：中文为权威语言，英文只留 README 一页；ADR + CHANGELOG（Keep a Changelog）+ `docs/cli.md` 由 `--help` 生成 + `docs/STATE.md` 由 `forge status --write` 生成；`docs_sync` 检查同时在 `forge check`（本地）和 CI。去掉 Learning Guide 口音，用标准表达。→ OF-06 的根治。
+5. reusable `overlay.yml` 加 `setup_command`；Overlay CLI 本身语言无关。→ OF-15。
+6. `FORBIDDEN_LIVE_REPOS` 改成 `forge.yaml` 配置项（默认空），因为 fork 要 apply。→ OF-16 反转。
+7. LG 的 `ci.yml` / `overlay-check.yml` 这轮由 agent 修改（授权），`apprunner-deploy.yml` 不碰；源仓 First-Light 这轮不动。→ OF-02 / OF-07 暂缓。
+8. 做完工具后，LG 多写有效测试：先认证 / 支付 / 订阅 / Entitlement，再 My Learning / Portal / Trial；进 `test:ci` 与 `tests/io`。
+
+执行规格：`/tmp/audit/v2-spec.md`（会随 AIOps 大提交进 `docs/adr/` 与 `CHANGELOG.md`）。
+
 ## E. 已修记录
 
 - 2026-09-11 #7：brief 套件状态、`default_ref`、Release → `/tree/`、`selected=0`；APPLY / lander 记 `075341a`；密钥 `448c`。
