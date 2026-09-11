@@ -126,7 +126,7 @@ open_or_reuse_pr() {
     return 1
   fi
   local existing
-  existing=$(gh pr list --repo "$AIOPS_REPO" --head "$BRANCH" --state open --json url --jq '.[0].url // empty' || true)
+  existing=$(gh pr list --repo "$AIOPS_REPO" --head "${AIOPS_REPO%%/*}:$BRANCH" --state open --json url --jq '.[0].url // empty' || true)
   if [[ -n "${existing:-}" ]]; then
     echo "draft PR already open: $existing"
     return 0
@@ -151,12 +151,18 @@ if [[ ! -d "$DEST/.git" ]]; then
 fi
 git -C "$DEST" fetch origin main
 git -C "$DEST" am --abort 2>/dev/null || true
-git -C "$DEST" checkout --no-track -B "$BRANCH" origin/main
+git -C "$DEST" checkout --force --no-track -B "$BRANCH" origin/main
+git -C "$DEST" clean -fd
 git -C "$DEST" am "${PATCHES[@]}"
 
+# Local forge checks must not block --push. Oliver may have git+gh only.
 if command -v python3 >/dev/null 2>&1; then
-  PYTHONPATH="$DEST" python3 -m forge sop-lock --root "$DEST"
-  PYTHONPATH="$DEST" python3 -m forge pr-title --title "$TITLE"
+  if ! PYTHONPATH="$DEST" python3 -m forge sop-lock --root "$DEST"; then
+    echo "warning: local sop-lock failed; continuing (CI will re-check)" >&2
+  fi
+  if ! PYTHONPATH="$DEST" python3 -m forge pr-title --title "$TITLE"; then
+    echo "warning: local pr-title failed; continuing (CI will re-check)" >&2
+  fi
 fi
 
 echo "landed $BRANCH at $(git -C "$DEST" rev-parse HEAD)"
