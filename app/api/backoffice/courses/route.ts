@@ -4,15 +4,15 @@ import { createCourseForOperator, ensureProductData, isOperator } from "@/servic
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const user = await currentProductUser();
+export async function GET(request: Request) {
+  const user = await currentProductUser(request);
   if (!user || !isOperator(user)) return NextResponse.json({ ok: false, error: "Course Manager/Operator access is required." }, { status: 403 });
   const data = await ensureProductData();
   return NextResponse.json({ ok: true, courses: data.courses });
 }
 
 export async function POST(request: Request) {
-  const user = await currentProductUser();
+  const user = await currentProductUser(request);
   if (!user || !isOperator(user)) return NextResponse.json({ ok: false, error: "Course Manager/Operator access is required." }, { status: 403 });
   try {
     const body = await request.json() as { title?: string; description?: string; category?: "Chinese Humanities" | "European Humanities" | "Science" };

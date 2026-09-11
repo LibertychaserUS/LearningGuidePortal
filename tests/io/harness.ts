@@ -5,8 +5,12 @@ import path from "node:path";
 export const SESSION_COOKIE = "learning_guide_session";
 export const PASSWORD = "Passw0rd!123";
 export const PLAN_ID = "everything-pc-6";
+export const COURSE_PLAN = "epicureanism-pc-6";
+export const CATEGORY_PLAN = "european-humanities-pc-6";
 export const COURSE_ID = "epicureanism";
 export const SERVER_AMOUNT_MINOR = 9900;
+export const COURSE_AMOUNT_MINOR = 4900;
+export const TRIAL_MS = 3 * 24 * 60 * 60 * 1000;
 
 type CookieJar = Map<string, string>;
 
@@ -22,6 +26,10 @@ export function clearCookies() {
 
 export function setCookie(name: string, value: string) {
   cookieJar().set(name, value);
+}
+
+export function getCookie(name: string) {
+  return cookieJar().get(name);
 }
 
 export function takeSetCookie(response: Response) {
@@ -52,6 +60,12 @@ export function jsonRequest(method: string, url: string, body?: unknown, extraHe
   });
 }
 
+export function publicShape(body: Record<string, unknown>) {
+  const copy = { ...body };
+  delete copy.requestId;
+  return copy;
+}
+
 export async function isolate(prefix: string) {
   const originalCwd = process.cwd();
   const directory = await mkdtemp(path.join(tmpdir(), prefix));
@@ -61,6 +75,7 @@ export async function isolate(prefix: string) {
     APP_ENV: "DEV",
     STORAGE_BACKEND: "local",
     EMAIL_VERIFICATION_REQUIRED: "0",
+    EMAIL_DELIVERY: "",
     PAYMENT_MODE: "demo",
     LOCAL_SOCIAL_LOGIN: "0",
     SESSION_SECRET: "test-session-secret-with-at-least-32-characters"
@@ -70,6 +85,9 @@ export async function isolate(prefix: string) {
   delete process.env.SMTP_HOST;
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.STRIPE_WEBHOOK_SECRET;
+  delete process.env.BACKOFFICE_OPERATOR_EMAIL;
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
   clearCookies();
   return {
     async restore() {
