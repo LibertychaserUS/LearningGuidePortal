@@ -1,9 +1,6 @@
-# Thin Overlay caller. Do not copy the workshop ci.yml / pr-title / sop-lock.
-# Pin overlay-v1.0.0. Do not pin main. Do not vendor overlay/.
-# Do not workflow_call Verify. Draft / blocked suites must not redden this job.
-# branch=main so cursor/* PRs still select main's armed set.
-# overlay-v1.0.0 installs the product requirements.txt first; PyYAML lives there
-# so validate can import yaml. Do not add test:io to Verify.
+# Native Overlay. Do not vendor overlay/. Pin overlay-v1.0.0.
+# validate + overlay run (armed only). draft/blocked stay never_red.
+# npm ci is only so armed product_command can execute. Do not add test:io to Verify.
 
 name: overlay-check
 
@@ -15,25 +12,45 @@ permissions:
   contents: read
 
 jobs:
-  overlay:
-    uses: LibertychaserUS/AIOps/.github/workflows/overlay.yml@overlay-v1.0.0
-    with:
-      enable_run: true
-      root: "."
-      branch: main
-      tool_repository: LibertychaserUS/AIOps
-      tool_ref: overlay-v1.0.0
-
   overlay-check:
     name: overlay-check
-    needs: overlay
-    if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
-      - name: Gate
+      - name: Checkout product
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout Overlay overlay-v1.0.0
+        uses: actions/checkout@v4
+        with:
+          repository: LibertychaserUS/AIOps
+          ref: overlay-v1.0.0
+          path: _aiops
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Overlay
         run: |
-          if [ "${{ needs.overlay.result }}" != "success" ]; then
-            echo "overlay reusable workflow failed"
-            exit 1
-          fi
-          echo "overlay-check passed"
+          pip install -r _aiops/requirements.txt
+          echo "PYTHONPATH=${GITHUB_WORKSPACE}/_aiops" >> "$GITHUB_ENV"
+
+      - name: overlay validate
+        run: python -m overlay validate --root .
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install product dependencies
+        run: npm ci
+
+      - name: overlay run
+        run: |
+          mkdir -p receipts
+          python -m overlay run --branch main --root . --workdir . --write-receipt receipts/

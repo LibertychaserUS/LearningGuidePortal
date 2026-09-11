@@ -977,6 +977,9 @@ function grantTrialAccess(data: ProductData, userId: string, plan: ProductPlan) 
   if (existing && !currentTrial) throw new Error("This plan already has active access.");
   const previousTrial = data.subscriptions.find((item) => item.userId === userId && item.planId === plan.id && item.source === "trial");
   if (previousTrial) {
+    if (previousTrial.state === "trial_canceled") {
+      throw new Error("This trial has been cancelled and cannot be completed again.");
+    }
     if (new Date(previousTrial.validTo) <= new Date()) {
       previousTrial.state = "expired";
       throw new Error("The three-day trial has ended.");
@@ -1012,6 +1015,10 @@ export async function createQuote(userId: string, planId: string, kind: "purchas
   return editData((data) => {
     const plan = data.plans.find((item) => item.id === planId);
     if (!plan) throw new Error("Plan not found.");
+    if (kind === "purchase") {
+      const active = data.subscriptions.some((item) => item.userId === userId && item.planId === planId && ["active", "cancel_at_period_end", "grace"].includes(item.state) && new Date(item.validTo) > new Date());
+      if (active) throw new Error("This plan already has active access.");
+    }
     if (price) { plan.amountMinor = price.amountMinor; plan.currency = price.currency; }
     const createdAt = now();
     const expiresAt = new Date(Date.now() + QUOTE_MINUTES * 60_000).toISOString();
@@ -1493,7 +1500,7 @@ export async function fulfilStripeCheckout(input: { eventId: string; eventType: 
     data.stripeEvents.unshift({ id: input.eventId, type: input.eventType, processedAt: now() });
     const order = data.orders.find((item) => item.userId === input.userId && (item.stripeCheckoutSessionId === input.sessionId || item.quoteId === input.quoteId));
     const plan = data.plans.find((item) => item.id === input.planId);
-    if (!order || !plan) throw new Error("Checkout order or plan not found; retry this event.");
+    if (!order || !plan) throw new PaymentError("invalid_request");
     if (order.paymentMode !== "stripe" || order.planId !== plan.id) throw new Error("Checkout does not match the order.");
     if (input.amountMinor !== undefined && input.amountMinor !== order.amountMinor) throw new Error("Checkout amount does not match the order.");
     if (input.currency !== undefined && input.currency !== order.currency) throw new Error("Checkout currency does not match the order.");
