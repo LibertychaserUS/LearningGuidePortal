@@ -19,8 +19,8 @@ Visitor / Trial. Cases are black-box I/O against trial quote, `/api/trial`, demo
 
 # In scope
 
-- PAY-01 Trial quote + `/api/trial` + demo complete/cancel.
-- PAY-10 Cancelled trial stays false; second complete does not grant.
+- TRIAL-01 Trial quote + `/api/trial` + demo complete/cancel.
+- TRIAL-02 Cancelled trial stays false; second complete does not grant.
 - Trial Canceled → Trial Active before original `trial_end` without extending `validTo`.
 
 # Out of scope
@@ -34,9 +34,9 @@ Visitor / Trial. Cases are black-box I/O against trial quote, `/api/trial`, demo
 
 1. A completed demo trial grants visitor access inside three days.
 2. Cancelled checkout or cancelled trial leaves entitlement false and blocks locked study/events.
-3. A second complete after cancel does not revive (PAY-10).
+3. A second complete after cancel does not revive (TRIAL-02).
 4. Resume inside the original window restores access and does not extend `validTo`.
 
 # Notes
 
-`readiness: not-ready` is a hint only. Do not arm until a human claims the visitor HTTP path. Executable I/O lives in `tests/io/visitor-trial.test.ts`. PAY-01 / PAY-10 ids are reused from Payment Management, not a second scheme.
+`readiness: not-ready` is a hint only. Do not arm until a human claims the visitor HTTP path. Executable I/O lives in `tests/io/visitor-trial.test.ts`. TRIAL-01 / TRIAL-02 are unique; they cover the visitor face of PAY-01 / PAY-10.

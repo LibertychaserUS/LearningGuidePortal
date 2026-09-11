@@ -7,34 +7,39 @@ Student and unauthenticated callers cannot list or refund orders. Operator refun
 
 Register always creates a student. `BACKOFFICE_OPERATOR_EMAIL` is unused for role. There is no public operator seed, so operator refund HTTP is blocked.
 
-## AUTH-04 Student cannot operate orders
+## ORDER-01 Student cannot operate orders
+
 
 ### Functional
 - Title: A student session cannot list backoffice orders
 - Steps: Register; GET /api/backoffice/orders
 - Expected: HTTP 403. Do not weaken this status.
 
+
 ### Negative
 - Title: A student cannot refund
 - Steps: Register; quote; checkout; demo confirm `complete`; POST /api/backoffice/orders `{ action: "refund" }`
 - Expected: HTTP 403. The paid order stays unpaid-from-operator; student 403 is not a refund.
 
+
 ### Edge
 - Title: Unauthenticated orders list
 - Steps: GET /api/backoffice/orders with no cookie
 - Expected: HTTP 403
+## ORDER-02 Refund revive
 
-## PAY-04 Refund revive
 
 ### Functional
 - Title: Operator refund then later invoice.paid must not revive
 - Steps: Specified. Requires Course Manager/Operator refund HTTP, then a later signed `invoice.paid` for the same subscription
 - Expected: Entitlement stays false after the invoice. Not executable here: no operator seed; register stays student; `BACKOFFICE_OPERATOR_EMAIL` does not grant `role=operator`
 
+
 ### Negative
 - Title: Student refund is not the operator hop
-- Steps: Same as AUTH-04 negative
-- Expected: HTTP 403. This does not prove PAY-04 revive; it only proves the student cannot start the refund
+- Steps: Same as ORDER-01 negative
+- Expected: HTTP 403. This does not prove ORDER-02 revive; it only proves the student cannot start the refund
+
 
 ### Edge
 - Title: Operator refund HTTP is blocked

@@ -7,17 +7,23 @@ Shallow to deep: public JSON shape → production leak → role → password tak
 
 ## AUTH-01 Email enumeration
 
+
 ### Functional
 - Title: check-email does not distinguish a known address
 - Steps: Register; POST /api/auth/check-email for that address and for an unknown address
 - Expected: Same HTTP status; no `exists` field; same public JSON shape
+
 
 ### Negative
 - Title: Register copy and pending login do not leak
 - Steps: Register the same email twice; sign in a pending address and a missing address
 - Expected: Second register does not say "already exists"; pending login is not 403-only; same public shape as a missing address
 
-### Depth
+
+### Edge
+- Title: Resend does not 429 only for a pending address
+- Steps: POST /api/auth/resend-verification for a pending address, a missing address, and the pending address again
+- Expected: Same status and public shape; never 429 only for pending
 - Title: Active, pending, and unknown check-email share one public shape
 - Steps: Register an active account and a pending account; POST check-email for both and for an unknown address
 - Expected: No `exists` field; the three public JSON shapes match
@@ -27,25 +33,25 @@ Shallow to deep: public JSON shape → production leak → role → password tak
 - Title: A second pending register does not say the address already exists
 - Steps: Register pending; register the same email again
 - Expected: HTTP 200; copy has no "already exists"
-
-### Edge
-- Title: Resend does not 429 only for a pending address
-- Steps: POST /api/auth/resend-verification for a pending address, a missing address, and the pending address again
-- Expected: Same status and public shape; never 429 only for pending
-
 ## AUTH-02 Password-reset leak
+
 
 ### Functional
 - Title: Reset request JSON has no resetUrl or token
 - Steps: Register; POST /api/auth/password-reset/request
 - Expected: HTTP 200; `ok: true`; no `resetUrl`, no `token`, no `token=`
 
+
 ### Negative
 - Title: Reset does not reveal whether the email exists
 - Steps: POST reset for a known email and an unknown email
 - Expected: Both HTTP 200; same public JSON shape
 
-### Depth
+
+### Edge
+- Title: Sign-in without credentials
+- Steps: POST /api/auth/sign-in `{}`
+- Expected: HTTP 401; `AUTHENTICATION_FAILED`; no session
 - Title: Repeating password-reset still has no resetUrl or token
 - Steps: POST reset twice for the same known email
 - Expected: Both HTTP 200; no `resetUrl` or `token=`; same public shape
@@ -55,25 +61,25 @@ Shallow to deep: public JSON shape → production leak → role → password tak
 - Title: A failed sign-in JSON has no resetUrl or token
 - Steps: POST sign-in with the wrong password
 - Expected: HTTP 401; no `resetUrl` or `token=`
-
-### Edge
-- Title: Sign-in without credentials
-- Steps: POST /api/auth/sign-in `{}`
-- Expected: HTTP 401; `AUTHENTICATION_FAILED`; no session
-
 ## AUTH-03 PRODUCTION is production
+
 
 ### Functional
 - Title: APP_ENV=PRODUCTION does not leak a reset URL
 - Steps: Set APP_ENV=PRODUCTION; POST password-reset without mail
 - Expected: HTTP 503; no resetUrl or token
 
+
 ### Negative
 - Title: PRODUCTION does not issue a local social session
 - Steps: APP_ENV=PRODUCTION and LOCAL_SOCIAL_LOGIN=1; GET /api/auth/google
 - Expected: HTTP 503; no session cookie; /api/auth/me has no user
 
-### Depth
+
+### Edge
+- Title: DEV reset still does not leak a token
+- Steps: APP_ENV=DEV; POST password-reset for an unknown email
+- Expected: HTTP 200; no resetUrl
 - Title: PRODUCTION with mail still omits resetUrl from JSON
 - Steps: APP_ENV=PRODUCTION and EMAIL_DELIVERY=discard; POST password-reset
 - Expected: HTTP 200; `ok: true`; no `resetUrl` or `token=`
@@ -83,25 +89,25 @@ Shallow to deep: public JSON shape → production leak → role → password tak
 - Title: PRODUCTION with mail still does not issue a local social session
 - Steps: PRODUCTION, LOCAL_SOCIAL_LOGIN=1, EMAIL_DELIVERY=discard; GET /api/auth/google
 - Expected: HTTP 503; no session
-
-### Edge
-- Title: DEV reset still does not leak a token
-- Steps: APP_ENV=DEV; POST password-reset for an unknown email
-- Expected: HTTP 200; no resetUrl
-
 ## AUTH-04 Operator email
+
 
 ### Functional
 - Title: Registering the operator email stays a student
 - Steps: Set BACKOFFICE_OPERATOR_EMAIL; POST register; GET /api/auth/me and GET /api/backoffice/courses
 - Expected: `user.role` is student; backoffice is 403
 
+
 ### Negative
 - Title: Matching the operator email later does not open backoffice
 - Steps: Register a student; set BACKOFFICE_OPERATOR_EMAIL to that address; GET backoffice
 - Expected: HTTP 403; role stays student
 
-### Depth
+
+### Edge
+- Title: Unauthenticated backoffice
+- Steps: GET /api/backoffice/courses with no cookie
+- Expected: HTTP 403
 - Title: Signing in after the operator email is set stays a student
 - Steps: Register; set BACKOFFICE_OPERATOR_EMAIL; POST sign-in
 - Expected: `user.role` is student; backoffice is 403
@@ -111,25 +117,25 @@ Shallow to deep: public JSON shape → production leak → role → password tak
 - Title: Changing profile under the operator email does not open backoffice
 - Steps: Register; set the operator email; PATCH /api/me/profile
 - Expected: Role stays student; backoffice is 403
-
-### Edge
-- Title: Unauthenticated backoffice
-- Steps: GET /api/backoffice/courses with no cookie
-- Expected: HTTP 403
-
 ## AUTH-05 Pending overwrite
+
 
 ### Functional
 - Title: Second register does not take over the first password
 - Steps: Register; register the same email with another password; sign in both passwords
 - Expected: First password signs in; second password is 401
 
+
 ### Negative
 - Title: Verification required without mail is 503
 - Steps: EMAIL_VERIFICATION_REQUIRED=1; POST register
 - Expected: HTTP 503; `EMAIL_DELIVERY_NOT_CONFIGURED`
 
-### Depth
+
+### Edge
+- Title: Concurrent same-email register
+- Steps: Two parallel POST /api/auth/register for one email
+- Expected: Exactly one password can sign in
 - Title: Second register of a pending email does not start an attacker session
 - Steps: Register pending; register the same email with another password; GET /me and POST sign-in
 - Expected: Second register does not set a session; attacker password is 401
@@ -142,25 +148,25 @@ Shallow to deep: public JSON shape → production leak → role → password tak
 - Title: Two processes registering the same email keep one working password
 - Steps: Two worker processes call registerUser on the same product.json
 - Expected: Exactly one register succeeds; exactly one password can sign in. Same-process POST is not this proof.
-
-### Edge
-- Title: Concurrent same-email register
-- Steps: Two parallel POST /api/auth/register for one email
-- Expected: Exactly one password can sign in
-
 ## AUTH-06 Session kick
+
 
 ### Functional
 - Title: A second sign-in invalidates the first session
 - Steps: Register; POST sign-in again; GET /api/auth/me with each cookie
 - Expected: First cookie has no user; second cookie returns that email; INV-unauth-no-grant for the kicked session
 
+
 ### Negative
 - Title: Changing password invalidates the previous session
 - Steps: Register; PATCH /api/me/profile with a new password; GET /me and POST quote
 - Expected: `user` is null; quote is 401
 
-### Depth
+
+### Edge
+- Title: Forged session cookie
+- Steps: Set `learning_guide_session` to a random token; GET /me and POST quote
+- Expected: `user` is null; quote is 401
 - Title: The kicked session cannot open a purchase quote
 - Steps: Register; sign in again; POST quote with the first cookie
 - Expected: HTTP 401; INV-unauth-no-grant
@@ -171,11 +177,4 @@ Shallow to deep: public JSON shape → production leak → role → password tak
 - Steps: Sign in a second time, then a third time; GET /me with the second cookie
 - Expected: Second cookie has no user
 
-### Edge
-- Title: Forged session cookie
-- Steps: Set `learning_guide_session` to a random token; GET /me and POST quote
-- Expected: `user` is null; quote is 401
-
-## Specified / not tested now
-
-- AUTH-04 Google signup promotion: no live OAuth path. Local Google uses a fixed fixture email, not the operator address.
+Specified / not tested now (prose, not a function_id): AUTH-04 Google signup promotion has no live OAuth path. Local Google uses a fixed fixture email, not the operator address.

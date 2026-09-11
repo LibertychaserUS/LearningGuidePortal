@@ -5,6 +5,7 @@ items:
     function_ids:
       - AUTH-06
       - AUTH-04
+      - ORDER-01
       - PAY-01
       - PAY-02
       - PAY-08
@@ -23,11 +24,11 @@ items:
       - PAY-04
       - PAY-05
       - PAY-10
+      - TRIAL-02
     span: interaction
   - id: INV-expired-no-learn
     text: An entitlement whose validTo is in the past cannot pass entitlements/check or write a paid study event.
     function_ids:
       - ML-FR-004
-      - ML-FR-011
       - PAY-09
     span: interaction

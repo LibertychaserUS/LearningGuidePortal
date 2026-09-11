@@ -242,7 +242,7 @@ ASCII：
 | `inbox/order.md` `inbox/visitor-trial.md` | 新 BF；套件 **draft**，等人审 |
 | `suites/login` `suites/payment` `suites/portal` `suites/my-learning` | `status: armed`；login/payment → `tests/io/*.test.ts`；portal/my-learning → store unit |
 | `suites/order` `suites/visitor-trial` | `status: draft`；`product_command` → `tests/io/order.test.ts` / `visitor-trial.test.ts` |
-| `invariants.yaml` | `INV-unauth-no-grant`（AUTH-04/06, PAY-01/02/08, ML-FR-004）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10）；`INV-expired-no-learn`（ML-FR-004/011, PAY-09） |
+| `invariants.yaml` | `INV-unauth-no-grant`（AUTH-04/06, ORDER-01, PAY-01/02/08, ML-FR-004）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10, TRIAL-02）；`INV-expired-no-learn`（ML-FR-004, PAY-09） |
 | `.github/workflows/overlay-check.yml` | 原生 `overlay validate` + `typecheck:io` + `overlay run`（armed only） |
 | `tests/io/*` | login/payment 黑盒，本地 `npm run test:io`。**不在** `test:ci` 里。`typecheck:io` 也不在 Verify |
 

@@ -18,8 +18,8 @@ Backoffice Order Management. Cases are black-box I/O against `/api/backoffice/or
 
 # In scope
 
-- AUTH-04 Student and unauthenticated callers cannot list or refund orders.
-- PAY-04 Operator refund + later `invoice.paid` must not revive (specified; no operator seed).
+- ORDER-01 Student and unauthenticated callers cannot list or refund orders.
+- ORDER-02 Operator refund + later `invoice.paid` must not revive (specified; no operator seed). Related to PAY-04; id is unique.
 
 # Out of scope
 
