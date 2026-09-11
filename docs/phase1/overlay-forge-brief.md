@@ -234,7 +234,7 @@ ASCII：
 
 | 文件 | 现在是什么 |
 |---|---|
-| `forge.yaml` | 保护 `main`；deny `ci.yml` / `apprunner-deploy.yml` / `overlay-check.yml`；required_checks = Typecheck、Lint、Build and test、overlay-check；`code_owners: false`。**这是声明。** GitHub Rulesets 在 LibertychaserUS / First-Light LearningGuidePortal 和 AIOps 上都是 `[]`。本仓不 live-apply；要装由 Ops 另开窗口。1.0.1 针上的 `forge check` **还不拦** deny_paths（PR #5 改过 `overlay-check.yml` 仍绿）。补丁 `0008` 才让 check 因 deny_path 红。 |
+| `forge.yaml` | 保护 `main`；deny `ci.yml` / `apprunner-deploy.yml` / `overlay-check.yml`；required_checks = Typecheck、Lint、Build and test、overlay-check；`code_owners: false`。**这是声明。** GitHub Rulesets 在 LibertychaserUS / First-Light LearningGuidePortal 和 AIOps 上都是 `[]`。本仓不 live-apply。1.0.1 针上的 `forge check` **还不拦** deny_paths（本 PR 改过 `overlay-check.yml` 仍绿）。`0007`/`0008` 已挪到 `cursor/forge-agent-entry-2e0c`，不在本质量门 PR。 |
 | `overlay.yaml` | `product.repo: LibertychaserUS/LearningGuidePortal`；`default_ref` 钉在 `d06d15abaaefd001141dbe6a739362f2aefca3b4`；`forbid_hosts: ilovelearningguide.com` |
 | `inbox/login.md` | AUTH-01..06；套件 armed |
 | `inbox/payment.md` | PAY-01..10；套件 armed |
