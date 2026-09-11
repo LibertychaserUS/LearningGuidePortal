@@ -27,6 +27,9 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Title: A second trial complete keeps the original three-day validTo
 - Steps: Complete a demo trial twice; GET entitlements
 - Expected: `validTo` does not move; still trial, not a longer purchase
+- Title: Service-level $0 invoice.paid on a trialing subscription does not convert
+- Steps: `tests/unit/pay-invariants.test.ts` `convertStripeTrial(amountMinor: 0)` and `applyVerifiedStripeEvent` `$0` `subscription_create`
+- Expected: source stays trial; no purchase subscription. This is the PAY-01 Stripe-internal lock, not HTTP.
 ## PAY-02 Upgrade source cancel
 
 
@@ -39,7 +42,7 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 ### Negative
 - Title: Checkout without a session
 - Steps: POST checkout with no cookie
-- Expected: HTTP 401; INV-unauth-no-grant
+- Expected: HTTP 401 `{ ok: false, error: "Sign in is required." }`; INV-unauth-no-grant
 
 
 ### Edge
@@ -133,6 +136,12 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Title: Duplicate signed paid completion does not create a second grant
 - Steps: Demo purchase; signed `ping` twice; signed paid `checkout.session.completed` twice with the same event id
 - Expected: Entitlement still allowed once; second responses 200. Demo orders have no Stripe session id
+- Title: Unsigned or junk-signature webhook writes nothing
+- Steps: Sign in; POST webhook with no signature, then with `stripe-signature: t=1,v1=deadbeef`
+- Expected: Both HTTP 400; entitlement false; GET /api/subscription is empty
+- Title: Concurrent demo complete of one order grants once
+- Steps: Quote; checkout; two parallel POST demo confirm `complete`
+- Expected: One subscription row; entitlement allowed once; INV-one-charge
 ## PAY-06 Grace D+3
 
 
@@ -155,6 +164,9 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Title: payment_failed without a subscription field grants nothing
 - Steps: Signed `invoice.payment_failed` with no subscription
 - Expected: No entitlement grant
+- Title: Service-level graceEndsAt is original validTo + 3 days
+- Steps: `tests/unit/pay-invariants.test.ts` `markStripeSubscriptionGrace` after a paid 6-month term
+- Expected: `graceEndsAt = original validTo + 3 days`; paid validTo is not collapsed to now+3 days
 ## PAY-07 Invoice unsets cancel
 
 
@@ -177,6 +189,9 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Title: Cancelling a paid purchase twice still keeps access
 - Steps: Complete a demo purchase; POST cancel twice; GET entitlements
 - Expected: Entitlement stays true until the period ends
+- Title: Service-level invoice.paid does not clear cancel_at_period_end
+- Steps: `tests/unit/pay-invariants.test.ts` cancel then `applyStripePaidInvoice` / `applyVerifiedStripeEvent` invoice.paid with `cancelAtPeriodEnd: false`
+- Expected: Local subscription remains `cancel_at_period_end`; paid purchase still cannot resume
 ## PAY-08 Overlap delete
 
 
@@ -188,8 +203,8 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 
 ### Negative
 - Title: Quote or checkout without a session
-- Steps: POST quote and checkout with no cookie
-- Expected: HTTP 401; INV-unauth-no-grant
+- Steps: POST quote and checkout with no cookie; GET entitlements and GET /api/subscription with no cookie
+- Expected: HTTP 401 `{ ok: false, error: "Sign in is required." }`; INV-unauth-no-grant
 
 
 ### Edge
@@ -199,6 +214,9 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Title: An overlapping purchase does not expire the first subscription row
 - Steps: Complete a course plan; complete a covering category plan; GET /api/subscription
 - Expected: First plan row is still listed and not `expired`; course check stays allowed
+- Title: Service-level overlapping purchase expires the previous entitlement row
+- Steps: `tests/unit/pay-invariants.test.ts` course then category complete; read product.json entitlements
+- Expected: Previous entitlement id remains with `state=expired`; exactly one active row
 ## PAY-09 Device and repurchase
 
 
