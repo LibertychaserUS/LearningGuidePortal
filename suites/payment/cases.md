@@ -39,6 +39,15 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Steps: Signed-in quote; POST checkout without consents
 - Expected: HTTP 400
 
+### Extra
+- Title: Purchase quote with kind upgrade is 400
+- Steps: Sign in; POST /api/purchase/quote `{ kind: "upgrade", planId, subscriptionId }`
+- Expected: HTTP 400. Upgrade quotes use POST /api/subscription/quote
+
+- Title: Checkout from a foreign origin is 403
+- Steps: Sign in; POST /api/purchase/checkout and /api/trial with `origin: https://evil.test`
+- Expected: HTTP 403
+
 ## PAY-03 Double checkout
 
 ### Functional
@@ -81,14 +90,23 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Expected: Still allowed once; INV-one-charge. Table UNIQUE on stripe_events remains specified
 
 ### Negative
-- Title: Missing signature
-- Steps: POST webhook with no `Stripe-Signature` and no secret
+- Title: Webhook without a secret is 503
+- Steps: POST webhook with no `Stripe-Signature` after deleting `STRIPE_WEBHOOK_SECRET`
 - Expected: HTTP 503
 
 ### Edge
 - Title: Same signed unknown event twice
 - Steps: Signed `ping` with the same event id twice
 - Expected: Both HTTP 200 `ignored`
+
+### Extra
+- Title: Webhook without a signature is 400
+- Steps: `enableStripeWebhook()`; POST webhook with no `stripe-signature` header
+- Expected: HTTP 400
+
+- Title: Duplicate signed paid completion does not create a second grant
+- Steps: Demo purchase; signed `ping` twice; signed paid `checkout.session.completed` twice with the same event id
+- Expected: Entitlement still allowed once; second responses 200. Demo orders have no Stripe session id
 
 ## PAY-06 Grace D+3
 
@@ -100,7 +118,7 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 ### Negative
 - Title: payment_failed for an unknown subscription
 - Steps: Signed `invoice.payment_failed` for a missing subscription
-- Expected: No entitlement grant
+- Expected: HTTP 500; no entitlement grant
 
 ### Edge
 - Title: Unknown event type

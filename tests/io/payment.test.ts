@@ -193,6 +193,32 @@ test("PAY-02 edge: checkout without consents is 400", async () => {
   assert.equal(response.status, 400);
 });
 
+test("PAY-02 extra: purchase quote with kind upgrade is 400", async () => {
+  await signIn("pay02-wrong-door");
+  const response = await callRoute(quote.POST, jsonRequest("POST", "http://localhost/api/purchase/quote", {
+    kind: "upgrade",
+    planId: PLAN_ID,
+    subscriptionId: "sub-missing"
+  }));
+  assert.equal(response.status, 400);
+});
+
+test("PAY-02 extra: checkout from a foreign origin is 403", async () => {
+  await signIn("pay02-origin");
+  const checkoutResponse = await callRoute(checkout.POST, jsonRequest("POST", "http://localhost/api/purchase/checkout", {
+    quoteId: "quote-missing",
+    locale: "en-GB",
+    consents: CONSENTS
+  }, { origin: "https://evil.test" }));
+  assert.equal(checkoutResponse.status, 403);
+  const trialResponse = await callRoute(trial.POST, jsonRequest("POST", "http://localhost/api/trial", {
+    quoteId: "quote-missing",
+    locale: "en-GB",
+    consents: CONSENTS
+  }, { origin: "https://evil.test" }));
+  assert.equal(trialResponse.status, 403);
+});
+
 test("PAY-03 functional: the same quote reuses one pending order", async () => {
   await signIn("pay03-reuse");
   const quoted = await quotePlan(COURSE_PLAN);
@@ -287,13 +313,22 @@ test("PAY-05 functional: repeating complete does not create a second grant", asy
   assert.equal(access.allowed, true);
 });
 
-test("PAY-05 negative: webhook without a signature is 503", async () => {
+test("PAY-05 negative: webhook without a secret is 503", async () => {
   delete process.env.STRIPE_WEBHOOK_SECRET;
   const response = await webhook.POST(new Request("http://localhost/api/payment/webhook", {
     method: "POST",
     body: "{}"
   }));
   assert.equal(response.status, 503);
+});
+
+test("PAY-05 extra: webhook without a signature is 400", async () => {
+  enableStripeWebhook();
+  const response = await webhook.POST(new Request("http://localhost/api/payment/webhook", {
+    method: "POST",
+    body: "{}"
+  }));
+  assert.equal(response.status, 400);
 });
 
 test("PAY-05 edge: the same signed unknown event is ignored twice", async () => {
@@ -311,6 +346,50 @@ test("PAY-05 edge: the same signed unknown event is ignored twice", async () => 
   assert.equal(second.status, 200);
   assert.equal((await first.json()).ignored, true);
   assert.equal((await second.json()).ignored, true);
+});
+
+test("PAY-05 extra: duplicate signed paid completion does not create a second grant", async () => {
+  enableStripeWebhook();
+  await signIn("pay05-dup-paid");
+  await purchase(PLAN_ID);
+  const listedBefore = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const countBefore = ((await listedBefore.json()).subscriptions as unknown[]).length;
+  assert.equal((await entitlementAllowed()).allowed, true);
+  const ping = {
+    id: "evt_pay05_dup_ping",
+    object: "event",
+    livemode: false,
+    type: "ping",
+    data: { object: {} }
+  };
+  const pingFirst = await webhook.POST(signedWebhook(ping));
+  const pingSecond = await webhook.POST(signedWebhook(ping));
+  assert.equal(pingFirst.status, 200);
+  assert.equal(pingSecond.status, 200);
+  assert.equal((await pingFirst.json()).ignored, true);
+  assert.equal((await pingSecond.json()).ignored, true);
+  const completed = {
+    id: "evt_pay05_paid_replay",
+    object: "event",
+    livemode: false,
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_pay05_paid_replay",
+        payment_status: "paid",
+        amount_total: SERVER_AMOUNT_MINOR,
+        currency: "usd",
+        metadata: {}
+      }
+    }
+  };
+  const first = await webhook.POST(signedWebhook(completed));
+  const second = await webhook.POST(signedWebhook(completed));
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal((await entitlementAllowed()).allowed, true);
+  const listedAfter = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  assert.equal(((await listedAfter.json()).subscriptions as unknown[]).length, countBefore);
 });
 
 test("PAY-06 smoke: a bad webhook signature is 400", async () => {
@@ -338,7 +417,7 @@ test("PAY-06 negative: payment_failed for an unknown subscription grants nothing
       }
     }
   }));
-  assert.ok([400, 200, 500].includes(response.status));
+  assert.equal(response.status, 500);
   assert.equal((await entitlementAllowed()).allowed, false);
 });
 
