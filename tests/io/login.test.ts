@@ -5,6 +5,7 @@ import {
   SESSION_COOKIE,
   clearCookies,
   getCookie,
+  callRoute,
   isolate,
   jsonRequest,
   publicShape,
@@ -46,7 +47,7 @@ after(async () => {
 async function registerAccount(label: string, password = PASSWORD) {
   clearCookies();
   const email = uniqueEmail(label);
-  const response = await register.POST(jsonRequest("POST", "http://localhost/api/auth/register", {
+  const response = await callRoute(register.POST, jsonRequest("POST", "http://localhost/api/auth/register", {
     email,
     password,
     nickname: "IO Learner",

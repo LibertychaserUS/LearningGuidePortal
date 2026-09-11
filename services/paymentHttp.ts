@@ -9,3 +9,8 @@ export function paymentFailure(error: unknown, locale: "en-GB" | "zh-CN" = "en-G
   const message = getMessages(locale).paymentErrors[code];
   return NextResponse.json({ ok: false, code, error: message, message, requestId }, { status: error instanceof PaymentError ? error.status : 502 });
 }
+
+export function quoteFailure(error: unknown, locale: "en-GB" | "zh-CN" = "en-GB") {
+  if (error instanceof PaymentError) return paymentFailure(error, locale);
+  return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Quote failed." }, { status: 400 });
+}
