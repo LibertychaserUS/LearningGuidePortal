@@ -7,6 +7,19 @@
 3. `docs/phase1/api-contracts.md`
 4. `docs/phase1/release-runbook.md`
 5. `DESIGN.md`
+6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.0` / `forge-v1.0.0`（同一 SHA `235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 checkout 还不存在的 `v1.0.1`（AIOps `main` README 若已写 1.0.1，忽略，等人类发布）。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets。不要代签 `reviewed_by` / `armed`。不要把 `test:io` 加进 Verify。
+
+```text
+git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
+git -C /tmp/AIOps checkout overlay-v1.0.0
+python3 -m pip install -r /tmp/AIOps/requirements.txt
+export PYTHONPATH=/tmp/AIOps
+python3 -m overlay validate --root .
+python3 -m overlay cover --root .
+python3 -m forge check --root .
+```
+
+需要 CPython 3.12+。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check`。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。
 
 ## 项目边界
 

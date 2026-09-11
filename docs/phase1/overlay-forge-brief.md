@@ -418,6 +418,18 @@ ASCII：
 
 ## 11. 本地命令
 
+需要 CPython **3.12+**。先装工具仓，只 checkout **已存在的 tag**：
+
+```text
+git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
+cd /tmp/AIOps
+git checkout overlay-v1.0.0
+python3 -m pip install -r requirements.txt
+export PYTHONPATH=/tmp/AIOps
+```
+
+`overlay-v1.0.0` 与 `forge-v1.0.0` 是同一提交。不要 pin `main`。不要 `git checkout overlay-v1.0.1`（tag 还不存在）。
+
 ```text
 npm run test:io
 PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .
@@ -429,4 +441,4 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 
 现在应看到：`test:io` 49 pass；validate / cover 过；`select --branch main` selected=0、dropped=4 drafts；`overlay run` 不执行产品命令；`forge check` ok。
 
-工具仓要先 clone 到 `/tmp/AIOps` 并 checkout `overlay-v1.0.0`。不要 checkout `main` 当针。
+叶子必须是 `### Functional` / `### Negative` / `### Edge`。不要 `### Depth`。不要 `## Specified / not tested now`。Agent 不 live-apply、不代签 `armed`。
