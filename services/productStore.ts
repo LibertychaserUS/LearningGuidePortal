@@ -391,6 +391,18 @@ function entitlementMatchesSubscription(entitlement: ProductEntitlement, subscri
   return entitlement.userId === subscription.userId && entitlement.source === subscription.source && sameScope(entitlement, subscription);
 }
 
+function refundBlocksInvoiceGrant(data: ProductData, subscription: ProductSubscription) {
+  const stripeId = subscription.stripeSubscriptionId || null;
+  if (stripeId && data.orders.some((order) => order.status === "refunded" && order.stripeSubscriptionId === stripeId)) return true;
+  if (subscription.state === "expired" && data.orders.some((order) =>
+    order.status === "refunded" &&
+    order.userId === subscription.userId &&
+    ((stripeId && order.stripeSubscriptionId === stripeId) || (!stripeId && order.planId === subscription.planId))
+  )) return true;
+  const matching = data.entitlements.filter((item) => entitlementMatchesSubscription(item, subscription));
+  return matching.length > 0 && matching.every((item) => item.state === "revoked");
+}
+
 async function saveData(data: ProductData) {
   await ensureDir(PRODUCT_DIR);
   await atomicWriteJson(PRODUCT_FILE, data);
@@ -1357,7 +1369,7 @@ export async function activateStripeTrial(input: { eventId?: string; eventType?:
 export async function convertStripeTrial(input: { subscriptionId: string; invoiceId: string; amountMinor: number; paymentIntentId?: string | null }) {
   return editData((data) => {
     const trial = data.subscriptions.find((item) => item.stripeSubscriptionId === input.subscriptionId && item.source === "trial" && item.state !== "expired");
-    if (!trial) return null;
+    if (!trial || refundBlocksInvoiceGrant(data, trial)) return null;
     const plan = data.plans.find((item) => item.id === trial.planId);
     if (!plan) throw new Error("Plan not found.");
     trial.state = "expired";
@@ -1381,7 +1393,7 @@ export async function applyStripePaidInvoice(input: { subscriptionId: string; in
     const paidOrder = data.orders.find((order) => order.stripeInvoiceId === input.invoiceId);
     if (paidOrder) return paidOrder;
     const subscription = data.subscriptions.find((item) => item.stripeSubscriptionId === input.subscriptionId && item.source === "purchase");
-    if (!subscription) return null;
+    if (!subscription || refundBlocksInvoiceGrant(data, subscription)) return null;
     const plan = data.plans.find((item) => item.id === subscription.planId);
     if (!plan) throw new Error("Plan not found.");
     const start = input.currentPeriodStart || now();
@@ -1570,11 +1582,22 @@ export async function resumeSubscription(userId: string, subscriptionId: string)
     const subscription = data.subscriptions.find((item) => item.id === subscriptionId && item.userId === userId);
     if (!subscription) throw new Error("Subscription not found.");
     if (subscription.source === "purchase") throw new Error("Auto-renewal cannot be restored. You can purchase a new plan after the current period ends.");
-    if (!["trial_canceled", "cancel_at_period_end"].includes(subscription.state) || new Date(subscription.validTo) <= new Date()) throw new Error("This subscription cannot be resumed.");
+    const originalValidTo = subscription.validTo;
+    if (!["trial_canceled", "cancel_at_period_end"].includes(subscription.state) || new Date(originalValidTo) <= new Date()) throw new Error("This subscription cannot be resumed.");
     subscription.state = "active";
     subscription.cancelAtPeriodEnd = false;
-    const entitlement = data.entitlements.find((item) => entitlementMatchesSubscription(item, subscription) && item.validTo === subscription.validTo);
-    if (entitlement) entitlement.state = "active";
+    subscription.validTo = originalValidTo;
+    let entitlement = data.entitlements.find((item) => entitlementMatchesSubscription(item, subscription));
+    if (entitlement) {
+      entitlement.state = "active";
+      entitlement.validTo = originalValidTo;
+    } else {
+      const plan = data.plans.find((item) => item.id === subscription.planId);
+      if (plan) {
+        entitlement = entitlementForPlan(userId, plan, "trial", originalValidTo);
+        data.entitlements.unshift(entitlement);
+      }
+    }
     data.notifications.unshift({ id: id("notification"), userId, title: "Subscription resumed", body: "Your course access remains available until the current period ends.", readAt: null, createdAt: now() });
     return subscription;
   });
@@ -1705,12 +1728,16 @@ export async function refundOrder(orderId: string, operatorId: string, providerR
     if (order.status === "refunded") return order;
     if (order.status !== "paid") throw new Error("Only a paid order can be refunded.");
     order.status = "refunded";
-    const subscription = data.subscriptions.find((item) => item.userId === order.userId && item.planId === order.planId && item.source === "purchase" && item.state !== "expired");
-    if (subscription) subscription.state = "expired";
-    const plan = data.plans.find((item) => item.id === order.planId);
-    if (plan) {
-      const entitlement = data.entitlements.find((item) => item.userId === order.userId && item.source === "purchase" && item.state === "active" && entitlementOverlapsPlan(data, item, plan));
-      if (entitlement) entitlement.state = "revoked";
+    const subscriptions = data.subscriptions.filter((item) =>
+      item.userId === order.userId &&
+      item.source === "purchase" &&
+      (order.stripeSubscriptionId ? item.stripeSubscriptionId === order.stripeSubscriptionId : item.planId === order.planId)
+    );
+    for (const subscription of subscriptions) {
+      subscription.state = "expired";
+      for (const entitlement of data.entitlements) {
+        if (entitlementMatchesSubscription(entitlement, subscription)) entitlement.state = "revoked";
+      }
     }
     data.notifications.unshift({ id: id("notification"), userId: order.userId, title: "Order refunded", body: "The demo order was refunded and course access was removed.", readAt: null, createdAt: now() });
     addOrderActivity(data, { orderId, operatorId, action: "refund", result: "succeeded", reason, providerReference });
@@ -1926,7 +1953,9 @@ export async function applyVerifiedStripeEvent(event: VerifiedStripeEvent) {
       if (order?.status === "pending") { order.status = event.status === "expired" ? "canceled" : "failed"; order.lastStripeStatus = event.status; }
     } else if (event.action === "invoice") {
       if (!subscription || !event.invoiceId) throw new Error("Subscription cannot be reconciled yet.");
-      if (event.status === "paid" && !data.orders.some(item => item.stripeInvoiceId === event.invoiceId)) {
+      if (refundBlocksInvoiceGrant(data, subscription)) {
+        // Refunded / revoked access must not be revived by a later invoice.paid.
+      } else if (event.status === "paid" && !data.orders.some(item => item.stripeInvoiceId === event.invoiceId)) {
         // The free initial trial invoice is not the first paid renewal.
         if (!(subscription.source === "trial" && event.billingReason === "subscription_create" && event.amountMinor === 0)) {
           if (!event.periodStart || !event.periodEnd) throw new Error("Invoice period is missing.");
@@ -1965,12 +1994,12 @@ export async function applyVerifiedStripeEvent(event: VerifiedStripeEvent) {
         data.entitlements.filter(item => entitlementMatchesSubscription(item, subscription!)).forEach(item => { item.validTo = end; });
       }
     }
-    if ((event.action === "subscription" || event.subscriptionStatus) && subscription) {
+    if ((event.action === "subscription" || event.subscriptionStatus) && subscription && !refundBlocksInvoiceGrant(data, subscription)) {
       const remoteStatus = event.subscriptionStatus || event.status;
       subscription.cancelAtPeriodEnd = Boolean(event.cancelAtPeriodEnd);
       if (["canceled", "unpaid", "incomplete_expired", "paused"].includes(remoteStatus || "")) {
         subscription.state = "expired";
-        data.entitlements.filter(item => entitlementMatchesSubscription(item, subscription!)).forEach(item => { item.state = "expired"; });
+        data.entitlements.filter(item => entitlementMatchesSubscription(item, subscription!)).forEach(item => { if (item.state !== "revoked") item.state = "expired"; });
       } else if (["active", "trialing"].includes(remoteStatus || "") && subscription.state !== "trial_canceled" && subscription.state !== "grace") {
         // An update alone never grants or extends paid access.
         subscription.state = event.cancelAtPeriodEnd ? "cancel_at_period_end" : subscription.state === "expired" ? "expired" : "active";
