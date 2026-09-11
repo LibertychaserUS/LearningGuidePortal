@@ -1,37 +1,38 @@
 ---
 name: design-cases
 description: >-
-  Design Learning Guide Overlay cases — leaf triad Functional / Negative / Edge
-  plus declared invariants. Use when writing cases.md or invariants.yaml or
-  running overlay cover. Not line coverage. Use with use-overlay. Do not arm.
-  Do not use ### Depth or ## Specified.
+  设计 Learning Guide Overlay 用例：叶子三技法 Functional / Negative / Edge
+  加上已声明 invariant。写 cases.md 或 invariants.yaml 或跑 overlay cover 时用。
+  不是行覆盖。配合 use-overlay。不要写 ### Depth 或 ## Specified。
 metadata:
-  short-description: Overlay triad, invariants, unique function_id
+  short-description: Overlay 三技法、invariant、唯一 function_id
 ---
 
-# Design Cases (Learning Guide)
+# Design Cases（Learning Guide）
 
-Define Overlay “full cover” before writing any `cases.md`. Operate Overlay with [`../use-overlay/SKILL.md`](../use-overlay/SKILL.md). Product leaves and lock status: [`../overlay-forge-brief.md`](../overlay-forge-brief.md) §7–§8.
+写任何 `cases.md` 之前先定义 Overlay「满覆盖」。操作 Overlay 用 [`use-overlay`](../use-overlay/SKILL.md)。权威方法见工具仓 [design-cases](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/skills/design-cases/SKILL.md)。产品叶子与锁状态：[`overlay-forge-brief.md`](../../overlay-forge-brief.md) §7–§8。
 
 ## Instructions
 
-Full cover is three layers — not PRD scan, not line coverage, not N×N leaves:
+满覆盖是三层——不是扫 PRD、不是行覆盖、不是 N×N 叶子：
 
-| Layer | What is standard |
+| Layer | 标准 |
 |---|---|
-| Leaf techniques | Each `function_id` has Functional / Negative / Edge |
-| Invariants | Each declared invariant is cited in some `cases.md` |
-| Interaction | Only when leaves are already coupled (`span: interaction` + `relates`) |
+| Leaf techniques | 每个 `function_id` 有 Functional / Negative / Edge |
+| Invariants | 每个已声明 invariant 在某篇 `cases.md` 被点名 |
+| Interaction | 仅当叶子已经耦合（`span: interaction` + `relates`） |
 
-Write any `cases.md` only after reading the whole overlay root: all `inbox/*.md`, all `suites/*/cases.md`, `invariants.yaml`, and “不得 / 永不” sentences in Phase 1 docs.
+写 `cases.md` 之前先读整个 overlay root：全部 `inbox/*.md`、全部 `suites/*/cases.md`、`invariants.yaml`，以及 Phase 1 文档里的「不得 / 永不」。
+
+`active` 缺技法 → `validate` / `cover` 契约红。`blocked` 可以薄，cover 只提示。
 
 ### 1. Inventory
 
-List existing `function_id`s (AUTH-01..06, PAY-01..10, portal / my-learning ids). Copy them. Do not invent `E2E-B1` / `CROSS-01` / `REQ-n`.
+列出已有 `function_id`（AUTH-01..06、PAY-01..10、portal / my-learning）。照抄。不要发明 `E2E-B1` / `CROSS-01` / `REQ-n`。
 
 ### 2. Leaf triad
 
-Each `function_id` is a `## <id>` section. The three `###` titles must be these words (case-insensitive):
+每个 `function_id` 是一个 `## <id>` 段。三个 `###` 标题必须是这些词（大小写不敏感）：
 
 ```markdown
 ## AUTH-01
@@ -40,26 +41,26 @@ Each `function_id` is a `## <id>` section. The three `###` titles must be these 
 ### Edge
 ```
 
-**Do not** write `### Depth`. **Do not** write `## Specified / not tested now`. `function_id` is globally unique. `invariants.yaml` `function_ids` must match existing `##` titles.
+不要写 `### Depth`。不要写 `## Specified / not tested now`。`function_id` 全局唯一。`invariants.yaml` 的 `function_ids` 必须对上已有 `##` 标题。
 
 ### 3. Invariants
 
-This repo already has `INV-unauth-no-grant`, `INV-browser-not-price`, `INV-one-charge`. Each must appear as a token in some `cases.md`. Do not point an invariant at a `##` title that does not exist.
+本仓已有 `INV-unauth-no-grant`、`INV-browser-not-price`、`INV-one-charge`。每个必须作为 token 出现在某篇 `cases.md`。不要把 invariant 指到不存在的 `##` 标题。
 
-### 4. Interaction only when coupled
+### 4. 只在耦合时写 interaction
 
-Shared session / entitlement / “不得同时” → one case on the leaf that fails first, plus `span: interaction` and `relates`. No pairwise explosion.
+共享 session / entitlement / 「不得同时」→ 写在先失败的那片叶子上，加上 `span: interaction` 与 `relates`。不要两两爆炸。
 
-### 5. Human review
+### 5. 人审
 
-`cover` prints the matrix. Humans decide `blocked` / `armed`. Models do not arm.
+`cover` 打印矩阵。人决定 `blocked` / `active`。模型不要把别人的套件改成 `blocked`。人审证据在 PR 审批 + CODEOWNERS。
 
 ## Never
 
-- Do not change Verify. Do not add `test:io` to `test:ci`.
-- Do not hit `ilovelearningguide.com`.
-- Do not generate on push. Do not write `reviewed_by`.
-- Do not vendor `forge/` / `overlay/`.
+- 不要改 Verify。不要把 `test:io` 加进 `test:ci`。
+- 不要打 `ilovelearningguide.com`。
+- 不要在 push 上 generate。不要把套件改成 `blocked`。
+- 不要 vendor `forge/` / `overlay/`。
 
 ## Examples
 
@@ -67,17 +68,17 @@ Shared session / entitlement / “不得同时” → one case on the leaf that 
 PYTHONPATH=/tmp/AIOps python3 -m overlay cover --root .
 ```
 
-Half-locked PAY leaves stay in cases for humans; do not pretend HTTP already locked Stripe internals.
+半锁的 PAY 叶子留在 cases 里给人看；不要假装 HTTP 已经锁死 Stripe 内部。
 
 ## Performance Notes
 
-`cover` / `validate` only scan this repo’s YAML and Markdown.
+`cover` / `validate` 只扫本仓 YAML 和 Markdown。
 
 ## Troubleshooting
 
 | 现象 | 处理 |
 |---|---|
-| armed 缺 Edge | 补 `### Edge`，不要用 `### Depth`。 |
+| active 缺 Edge | 补 `### Edge`，不要用 `### Depth`，不要改成 blocked 躲。 |
 | 写了 `## Specified` | 改成段落。 |
 | 跨套件重复 function_id | 换一个稳定唯一的 id。 |
 | invariant 点了不存在的 `##` | 先对齐标题。 |

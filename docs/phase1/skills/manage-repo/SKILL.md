@@ -1,56 +1,74 @@
 ---
 name: manage-repo
 description: >-
-  Human maintainer actions on Learning Guide — review Overlay suites
-  (write reviewed_by / armed yourself), merge when required checks are green.
-  Do not live-apply Forge Rulesets to this repo. Do not forge submit for
-  developers (use dev-pr). Agents must not use this skill to arm or apply.
+  Oliver 的 Ops 动作：用 FORGE_GITHUB_TOKEN 对 fork 的 dev+main 跑 forge apply、
+  批准 promote PR、点 AIOps release workflow。不要替开发 forge submit（用 dev-pr）。
+  Agent 不得使用本 skill 去做这些事。
 metadata:
-  short-description: Human review and merge; no live apply here
+  short-description: Oliver Ops：apply、批 promote、release；agent 永不做
 ---
 
-# Manage Repo (Learning Guide)
+# Manage Repo（Learning Guide）
 
-Review and merge live on **GitHub**. Agents must not use this skill to arm suites or apply Rulesets.
+**本 skill 只给 Oliver。Agent 不得执行下面任何一步。**
+
+审和合在 **GitHub**。权威步骤见工具仓 [manage-repo](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/skills/manage-repo/SKILL.md)。路径：[dev-main-flow.md](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/docs/dev-main-flow.md)。配置：[forge-config.md](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/docs/forge-config.md)。入口：[`AGENTS.md`](../../../../AGENTS.md)、[`overlay-forge-brief.md`](../../overlay-forge-brief.md)、[`APPLY.md`](../../aiops-release/APPLY.md)。
+
+`FORGE_GITHUB_TOKEN`（Ruleset / apply）和 `FORGE_SUBMIT_TOKEN`（代推）是两把钥匙，都由 Oliver 配成环境密钥。agent 永不粘贴。
 
 ## Instructions
 
-1. **Do not live-apply Forge** to `LibertychaserUS/LearningGuidePortal` or `First-Light-TechHK/LearningGuidePortal`. Phase 1 Ops does not apply. `python -m forge apply --dry-run` is diagnosis only.
-2. **Required checks** (already in `forge.yaml`) are the PR **job names**: `Typecheck` / `Lint` / `Build and test` / `overlay-check`. The Verify **workflow** name is not a required check. Do not add `pr-title` / `sop-lock` unless this product repo actually grows those jobs.
-3. **Merge** only when those checks are green and a human approved. Default squash. Do not let an agent merge.
-4. **Overlay arm / block** is a human yaml edit. Agents must not. The review CLI does not write. Hand-edit `suites/<id>/suite.yaml`:
-   - `status: armed` or `blocked`
-   - non-empty `reviewed_by` + ISO-8601 `reviewed_at`
-   - `armed_reason` or `blocked_reason`
-5. After a human edit: `PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .` (`/tmp/AIOps` @ `overlay-v1.0.1`).
-6. **AIOps tags:** official pin is `overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`. Never force-move `1.0.0`. Next semver: `python -m forge release --version X.Y.Z --dry-run` then live, or push annotated tags over SSH. Spec: [`../aiops-release/APPLY.md`](../aiops-release/APPLY.md).
+1. **`forge apply`（Oliver，持 `FORGE_GITHUB_TOKEN`）**，对 fork 的 `dev`+`main`。不要从 Overlay CI 跑 live apply。agent 不做。
+
+```text
+PYTHONPATH=/tmp/AIOps python3 -m forge apply --repo LibertychaserUS/LearningGuidePortal --path forge.yaml --dry-run
+PYTHONPATH=/tmp/AIOps python3 -m forge apply --repo LibertychaserUS/LearningGuidePortal --path forge.yaml
+PYTHONPATH=/tmp/AIOps python3 -m forge status --repo LibertychaserUS/LearningGuidePortal --root . --write docs/STATE.md
+```
+
+每个保护分支一条 `forge-protected-<branch>`，另加 `forge-protected-tags`。AIOps 工具仓自己也要 apply（见 [`overlay-forge-issues.md`](../../overlay-forge-issues.md) OF-08）。
+
+2. **Required checks** 是 PR 上的 **CI job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check` / `forge-check`。不要抄 workflow 名 `Verify`。`dev` 无人批；`main` 要 1 个 approvals + CODEOWNERS。
+
+3. **Merge 进 `dev`：** CI 绿即可（approvals=0）。**Merge 进 `main`：** 只合 `forge promote` 开出的 PR，1 人批 + CODEOWNERS，merge commit。不要让 agent merge。不要替开发 `forge submit`（那是 `$dev-pr`）。
+
+4. **Promote：** `dev` → `main` 由 `forge promote --repo LibertychaserUS/LearningGuidePortal --from dev --to main` 开 PR。人批 + 合。命令本身永不 merge。
+
+5. **Overlay `blocked`** 是人手改 yaml。Agent 不得在 agent 分支上做（`suite_guard` 红）。`blocked` 必须有带链接或编号的 `blocked_reason`。不要写已删除的旧字段。改完：`PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .`（针 `overlay-v2.0.0`）。
+
+6. **AIOps 发布：** Oliver 点工具仓 `release` workflow。每个 tag 的 GitHub Release 页面仍需 Oliver 点一次。不要 force-move 已有针。官方针 `overlay-v2.0.0` / `forge-v1.1.2`。记录见 [`APPLY.md`](../../aiops-release/APPLY.md)。
 
 ## Never
 
-- Do not live-apply Forge to this product.
-- Do not change Verify. Do not add `test:io` to Verify.
-- Do not let agents write `reviewed_by` or `armed`.
-- Do not hit `ilovelearningguide.com`.
-- Do not vendor `forge/` / `overlay/`.
-- Do not `forge submit` for developers.
+- Agent 不得 live-apply、不得批 promote PR、不得点 release、不得粘贴 token。
+- 不要改 Verify。不要把 `test:io` 加进 Verify。
+- 不要让 agent 把套件改成 `blocked`。
+- 不要打 `ilovelearningguide.com`。
+- 不要 vendor `forge/` / `overlay/`。
+- 不要 `forge submit` 替开发。
 
 ## Examples
 
 ```text
-# Human only — arm after reading cases
-# suites/login/suite.yaml → status: armed, reviewed_by: <your handle>
-PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .
+# 仅 Oliver
+PYTHONPATH=/tmp/AIOps python3 -m forge apply --repo LibertychaserUS/LearningGuidePortal --path forge.yaml --dry-run
+PYTHONPATH=/tmp/AIOps python3 -m forge promote --repo LibertychaserUS/LearningGuidePortal --from dev --to main --dry-run
+PYTHONPATH=/tmp/AIOps python3 -m forge status --repo LibertychaserUS/LearningGuidePortal --root . --write docs/STATE.md
 ```
+
+合入 main：GitHub PR 页，promote PR，检查绿，1 人批 + CODEOWNERS，merge commit。
 
 ## Performance Notes
 
-Arm is a yaml edit + local validate. No model.
+`forge apply` 是按名 GET + POST/PUT。Overlay `blocked` 是 yaml 编辑 + 本地 validate。无模型。
 
 ## Troubleshooting
 
 | 现象 | 处理 |
 |---|---|
-| 想对本仓 live apply | 停。Phase 1 不做。 |
-| Agent 代写 reviewed_by | 拒收。自己写。 |
-| required_checks 抄了 Verify | 改回 job 名 Typecheck / Lint / Build and test / overlay-check。 |
-| 想发下一版 tag | 确认新 tag 不存在，再 `python -m forge release --version X.Y.Z --dry-run`。不要 force-move 已有针。 |
+| Agent 想执行本 skill | 拒。这些是 Oliver 的 Ops。 |
+| `promote` 想顺手 merge | 停。命令永不 merge。 |
+| Agent 代写 `blocked` | 拒收。自己写 reason 链接。 |
+| required_checks 抄了 Verify | 改回 job 名 Typecheck / Lint / Build and test / overlay-check / forge-check。 |
+| STATE 不新鲜 | `forge status --write docs/STATE.md`。 |
+| 想发下一版 tag | Oliver 点 AIOps `release` workflow。不要 force-move。 |

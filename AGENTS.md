@@ -7,7 +7,7 @@
 3. `docs/phase1/api-contracts.md`
 4. `docs/phase1/release-runbook.md`
 5. `DESIGN.md`
-6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`；这是 git tag，GitHub Release 对象可能还没有，pin `/tree/overlay-v1.0.1`）。不要 pin `main`。不要 force-move `1.0.0`。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets（`forge.yaml` 只是声明；Rulesets 目前是空的）。不要代签 `reviewed_by` / `armed`（人审才写；fork `main` 上四套是 Oliver squash #4，新套件保持 draft）。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。AIOps 落地补丁在 `docs/phase1/aiops-release/`（本分支），不要再往 Overlay 质量门 PR #5 上堆。
+6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。先读 `docs/STATE.md`（生成，不要手改）和 `docs/phase1/overlay-forge-issues.md`。本地只 pin 已发布 tag：`overlay-v2.0.0`（Overlay）/ `forge-v1.1.2`（Forge）；同一仓、两件产品，不要手抄 SHA。不要 pin `main`。不要 force-move 旧针。不要 vendor `overlay/` 或 `forge/`。A 路线：`forge check` 绿之后 PR 打到 `dev`（CI required，无人批）；`dev → main` 由 `forge promote`（1 人批 + CODEOWNERS，merge commit）。套件状态只有 `active | blocked`，没有 `armed`，没有 `reviewed_by`；人审是 PR 审批 + CODEOWNERS。Agent 不得把套件改成 `blocked`（`suite_guard`），不得改 `.github/workflows/`（`deny_paths`）。`docs_sync` 在本地 `forge check` 和 CI `forge-check` 都会跑。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。
 
 本仓已有 native skills（不要 vendor 工具仓 Python）：`use-forge`（开发冷启动六步，无 live apply）、`use-overlay`、`design-cases`、`dev-pr`、`manage-repo`。标准路径：
 
@@ -18,31 +18,33 @@
 Canonical：`docs/phase1/skills/<name>/SKILL.md`。或从已发布 tag 装工作本（host id：`codex` / `cursor` / `claude-code` / `github-copilot`）：
 
 ```text
-# overlay-v1.0.1 @ b4afc10a — verified 2026-09-11
-gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.1 --all
-gh skill install LibertychaserUS/AIOps use-forge --agent cursor --pin overlay-v1.0.1
-gh skill install LibertychaserUS/AIOps use-overlay --agent cursor --pin overlay-v1.0.1
-gh skill install LibertychaserUS/AIOps design-cases --agent cursor --pin overlay-v1.0.1
-gh skill install LibertychaserUS/AIOps dev-pr --agent cursor --pin overlay-v1.0.1
-gh skill install LibertychaserUS/AIOps manage-repo --agent cursor --pin overlay-v1.0.1
+# overlay-v2.0.0 / forge-v1.1.2 — 官方针，现状见 docs/STATE.md
+gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v2.0.0 --all
+gh skill install LibertychaserUS/AIOps use-forge --agent cursor --pin overlay-v2.0.0
+gh skill install LibertychaserUS/AIOps use-overlay --agent cursor --pin overlay-v2.0.0
+gh skill install LibertychaserUS/AIOps design-cases --agent cursor --pin overlay-v2.0.0
+gh skill install LibertychaserUS/AIOps dev-pr --agent cursor --pin overlay-v2.0.0
+gh skill install LibertychaserUS/AIOps manage-repo --agent cursor --pin overlay-v2.0.0
 gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 ```
 
-`overlay-v1.0.1` 上 `gh skill install --all`（含 `manage-repo` 已加引号的 frontmatter）已通过。本仓 `$use-forge` 是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。已发布针冷启动证据见 `docs/phase1/aiops-release/APPLY.md`。
+本仓 `$use-forge` 是开发冷启动：`forge check` 绿之后 PR 打到 `dev`；`dev → main` 走 `forge promote`。live `apply` 只在 `$manage-repo`，由 Oliver 持 `FORGE_GITHUB_TOKEN` 在 fork 的 `dev`+`main` 上执行；agent 不做。`docs_sync` 在本地 `forge check` 和 CI `forge-check` 都会跑。针脚与 Ruleset 现状只看 `docs/STATE.md`。已发布针记录见 `docs/phase1/aiops-release/APPLY.md`。
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
-git -C /tmp/AIOps checkout overlay-v1.0.1
+git -C /tmp/AIOps checkout overlay-v2.0.0
+# Forge CLI 用 forge-v1.1.2（同一仓、另一件产品）
 python3 -m pip install -r /tmp/AIOps/requirements.txt
 export PYTHONPATH=/tmp/AIOps
 python3 -m overlay validate --root .
 python3 -m overlay cover --root .
 python3 -m forge check --root .
+python3 -m forge status --root . --repo LibertychaserUS/LearningGuidePortal --check-state
 ```
 
-需要 CPython 3.12+。`python -m forge` 子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce` `release`。没有 `brief` / `credential` / `ops-chain` / `revoke`。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check`（不要抄 workflow 名 `Verify`）。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。已有的 `overlay-check.yml` 是单 job `overlay-check`（checkout `AIOps@overlay-v1.0.0` 到 `_aiops`、`npm ci`、`overlay validate` + `overlay run --branch main`），是 `deny_paths`，agent 不改；换针到 1.0.1 由人提交。已知问题与待定意图见 `docs/phase1/overlay-forge-issues.md`。
+需要 CPython 3.12+。`python -m forge` 子命令以工具仓 `docs/cli.md` 为准；开发侧用 `check` / `submit` / `promote`；Ops 才 `apply` / `release`。没有 `brief` / `credential` / `ops-chain` / `revoke`。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check` / `forge-check`（不要抄 workflow 名 `Verify`）。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。已有的 `overlay-check.yml` 是单 job `overlay-check`（checkout `AIOps@overlay-v2.0.0` 到 `_aiops`、`npm ci`、`overlay validate` + `cover` + `run`）；另有 `forge-check.yml`（checkout `AIOps@forge-v1.1.2` 到 `_aiops`、`forge check` + `forge status --check-state`）。两者都在 `deny_paths`（`.github/workflows/`），agent 不改。已知问题与待定意图见 `docs/phase1/overlay-forge-issues.md`。
 
-Forge 是开发完成后的 GitHub 落地（`check` → `submit`），不是测试工具，不改 Overlay / Verify。本仓已有 `forge.yaml`：问一次是否按 Forge 落地；同意后说「之后默认按 Forge 落地」，然后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply Ruleset 或 arm Overlay。若接入方还没有 Forge、且已有自己的落地方式，必须先对照新旧并等人明确同意，不能默默替换。
+Forge 是开发完成后的 GitHub 落地（`check` → PR 到 `dev` → `promote` 到 `main`），不是测试工具，不改 Overlay / Verify。本仓已有 `forge.yaml`：问一次是否按 Forge 落地；同意后说「之后默认按 Forge 落地」，然后默认跑 `check`，持有 `FORGE_SUBMIT_TOKEN` 再 `submit` 到 `dev`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply Ruleset，也不等于把套件改成 `blocked`。`FORGE_SUBMIT_TOKEN` 与 `FORGE_GITHUB_TOKEN` 是 Oliver 提供的环境密钥，agent 永不粘贴 token。若接入方还没有 Forge、且已有自己的落地方式，必须先对照新旧并等人明确同意，不能默默替换。
 
 ## 项目边界
 
