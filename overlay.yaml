@@ -3,7 +3,7 @@
 schema: overlay-config/v1
 product:
   repo: LibertychaserUS/LearningGuidePortal
-  default_ref: 6d8934e5811e371554a94aa47b2f56c40bf0cbd3
+  default_ref: d06d15abaaefd001141dbe6a739362f2aefca3b4
 branches:
   main:
     run: [functional, regression]
