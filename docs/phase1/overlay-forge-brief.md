@@ -33,7 +33,7 @@
 | `inbox/*.md` | 需求叶子，ID 沿用历史 `AUTH-01..06` / `PAY-01..10` | 人写意图，Agent 可补 |
 | `suites/*/cases.md` + `trace.yaml` | 可审规格：每片叶子 Functional / Negative / Edge | Agent 写，人审 |
 | `tests/io/*.test.ts` | 黑盒：HTTP 进，状态码 + 公开 JSON 出 | Agent 写 |
-| Overlay CI | 只执行 `armed`；`draft` / `blocked` 丢掉，不当红 | 人 arm 之后才跑 |
+| Overlay CI | `overlay-check` 跑本仓 `product_command`。`overlay select` 仍只认 armed，不当这道门禁 | 空转假绿 |
 | Verify | 产品原有门禁，不改用途 | 不要往里塞 Overlay / e2e / k6 |
 
 不另开一套 ID。不把 workshop 的 `pr-title` / `sop-lock` 抄进产品仓。
@@ -82,9 +82,9 @@ stateDiagram-v2
     blocked --> armed: 人解除阻塞并署名
     armed --> blocked: 人发现不能再跑
     armed --> CI: overlay select --branch main\n只留下 armed
-    draft --> CI: select 按 never_red 丢掉\noverlay-check 仍绿
-    blocked --> CI: 同样丢掉，不当红
-    CI --> [*]: run 只执行 selected\n写 receipt
+    draft --> CI: overlay-check 仍跑本仓 product_command
+    blocked --> CI: Overlay select 丢掉；workflow 不因此假绿
+    CI --> [*]: 跑了 0 条必须失败
 ```
 
 ASCII：
@@ -94,14 +94,14 @@ ASCII：
                  │              ▲
                  └──blocked─────┘
                       │
-                      └──select 丢掉──► overlay-check 仍绿
+                      └──select 丢掉──► 不当 overlay-check 假绿
 
 规则
-  never_red = draft, blocked
+  never_red = draft, blocked （只约束 overlay select）
   Agent 可写 inbox / cases / trace / tests/io
   Agent 不能填 reviewed_by，不能把 status 写成 armed
   product_command 指向 tests/io/*.test.ts
-  人 arm 之前这条命令不会进 CI
+  overlay-check 跑本仓这条命令，不靠 select=0 过关
 ```
 
 ---
@@ -166,7 +166,7 @@ apprunner-deploy.yml ──不自动──► App Runner
 - 不要自动 App Runner。
 - 不要打 `ilovelearningguide.com`。
 
-`overlay select --branch main` 仍只选 armed，只作记录。workflow **每条** suite `product_command` 都跑；`tests/io` 必须在本仓，不从功能分支回拉。不跳过、不标 blocked。跑了 0 条必须失败。
+workflow **每条** suite `product_command` 都跑；`tests/io` 必须在本仓。不跳过、不标 blocked。跑了 0 条必须失败。旧的 `uses:` + `overlay-check passed` 假实现已删。
 
 ---
 
@@ -222,7 +222,7 @@ ASCII：
 | Agent | 写 inbox / cases / trace / 产品 HTTP 修复 / `tests/io`；跑 validate、cover、select、`test:io`、`forge check`；开 draft PR | 填 `reviewed_by`；把套件标 `armed`；改 Verify 用途；vendor 工具仓；打生产站 |
 | 人（开发 / 审套件） | 读 cases；决定 `blocked` 或 `armed`；自己署名 `reviewed_by` | 让 Agent 代签 |
 | Ops | 需要时 live-apply Forge Rulesets | 对本仓现在不要 apply |
-| CI Overlay | validate → select(main) → 只 run armed | 因 draft 套件把 overlay-check 打红 |
+| CI Overlay | validate + 跑本仓 product_command | 空转假绿；select=0 当过关 |
 | CI Verify | Typecheck / Lint / `test:ci` | 跑 `test:io`、e2e、k6、生产冒烟 |
 
 ---
@@ -408,7 +408,7 @@ ASCII：
 
 1. **读 PR #2**，先看 `suites/login/cases.md` 和 `suites/payment/cases.md`，再看 `tests/io`。
 2. **人决定每套套件**：现在就能当门禁用 → 自己写 `reviewed_by` + `status: armed` + `armed_reason`；还不能跑 → `blocked` + `blocked_reason`。
-3. **不要让 Agent 代签。** arm 之后下一次 push，`overlay select --branch main` 才会带上套件，CI 才跑 `test:io`。
+3. **不要让 Agent 代签。** `overlay select` 仍只认 armed。`overlay-check` 已经跑本仓 `product_command`，不再等 arm 才进 CI。
 4. **半锁叶子**先留在 cases 里。缺 Stripe / 表 / 审计 API 时标 blocked，不要为了绿去白盒内部字段。
 5. **Forge Rulesets** 仍只在本地 `forge check`。要 apply 由 Ops 另开窗口，不跟这支 PR 绑在一起。
 6. **Verify 保持原样。** 产品回归继续走 `test:ci`。
@@ -426,6 +426,6 @@ PYTHONPATH=/tmp/AIOps python3 -m overlay run --branch main --root . --workdir . 
 PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 ```
 
-现在应看到：`test:io` 49 pass；validate / cover 过；`select --branch main` selected=0、dropped=4 drafts；`overlay run` 不执行产品命令；`forge check` ok。
+`overlay select` 在 draft 上仍是 selected=0。那不是 overlay-check 的门禁。overlay-check 必须真跑 `product_command`。
 
 工具仓要先 clone 到 `/tmp/AIOps` 并 checkout `overlay-v1.0.0`。不要 checkout `main` 当针。
