@@ -6,7 +6,7 @@
 **PR：** https://github.com/LibertychaserUS/LearningGuidePortal/pull/2  
 **基线：** `cursor/local-forge-overlay-2e0c` → 这支是 `cursor/overlay-quality-gate-2e0c`
 
-这不是 KS。产品仓是 `LibertychaserUS/LearningGuidePortal`。工具仓是 `LibertychaserUS/AIOps`。发布针只认 tag：`overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`），不认 `main`。
+这不是 KS。产品仓是 `LibertychaserUS/LearningGuidePortal`。工具仓是 `LibertychaserUS/AIOps`。发布针只认 git tag：`overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`），不认 `main`，也不认可能 404 的 `/releases/tag/` 页。
 
 ---
 
@@ -17,7 +17,7 @@
 3. Learning Guide 只接薄文件，**不 vendor** `overlay/` 或 `forge/`。
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
 5. overlay-check 是原生 `overlay validate` + `typecheck:io` + `overlay run`。只跑 **`armed`**。`draft` / `blocked` 丢掉、不当红。login / payment / portal / my-learning 已 armed。不要再接 `overlay-run-existing.py` 硬跑。不要 observe。`typecheck:io` 不进 Verify。
-6. 新 BF 套件要人审后才 `armed`。I/O harness 未就绪时必须保持 draft。login / payment / portal / my-learning 已经 armed。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
+6. 新 BF 套件要人审后才 `armed`。I/O harness 未就绪时必须保持 draft。login / payment / portal / my-learning 已经 armed（`main` 上是 Oliver 的 #4 squash；人写 `reviewed_by`）。Ops **不得** 对本仓 live-apply Rulesets（声明在 `forge.yaml`，GitHub 上还是空的）。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → `submit`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply 或 arm。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
 
@@ -234,7 +234,7 @@ ASCII：
 
 | 文件 | 现在是什么 |
 |---|---|
-| `forge.yaml` | 保护 `main`；deny `ci.yml` / `apprunner-deploy.yml` / `overlay-check.yml`；required_checks = Typecheck、Lint、Build and test、overlay-check；`code_owners: false` |
+| `forge.yaml` | 保护 `main`；deny `ci.yml` / `apprunner-deploy.yml` / `overlay-check.yml`；required_checks = Typecheck、Lint、Build and test、overlay-check；`code_owners: false`。**这是声明。** GitHub Rulesets 在 LibertychaserUS / First-Light LearningGuidePortal 和 AIOps 上都是 `[]`。本仓不 live-apply；要装由 Ops 另开窗口。1.0.1 针上的 `forge check` **还不拦** deny_paths（PR #5 改过 `overlay-check.yml` 仍绿）。补丁 `0008` 才让 check 因 deny_path 红。 |
 | `overlay.yaml` | `product.repo: LibertychaserUS/LearningGuidePortal`；`default_ref` 钉在 `d06d15abaaefd001141dbe6a739362f2aefca3b4`；`forbid_hosts: ilovelearningguide.com` |
 | `inbox/login.md` | AUTH-01..06；套件 armed |
 | `inbox/payment.md` | PAY-01..10；套件 armed |
@@ -246,7 +246,7 @@ ASCII：
 | `.github/workflows/overlay-check.yml` | 原生 `overlay validate` + `typecheck:io` + `overlay run`（armed only） |
 | `tests/io/*` | login/payment 黑盒，本地 `npm run test:io`。**不在** `test:ci` 里。`typecheck:io` 也不在 Verify |
 
-发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。
+发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`（annotated git tag；GitHub Release 页面可能 404，pin [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1)）。发版是 Human/Ops。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。
 
 ---
 
@@ -397,7 +397,7 @@ ASCII：
 ## 9. 刻意没做的
 
 1. 不把 `test:io` 加进 Verify 的 `test:ci`。`typecheck:io` 只走 overlay-check。
-2. 不给**新**套件代签 `armed`，不代填 `reviewed_by`。已 armed 的四套保持现状。
+2. 不给**新**套件代签 `armed`，不代填 `reviewed_by`。人审才写。login / payment / portal / my-learning 首次 `reviewed_by: LibertychaserUS` 是 Cursor Agent 写的（`c3aee96e`，`reviewed_at` 晚于该 commit）；Oliver 的 #4 squash（`134ce2ae`）是 `main` 上把它们标 armed 的人提交。本支不撤这四套。新套件保持 draft。
 3. 不打 `ilovelearningguide.com`。
 4. 不把 workshop 的 `pr-title` / `sop-lock` 抄进 Learning Guide CI。
 5. 不 live-apply Forge Rulesets。
@@ -415,7 +415,7 @@ ASCII：
 2. **新 BF 套件**保持 draft，直到人自己写 `reviewed_by` + `status: armed` + `armed_reason`；还不能跑 → `blocked` + `blocked_reason`。
 3. **不要让 Agent 代签新套件。** `overlay select` / `overlay run` 只认 armed。`overlay-check` 已经跑本仓 armed `product_command`。
 4. **半锁叶子**先留在 cases 里。缺 Stripe / 表 / 审计 API 时标 blocked，不要为了绿去白盒内部字段。
-5. **Forge Rulesets** 仍只在本地 `forge check`。要 apply 由 Ops 另开窗口，不跟这支 PR 绑在一起。
+5. **Forge Rulesets** 仓里有 `forge.yaml` 声明，GitHub 上还没装（三仓 `rulesets` 都是 `[]`）。本仓不 live-apply。要 apply 由 Ops 另开窗口，不跟这支 PR 绑在一起。
 6. **Verify 保持原样。** 产品回归继续走 `test:ci`。不把 `test:io` 塞进去。
 
 ---

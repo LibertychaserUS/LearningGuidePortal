@@ -7,7 +7,7 @@
 3. `docs/phase1/api-contracts.md`
 4. `docs/phase1/release-runbook.md`
 5. `DESIGN.md`
-6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`）。不要 pin `main`。不要 force-move `1.0.0`。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets。不要代签 `reviewed_by` / `armed`。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。
+6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`；这是 git tag，GitHub Release 对象可能还没有，pin `/tree/overlay-v1.0.1`）。不要 pin `main`。不要 force-move `1.0.0`。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets（`forge.yaml` 只是声明；LibertychaserUS / First-Light LearningGuidePortal 和 AIOps 的 GitHub Rulesets 目前是空的，要装由 Ops 另开窗口）。不要代签 `reviewed_by` / `armed`（人审才写；已在 `main` 上的四套是 Oliver squash #4，新套件保持 draft）。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。
 
 本仓已有 native skills（不要 vendor 工具仓 Python）：`use-forge`（开发冷启动六步，无 live apply）、`use-overlay`、`design-cases`、`dev-pr`、`manage-repo`。标准路径：
 

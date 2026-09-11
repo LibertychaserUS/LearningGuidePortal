@@ -2,18 +2,25 @@
 
 **Published 1.0.1 (2026-09-11).** Official pin is **`overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`**. Docs-pin is on AIOps `main` (includes `878a690`). Annotated tags pushed over SSH. Do not force-move `1.0.0` (`235e514e673fa68b24879c8e139f2a5c6633ebb5`). Do not pin `main`.
 
-**`1.0.1` is a git tag, not a GitHub Release.** `gh release view overlay-v1.0.1` / `forge-v1.0.1` is 404. `cursor[bot]` and the GitHub MCP PAT cannot `gh release create` (403). The deploy key is not on this Cloud Agent VM. Do not link `/releases/tag/overlay-v1.0.1`. Pin via [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1).
+**`1.0.1` is a git tag, not a GitHub Release.** Re-verified 2026-09-11: `gh release list` only has `overlay-v1.0.0` / `forge-v1.0.0`. `gh release view overlay-v1.0.1` is 404. `gh release create` as `cursor[bot]` is 403. The deploy key is not on this Cloud Agent VM. Do not link `/releases/tag/overlay-v1.0.1`. Pin via [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1). SOP is Human/Ops (`forge release` / Actions `release`). Ops should create the missing Release objects for the existing tags, or own the next semver. Do not delete or force-move `1.0.1`.
 
-Land the README correction on AIOps `main` (Oliver, `contents:write` or the AIOps deploy key):
+**Humans arm.** Agents must not write `reviewed_by` / `reviewed_at` or flip `status` to `armed`. `suites/login` and `suites/payment` were first filled by Cursor Agent (`c3aee96e` at 11:12:46Z, `reviewed_at` 11:20:00Z). Oliver’s squash of PR #4 (`134ce2ae`, author Oliver Zhang) is the human commit that set them on `main`. This branch does **not** un-arm them. New suites stay draft until a human edits yaml.
+
+**Rulesets are a declaration, not installed.** `gh api repos/{LibertychaserUS,First-Light-TechHK}/LearningGuidePortal/rulesets` and `LibertychaserUS/AIOps/rulesets` return `[]`. `forge.yaml` is local policy. Phase 1 Ops must not live-apply. `forge status` on 0008 prints that honesty when the named Ruleset is missing.
+
+**`deny_paths` was parsed, not enforced, on the 1.0.1 pin.** Official `python -m forge check` still exits 0 if a PR touches `.github/workflows/overlay-check.yml`. Patch `0008` makes check exit 2. First-cut `agent_branch_prefixes` stay informational (human branches allowed). Do not pin `main` to pick this up; wait for Ops to land `0007`+`0008` and publish a **new** semver.
+
+Land remaining patches on AIOps `main` (Oliver, `contents:write` or the AIOps deploy key). `0001`–`0006` are already on `main`. HTTPS / `cursor[bot]` cannot push:
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
 git -C /tmp/AIOps checkout main
 git -C /tmp/AIOps am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0007-docs-link-1.0.1-to-git-tags-not-missing-releases.patch
+git -C /tmp/AIOps am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0008-feat-forge-fail-check-when-diff-touches-deny-paths.patch
 git -C /tmp/AIOps push origin main
 ```
 
-Patch `0007` rewrites `README.md` / `README.zh-CN.md` / `docs/products.md` / `docs/release.md` so 1.0.1 links go to `/tree/overlay-v1.0.1`, and says the Release pages were never created. `1.0.0` Release links stay.
+`0007` rewrites README / zh-CN / `docs/products.md` / `docs/release.md` so 1.0.1 links go to `/tree/overlay-v1.0.1`. `1.0.0` Release links stay. `0008` is `forge check` deny_paths + tests + 1.0.1 SOP honesty. Local `git am` of both onto `b4afc10` was green; `tests.forge.test_check` / `test_status` passed.
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
@@ -29,7 +36,7 @@ gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.1 --all
 
 ## Historical: land the docs-pin (already on main)
 
-**One command**, as you (Oliver Zhang / `LibertychaserUS`) with `contents:write` on `LibertychaserUS/AIOps` — not `cursor[bot]`. From this Learning Guide checkout (PR #6 / `cursor/forge-agent-entry-2e0c`):
+**One command**, as you (Oliver Zhang / `LibertychaserUS`) with `contents:write` on `LibertychaserUS/AIOps` — not `cursor[bot]`. From this Learning Guide checkout (PR #5 / `cursor/overlay-quality-gate-2e0c` now holds `0007`+`0008`):
 
 ```text
 bash docs/phase1/aiops-release/land-docs-pin.sh --push
@@ -40,7 +47,7 @@ That clones current AIOps `main`, `git am`s every `000*.patch` here onto `cursor
 Same command if you are not in this checkout (script pulls the patches from this branch):
 
 ```text
-curl -fsSL https://raw.githubusercontent.com/LibertychaserUS/LearningGuidePortal/cursor/forge-agent-entry-2e0c/docs/phase1/aiops-release/land-docs-pin.sh | bash -s -- --push
+curl -fsSL https://raw.githubusercontent.com/LibertychaserUS/LearningGuidePortal/cursor/overlay-quality-gate-2e0c/docs/phase1/aiops-release/land-docs-pin.sh | bash -s -- --push
 ```
 
 Dry-run (no push, no PR):
@@ -113,7 +120,7 @@ On `overlay-v1.0.1`, `manage-repo` frontmatter is quoted; `--all` succeeds. Foll
 
 ## Last verified (branch on GitHub; draft PR still needs Oliver)
 
-Patches `git am` 0001–0006 onto AIOps `origin/main` **`b21dbf9641427a33640c4b11d63fb7cad102ccff`** (2026-09-11). `sanity` + `forge sop-lock` / `pr-title` ok.
+Patches `0001`–`0006` are already on AIOps `origin/main` **`b4afc10ae0be4725e5109030f14a05bb2291fe4a`**. Remaining: `0007` (README tag links) + `0008` (`forge check` deny_paths). `land-docs-pin.sh` now `git am`s only `0007`+.
 
 **Branch is on GitHub:** `cursor/forge-docs-pin-2e0c` @ **`878a6907ab7ccca9cfc3225570574f1747e71d68`** (six commits on that main). Pushed over SSH with the repo deploy key (`cursor-cloud-aiops-deploy-2e0c`). HTTPS `land-docs-pin.sh --push` / `cursor[bot]` still cannot push.
 
