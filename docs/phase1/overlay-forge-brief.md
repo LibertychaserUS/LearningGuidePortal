@@ -3,10 +3,9 @@
 发群请直接丢这一份。GitHub 打开可看图；微信 / 飞书不渲染 Mermaid，文里每张图都附了 ASCII。
 
 **文件：** `docs/phase1/overlay-forge-brief.md`  
-**PR：** https://github.com/LibertychaserUS/LearningGuidePortal/pull/2  
-**基线：** `cursor/local-forge-overlay-2e0c` → 这支是 `cursor/io-login-payment-overlay-2e0c`
+**PR：** 产品 I/O / 钱权增量在 `cursor/overlay-product-io-448c`。Overlay 守门已在 fork `main`（#4/#6/#7）。不要再改质量门 PR #5。
 
-这不是 KS。产品仓是 `LibertychaserUS/LearningGuidePortal`。工具仓是 `LibertychaserUS/AIOps`。发布针只认 tag：`overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`），不认 `main`。
+这不是 KS。产品仓是 `LibertychaserUS/LearningGuidePortal`。工具仓是 `LibertychaserUS/AIOps`。发布针只认 git tag：`overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`），不认 `main`，也不认可能 404 的 `/releases/tag/` 页。
 
 ---
 
@@ -16,8 +15,8 @@
 2. **Overlay** 管需求叶子 → 可审用例 → CI 只跑人签过名的 `armed` 套件。
 3. Learning Guide 只接薄文件，**不 vendor** `overlay/` 或 `forge/`。
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
-5. overlay-check 是原生 `overlay validate` + `overlay run`。只跑 **`armed`**。`draft` / `blocked` 丢掉、不当红。login / payment / portal / my-learning 已 armed。不要再接 `overlay-run-existing.py` 硬跑。
-6. 套件要人审后才 `armed`。Agent **不得** 写 `reviewed_by`，**不得** 把新套件标 `armed`。fork `main` 上 login / payment / portal / my-learning 已 armed（Oliver squash #4）。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
+5. overlay-check 是原生 `overlay validate` + `typecheck:io` + `overlay run`。只跑 **`armed`**。六套都 armed。不要再接 `overlay-run-existing.py` 硬跑。不要 observe。`typecheck:io` 和 `test:io` 都不进 Verify。
+6. 以后新套件默认 draft，除非 Oliver 当面授权 arm。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → `submit`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply 或 arm。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
 
@@ -34,7 +33,7 @@
 | `inbox/*.md` | 需求叶子，ID 沿用历史 `AUTH-01..06` / `PAY-01..10` | 人写意图，Agent 可补 |
 | `suites/*/cases.md` + `trace.yaml` | 可审规格：每片叶子 Functional / Negative / Edge | Agent 写，人审 |
 | `tests/io/*.test.ts` | 黑盒：HTTP 进，状态码 + 公开 JSON 出 | Agent 写 |
-| Overlay CI | `overlay-check` 跑本仓 `product_command`。`overlay select` 仍只认 armed，不当这道门禁 | 空转假绿 |
+| Overlay CI | `overlay-check` = validate + `typecheck:io` + `overlay run`（只跑 armed） | CI 跑 armed。禁止空转假绿、hard-run、observe |
 | Verify | 产品原有门禁，不改用途 | 不要往里塞 Overlay / e2e / k6 |
 
 不另开一套 ID。不把 workshop 的 `pr-title` / `sop-lock` 抄进产品仓。
@@ -72,7 +71,7 @@ Overlay
 
 ## 3. 套件状态机
 
-人写 inbox → 编译成 draft 套件 → 人决定 blocked 或 armed。原生 `overlay select` / `overlay run` 只执行 armed。draft / blocked 进 `never_red_statuses`：不跑、不当红。I/O harness 未就绪的套件必须停在 draft。不要硬跑。
+人写 inbox → 编译成 draft 套件 → 人决定 blocked 或 armed。原生 `overlay select` / `overlay run` 只执行 armed。draft / blocked 进 `never_red_statuses`：不跑、不当红。新 BF 套件在 I/O 未就绪时必须停在 draft。不要硬跑。不要 observe。
 
 ```mermaid
 stateDiagram-v2
@@ -102,7 +101,7 @@ ASCII：
   I/O harness 就绪且测过优秀才能 armed
   不要 overlay-run-existing.py
   product_command 指向已审过的 tests/io 或 unit
-  overlay-check = overlay validate + overlay run
+  overlay-check = overlay validate + typecheck:io + overlay run
 ```
 
 ---
@@ -125,12 +124,13 @@ flowchart TD
     subgraph overlayJobs["overlay-check 不 vendor Overlay"]
         overlayJob --> checkoutTool["checkout AIOps@overlay-v1.0.0 → _aiops"]
         checkoutTool --> v["overlay validate"]
-        v --> s["overlay select 仅作记录"]
-        v --> runExisting["跑本 checkout 已有的 product_command"]
+        v --> npmci["npm ci"]
+        npmci --> ioTsc["tsc -p tsconfig.io.json"]
+        ioTsc --> runArmed["overlay run 只跑 armed"]
     end
 
     verify --> gate["required_checks\nTypecheck / Lint / Build and test / overlay-check"]
-    runExisting --> gate
+    runArmed --> gate
 
     deploy["apprunner-deploy.yml"] -.->|"workflow_dispatch only\n且仅 First-Light-TechHK 仓"| prod["App Runner"]
     push -.->|"不自动"| deploy
@@ -146,11 +146,14 @@ ASCII：
             Typecheck              checkout AIOps@overlay-v1.0.0 → _aiops
                ↓                      validate
              Lint                        ↓
-               ↓                   跑本 checkout 已有的 product_command
-        Build and test              （select 只记录；draft 不是 armed）
-               ↓                         ↓
-     test:ci = tsc+unit          职务名 overlay-check
-     + Playwright auth                   │
+               ↓                      npm ci
+        Build and test                   ↓
+               ↓                   tsc -p tsconfig.io.json
+     test:ci = tsc+unit                  ↓
+     + Playwright auth            overlay run（只跑 armed）
+                                         ↓
+                                 职务名 overlay-check
+                                         │
                     \                    │
                      \                   │
                       → required_checks ←
@@ -218,10 +221,10 @@ ASCII：
 
 | 角色 | 可以 | 不可以 |
 |---|---|---|
-| Agent | 写 inbox / cases / trace / 产品 HTTP 修复 / `tests/io`；跑 validate、cover、select、`test:io`、`forge check`；开 draft PR | 填 `reviewed_by`；把套件标 `armed`；改 Verify 用途；vendor 工具仓；打生产站 |
+| Agent | 写 inbox / cases / trace / 产品 HTTP 修复 / `tests/io`；跑 validate、cover、select、`test:io`、`typecheck:io`、`forge check`；开 draft PR | 填 `reviewed_by`；把**新**套件标 `armed`；改 Verify 用途；vendor 工具仓；打生产站 |
 | 人（开发 / 审套件） | 读 cases；决定 `blocked` 或 `armed`；自己署名 `reviewed_by` | 让 Agent 代签 |
 | Ops | 需要时 live-apply Forge Rulesets | 对本仓现在不要 apply |
-| CI Overlay | validate + 跑本仓 product_command | 空转假绿；select=0 当过关 |
+| CI Overlay | validate + `typecheck:io` + `overlay run`（armed） | 空转假绿；hard-run；observe |
 | CI Verify | Typecheck / Lint / `test:ci` | 跑 `test:io`、e2e、k6、生产冒烟 |
 
 ---
@@ -230,17 +233,18 @@ ASCII：
 
 | 文件 | 现在是什么 |
 |---|---|
-| `forge.yaml` | 保护 `main`；deny `ci.yml` / `apprunner-deploy.yml` / `overlay-check.yml`；required_checks = Typecheck、Lint、Build and test、overlay-check；`code_owners: false` |
+| `forge.yaml` | 保护 `main`；deny `ci.yml` / `apprunner-deploy.yml` / `overlay-check.yml`；required_checks = Typecheck、Lint、Build and test、overlay-check；`code_owners: false`。**这是声明。** GitHub Rulesets 仍是 `[]`。本仓不 live-apply。官方针 `overlay-v1.0.1` 的 `forge check` 还不拦 deny_paths；AIOps `main` @ `075341a` 的 `0008` 才会因改 `overlay-check.yml` 红。 |
 | `overlay.yaml` | `product.repo: LibertychaserUS/LearningGuidePortal`；`default_ref` 钉在 `d06d15abaaefd001141dbe6a739362f2aefca3b4`；`forbid_hosts: ilovelearningguide.com` |
-| `inbox/login.md` | AUTH-01..06 |
-| `inbox/payment.md` | PAY-01..10 |
-| `inbox/portal.md` `inbox/my-learning.md` | 已有叶子；套件 armed |
-| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` | `status: armed`（#4 squash）。login/payment → `tests/io/*.test.ts` |
-| `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10） |
-| `.github/workflows/overlay-check.yml` | 原生 `overlay validate` + `overlay run`（armed only） |
-| `tests/io/*` | 49 条黑盒，本地 `npm run test:io` 绿。**不在** `test:ci` 里 |
+| `inbox/login.md` | AUTH-01..06；套件 armed |
+| `inbox/payment.md` | PAY-01..10；套件 armed |
+| `inbox/portal.md` `inbox/my-learning.md` | 已有叶子；套件 armed。HTTP I/O 在 `tests/io/portal.test.ts` / `my-learning.test.ts`，尚未改 product_command |
+| `inbox/order.md` `inbox/visitor-trial.md` | 新 BF；套件 armed（Oliver 授权） |
+| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` `suites/order` `suites/visitor-trial` | 全部 `status: armed`；`product_command` → `tests/io/<id>.test.ts`。Unit 仍在 `test:ci`。 |
+| `invariants.yaml` | `INV-unauth-no-grant`（AUTH-04/06, ORDER-01, PAY-01/02/08, ML-FR-004）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10, TRIAL-02）；`INV-expired-no-learn`（ML-FR-004, PAY-09） |
+| `.github/workflows/overlay-check.yml` | 原生 `overlay validate` + `typecheck:io` + `overlay run`（armed only） |
+| `tests/io/*` | login/payment 黑盒，本地 `npm run test:io`。**不在** `test:ci` 里。`typecheck:io` 也不在 Verify |
 
-发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`（annotated git tag；GitHub Release 页面可能 404，pin [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1)）。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。AIOps `0007`/`0008` 已在工具仓 `main` @ `075341a`（官方针仍是 `overlay-v1.0.1`）。补丁副本在 [`aiops-release/`](./aiops-release/APPLY.md)，不在质量门 PR #5。
+发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`（annotated git tag；GitHub Release 页面可能 404，pin [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1)）。发版是 Human/Ops。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。
 
 ---
 
@@ -255,7 +259,7 @@ ASCII：
 对照：
 
 - 可执行黑盒：`tests/io/login.test.ts`、`tests/io/payment.test.ts`
-- Overlay 规格：`suites/login/cases.md`、`suites/payment/cases.md`（armed on fork `main`）
+- Overlay 规格：`suites/login/cases.md`、`suites/payment/cases.md`（armed）
 
 ### AUTH
 
@@ -390,13 +394,13 @@ ASCII：
 
 ## 9. 刻意没做的
 
-1. 不把 `test:io` 加进 Verify 的 `test:ci`。
-2. 不把套件写成 `armed`，不写 `reviewed_by`。
+1. 不把 `test:io` 加进 Verify 的 `test:ci`。`typecheck:io` 只走 overlay-check。
+2. 不给**新**套件代签 `armed`，不代填 `reviewed_by`。人审才写。login / payment / portal / my-learning 首次 `reviewed_by: LibertychaserUS` 是 Cursor Agent 写的（`c3aee96e`，`reviewed_at` 晚于该 commit）；Oliver 的 #4 squash（`134ce2ae`）是 `main` 上把它们标 armed 的人提交。本支不撤这四套。新套件保持 draft。
 3. 不打 `ilovelearningguide.com`。
 4. 不把 workshop 的 `pr-title` / `sop-lock` 抄进 Learning Guide CI。
 5. 不 live-apply Forge Rulesets。
 6. 不 vendor `overlay/` 或 `forge/`。
-7. 不把上游 First-Light 的超前提交混进这支 Overlay PR。fork `main` 仍是 `6d8934e`。
+7. 不把上游 First-Light 的超前提交混进这支 Overlay PR。`overlay.yaml` `default_ref` 钉在 `d06d15a…`，不是 `main` / HEAD。
 8. 不为半锁叶子再发明第二套 ID。
 
 ---
@@ -405,12 +409,12 @@ ASCII：
 
 按这个顺序，不要跳：
 
-1. **读 PR #2**，先看 `suites/login/cases.md` 和 `suites/payment/cases.md`，再看 `tests/io`。
-2. **人决定每套套件**：现在就能当门禁用 → 自己写 `reviewed_by` + `status: armed` + `armed_reason`；还不能跑 → `blocked` + `blocked_reason`。
-3. **不要让 Agent 代签。** `overlay select` 仍只认 armed。`overlay-check` 已经跑本仓 `product_command`，不再等 arm 才进 CI。
+1. **读** `suites/login/cases.md` 和 `suites/payment/cases.md`，再看 `tests/io`。四套已经 armed。
+2. **新 BF 套件**保持 draft，直到人自己写 `reviewed_by` + `status: armed` + `armed_reason`；还不能跑 → `blocked` + `blocked_reason`。
+3. **不要让 Agent 代签新套件。** `overlay select` / `overlay run` 只认 armed。`overlay-check` 已经跑本仓 armed `product_command`。
 4. **半锁叶子**先留在 cases 里。缺 Stripe / 表 / 审计 API 时标 blocked，不要为了绿去白盒内部字段。
-5. **Forge Rulesets** 仍只在本地 `forge check`。要 apply 由 Ops 另开窗口，不跟这支 PR 绑在一起。
-6. **Verify 保持原样。** 产品回归继续走 `test:ci`。
+5. **Forge Rulesets** 仓里有 `forge.yaml` 声明，GitHub 上还没装（三仓 `rulesets` 都是 `[]`）。本仓不 live-apply。要 apply 由 Ops 另开窗口，不跟这支 PR 绑在一起。
+6. **Verify 保持原样。** 产品回归继续走 `test:ci`。不把 `test:io` 塞进去。
 
 ---
 
@@ -453,9 +457,10 @@ gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 
 `overlay-v1.0.1` 上 `--all`（含 quoted `manage-repo` frontmatter）已通过。本仓 `$use-forge` 是六步开发冷启动；live `apply` 只在 `$manage-repo`。以本仓 skill / 本文件为准。
 
-2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`，不是浮动 `main`）：`overlay validate` / `cover` / `forge check` ok。fork `main` 上 login / payment / portal / my-learning 已 armed（#4）。`gh skill install --agent cursor --pin overlay-v1.0.1 --all` 绿（含 manage-repo）。命令见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。
+2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent cursor --pin overlay-v1.0.1 --all` 绿（含 manage-repo）。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。
 
 ```text
+npm run typecheck:io
 npm run test:io
 PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .
 PYTHONPATH=/tmp/AIOps python3 -m overlay cover --root .
@@ -464,7 +469,7 @@ PYTHONPATH=/tmp/AIOps python3 -m overlay run --branch main --root . --workdir . 
 PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 ```
 
-`overlay select --branch main` 只留下 armed。overlay-check 必须真跑 armed `product_command`。不要 hard-run。
+`overlay select --branch main` 只留下 armed（现为 login / payment / portal / my-learning）。overlay-check = validate + `typecheck:io` + `overlay run`。不要 hard-run。不要 observe。`typecheck:io` 和 `test:io` 都不进 Verify 的 `test:ci`。
 
 `python -m forge` 现有子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce`。没有 `brief`、`credential`、`ops-chain`、`revoke`。`required_checks` 是 job 名：`Typecheck` / `Lint` / `Build and test` / `overlay-check`，不要抄 workflow 名 `Verify`。
 

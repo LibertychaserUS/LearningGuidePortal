@@ -1,6 +1,7 @@
 # Local Overlay config. Pin is this repo SHA, not main/HEAD.
 # Adopter thin file only — do not vendor overlay/.
-# overlay-check is native overlay validate + overlay run (armed only).
+# overlay-check is native overlay validate + I/O typecheck + overlay run (armed only).
+# never_red stays draft, blocked. No observe. No hard-run.
 schema: overlay-config/v1
 product:
   repo: LibertychaserUS/LearningGuidePortal

@@ -8,7 +8,7 @@ packages:
   - modules/my-learning
   - app/[locale]/account
 reviewed_by: LibertychaserUS
-reviewed_at: 2026-09-11T11:03:00Z
+reviewed_at: 2026-09-11T19:52:00Z
 blocked_reason: null
-armed_reason: unit product_command passes (ML-FR-004/007 cards and unique-LP progress)
-product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test tests/unit/ML-FR-004-006-course-cards.test.ts tests/unit/ML-FR-007-unique-lp-progress.test.ts tests/unit/LEARN-02-purchased-shows-card.test.ts
+armed_reason: Oliver authorized arm; ML-FR-004 HTTP I/O green (401 signed-out, expired entitlement 403, purchased overview 200). Unit stays in test:ci.
+product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/my-learning.test.ts
