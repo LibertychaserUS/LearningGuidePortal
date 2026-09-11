@@ -18,7 +18,7 @@ function fromAddress() {
 }
 
 export function emailDeliveryConfigured() {
-  return smtpConfigured() || Boolean(process.env.SES_FROM_EMAIL?.trim());
+  return process.env.EMAIL_DELIVERY === "discard" || smtpConfigured() || Boolean(process.env.SES_FROM_EMAIL?.trim());
 }
 
 async function sendViaSmtp(input: { to: string; subject: string; text: string; html: string }) {
@@ -62,6 +62,7 @@ async function sendViaSes(input: { to: string; subject: string; text: string; ht
 }
 
 async function sendEmail(input: { to: string; subject: string; text: string; html: string }) {
+  if (process.env.EMAIL_DELIVERY === "discard") return;
   if (smtpConfigured()) return sendViaSmtp(input);
   return sendViaSes(input);
 }

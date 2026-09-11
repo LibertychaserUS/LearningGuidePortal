@@ -63,7 +63,7 @@ type CheckoutResponse = { orderId: string; checkoutUrl: string };
 // Body: raw Buffer，不先 parse JSON
 ```
 
-Webhook 处理：验签 → 写入唯一 `stripe_events` → 按 event type 重新读取 Stripe 对象 → 在一个数据库事务内更新 PaymentAttempt、Order、Subscription、Entitlement → 返回 200。重复 event 不重做业务写入。
+Webhook 处理：验签 → 写入唯一 `stripe_events` → 按 event type 重新读取 Stripe 对象 → 在一个数据库事务内更新 PaymentAttempt、Order、Subscription、Entitlement → 返回 200。重复 event 不重做业务写入。浏览器 `success_url` 不是开通凭证；其他页面不订阅该事件，见 [`payment-state-propagation.md`](./payment-state-propagation.md)。
 
 ## Protected learning / My Learning
 

@@ -24,7 +24,7 @@ Signed-in My Learning overview: entitled or preview-started course cards and uni
 # Out of scope
 
 - Payment (see `inbox/payment.md`).
-- Login page itself (see `inbox/login.md`). Session gate is AUTH-01.
+- Login page itself (see `inbox/login.md`). Session gate is AUTH-06.
 
 # User cases
 

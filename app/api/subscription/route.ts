@@ -6,14 +6,14 @@ import { paymentMode } from "@/services/runtimeConfig";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const user = await currentProductUser();
+export async function GET(request: Request) {
+  const user = await currentProductUser(request);
   if (!user) return NextResponse.json({ ok: false, error: "Sign in is required." }, { status: 401 });
   return NextResponse.json({ ok: true, subscriptions: (await getLearningOverview(user.id)).subscriptions });
 }
 
 export async function POST(request: Request) {
-  const user = await currentProductUser();
+  const user = await currentProductUser(request);
   if (!user) return NextResponse.json({ ok: false, error: "Sign in is required." }, { status: 401 });
   try {
     const body = await request.json() as { subscriptionId?: string; action?: "cancel" | "resume"; reasonCode?: "low_usage" | "too_expensive" | "content" | "website" | "other"; reasonText?: string };

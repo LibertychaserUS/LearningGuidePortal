@@ -5,7 +5,7 @@ import { createHostedTrialCheckout } from "@/services/stripeClient";
 import { isProductionEnvironment, paymentMode, publicAppOrigin, runtimeConfiguration } from "@/services/runtimeConfig";
 
 export async function POST(request: Request) {
-  const user = await currentProductUser();
+  const user = await currentProductUser(request);
   if (!user) return NextResponse.json({ ok: false, error: "Sign in is required." }, { status: 401 });
   try {
     const mode = paymentMode();
