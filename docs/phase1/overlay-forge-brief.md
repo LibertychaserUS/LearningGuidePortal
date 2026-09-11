@@ -450,7 +450,9 @@ gh skill install LibertychaserUS/AIOps --agent claude-code --pin overlay-v1.0.0 
 gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 ```
 
-`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；`manage-repo` 未加引号的 `Ops only:` 会让 `gh skill install --all` 失败。以本仓 skill / 本文件为准。
+`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；`manage-repo` 未加引号的 `Ops only:` 会让 `gh skill install --all` 失败。这是 **不能先发 1.0.1** 的原因之一：先把 docs-pin 合进 AIOps `main`。以本仓 skill / 本文件为准。
+
+2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.0` @ `235e514…`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent copilot` 非法；`--agent cursor --pin overlay-v1.0.0 --all` 在 `manage-repo` 红。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。
 
 ```text
 npm run test:io

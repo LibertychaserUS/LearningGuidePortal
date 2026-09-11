@@ -26,7 +26,7 @@ gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 # gh skill install LibertychaserUS/LearningGuidePortal --all --allow-hidden-dirs --agent cursor
 ```
 
-`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧安装步骤；`manage-repo` 的 description 有未加引号的 `Ops only:`，`gh skill install --all` 会失败。本仓 `$use-forge` 才是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。
+`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧安装步骤；`manage-repo` 的 description 有未加引号的 `Ops only:`，`gh skill install --all` 会失败。这是 1.0.1 不能先发的原因：先 `land-docs-pin.sh --push`。本仓 `$use-forge` 才是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。`gh skill` 的 host id 是 `codex` / `cursor` / `claude-code`（没有 `--agent copilot`）。已发布针冷启动证据见 `docs/phase1/aiops-release/APPLY.md`。
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
