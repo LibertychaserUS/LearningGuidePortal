@@ -15,18 +15,24 @@
 - `.cursor/skills/`
 - `.claude/skills/`
 
-Canonical：`docs/phase1/skills/<name>/SKILL.md`。或从**已存在的 tag** 装工作本 skill（`gh skill` 没有 `--agent copilot`）：
+Canonical：`docs/phase1/skills/<name>/SKILL.md`。或从**已存在的 tag** 按 skill 装工作本（`gh skill` 没有 `--agent copilot`；发布针上不要 `--all`）：
 
 ```text
-gh skill install LibertychaserUS/AIOps --agent codex --pin overlay-v1.0.0 --all
-gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.0 --all
-gh skill install LibertychaserUS/AIOps --agent claude-code --pin overlay-v1.0.0 --all
+# overlay-v1.0.0 @ 235e514e — verified 2026-09-11 on cursor / codex / claude-code
+gh skill install LibertychaserUS/AIOps use-forge --agent cursor --pin overlay-v1.0.0
+gh skill install LibertychaserUS/AIOps use-overlay --agent cursor --pin overlay-v1.0.0
+gh skill install LibertychaserUS/AIOps design-cases --agent cursor --pin overlay-v1.0.0
+gh skill install LibertychaserUS/AIOps dev-pr --agent cursor --pin overlay-v1.0.0
+# same four with --agent codex and --agent claude-code
+# fails: manage-repo (unquoted Ops only: → invalid frontmatter YAML)
+# fails: --all (same manage-repo; stays broken until docs-pin is on AIOps main)
+# do not: --agent copilot (invalid). do not: --pin overlay-v1.0.1 (tag missing)
 gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 # after this PR merges to main (until then pin the PR head SHA):
 # gh skill install LibertychaserUS/LearningGuidePortal --all --allow-hidden-dirs --agent cursor
 ```
 
-`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧安装步骤；`manage-repo` 的 description 有未加引号的 `Ops only:`，`gh skill install --all` 会失败。这是 1.0.1 不能先发的原因：先 `land-docs-pin.sh --push`。本仓 `$use-forge` 才是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。`gh skill` 的 host id 是 `codex` / `cursor` / `claude-code`（没有 `--agent copilot`）。已发布针冷启动证据见 `docs/phase1/aiops-release/APPLY.md`。
+`overlay-v1.0.0` 上按 skill 装 `use-forge` / `use-overlay` / `design-cases` / `dev-pr` 已通过。`manage-repo` 的 description 有未加引号的 `Ops only:`，单独装和 `gh skill install --all` 都会失败。`--all` 在 docs-pin 合进 AIOps `main` 之前保持坏。AIOps `main` README 仍指向不存在的 `v1.0.1` 和 `--agent copilot`，忽略。不要先发 1.0.1：先 `land-docs-pin.sh --push`。本仓 `$use-forge` 才是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。`gh skill` 的 host id 是 `codex` / `cursor` / `claude-code`（没有 `--agent copilot`）。已发布针冷启动证据见 `docs/phase1/aiops-release/APPLY.md`。产品 PR #6 不能代替 AIOps GitHub 落地。
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps

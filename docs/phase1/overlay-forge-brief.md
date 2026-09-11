@@ -441,18 +441,26 @@ export PYTHONPATH=/tmp/AIOps
 
 `name` = `use-forge` / `use-overlay` / `design-cases` / `dev-pr` / `manage-repo`。`use-forge` 只有开发六步；live `apply` 只在 `manage-repo`，且本仓现在不做。本仓已有 `forge.yaml`：问一次，同意后默认跑 `check` / `submit`。不要每次存盘再讲宪法。初始化同意 ≠ live-apply / arm。
 
-或从已发布 tag 装工作本 skill（`gh skill` **没有** `--agent copilot`）：
+或从已发布 tag **按 skill** 装工作本（`gh skill` **没有** `--agent copilot`；发布针上不要 `--all`）：
 
 ```text
-gh skill install LibertychaserUS/AIOps --agent codex --pin overlay-v1.0.0 --all
-gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.0 --all
-gh skill install LibertychaserUS/AIOps --agent claude-code --pin overlay-v1.0.0 --all
+# overlay-v1.0.0 @ 235e514e — verified 2026-09-11
+# works on --agent cursor / codex / claude-code:
+gh skill install LibertychaserUS/AIOps use-forge --agent cursor --pin overlay-v1.0.0
+gh skill install LibertychaserUS/AIOps use-overlay --agent cursor --pin overlay-v1.0.0
+gh skill install LibertychaserUS/AIOps design-cases --agent cursor --pin overlay-v1.0.0
+gh skill install LibertychaserUS/AIOps dev-pr --agent cursor --pin overlay-v1.0.0
+# same four with --agent codex and --agent claude-code
+# fails: manage-repo — invalid frontmatter YAML (unquoted Ops only:)
+# fails: --all — same manage-repo; stays broken until docs-pin is on AIOps main
+# invalid: --agent copilot. missing tag: overlay-v1.0.1 / forge-v1.0.1
+# AIOps main README still points at v1.0.1 and --agent copilot — ignore it
 gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 ```
 
-`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；`manage-repo` 未加引号的 `Ops only:` 会让 `gh skill install --all` 失败。这是 **不能先发 1.0.1** 的原因之一：先把 docs-pin 合进 AIOps `main`。以本仓 skill / 本文件为准。
+`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；`manage-repo` 未加引号的 `Ops only:` 会让单独装和 `gh skill install --all` 都失败。`--all` 在 docs-pin 合进 AIOps `main` 之前保持坏。这是 **不能先发 1.0.1** 的原因之一：先把 docs-pin 合进 AIOps `main`。产品 PR #6 不能代替 AIOps GitHub 落地。以本仓 skill / 本文件为准。
 
-2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.0` @ `235e514…`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent copilot` 非法；`--agent cursor --pin overlay-v1.0.0 --all` 在 `manage-repo` 红。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。
+2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.0` @ `235e514…`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent copilot` 非法。`--all` 和 `manage-repo` 红；上面四条 per-skill 命令在 cursor / codex / claude-code 绿。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。目标未完成：AIOps 上还没有 docs-pin 分支/PR，`main` README 仍写缺失的 `v1.0.1`。
 
 ```text
 npm run test:io
