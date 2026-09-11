@@ -26,7 +26,7 @@ Credential probe only (clone + dry-run push, no `git am`):
 bash docs/phase1/aiops-release/land-docs-pin.sh --probe-write
 ```
 
-Exit 0 = `write:yes`. This pod is `write:no` (see below).
+Exit 0 = `write:yes`. HTTPS / `cursor[bot]` is still `write:no`. A repo deploy key can push the branch over SSH (see Last verified).
 
 ---
 
@@ -82,13 +82,19 @@ On `overlay-v1.0.0`, `manage-repo` fails `--all` (unquoted `Ops only:`). Follow 
 
 ---
 
-## Last verified (do not treat as AIOps GitHub landing)
+## Last verified (branch on GitHub; draft PR still needs Oliver)
 
-Patches last applied cleanly onto AIOps `origin/main` **`b21dbf9641427a33640c4b11d63fb7cad102ccff`** (2026-09-11). `git am` 0001–0006 succeeds (`sanity` + `forge sop-lock` ok). Local am commit SHAs change each run (committer time) and are **not** on GitHub — this pod cannot push AIOps. `/tmp/aiops-docs` @ `737ad87` is the same six-commit series on an older parent.
+Patches `git am` 0001–0006 onto AIOps `origin/main` **`b21dbf9641427a33640c4b11d63fb7cad102ccff`** (2026-09-11). `sanity` + `forge sop-lock` / `pr-title` ok.
 
-`--probe-write` / `git push --dry-run` → **write:no** (`Permission to LibertychaserUS/AIOps.git denied to cursor[bot]`). GitHub MCP `get_me` is LibertychaserUS, but AIOps `create_or_update_file` is `403 Resource not accessible by personal access token`. `gh` is `cursor[bot]`. `cursor-cloud` environment-info: Learning Guide only (AIOps not attached). First-Light PAT is pull-only — do not use it to write AIOps. How to grant write: §怎么给写权限.
+**Branch is on GitHub:** `cursor/forge-docs-pin-2e0c` @ **`878a6907ab7ccca9cfc3225570574f1747e71d68`** (six commits on that main). Pushed over SSH with the repo deploy key (`cursor-cloud-aiops-deploy-2e0c`). HTTPS `land-docs-pin.sh --push` / `cursor[bot]` still cannot push.
 
-`/tmp/aiops-docs` still exists as worktree `cursor/forge-docs-pin-2e0c` @ `737ad87` (same six commits, older parent). Current lander reapplies onto today’s `main` and is the one-command path.
+**No draft PR yet.** `gh pr create` as `cursor[bot]` → `403 Resource not accessible by integration`. GitHub MCP `create_pull_request` as LibertychaserUS → `403 Resource not accessible by personal access token`. Deploy keys cannot open PRs.
+
+Oliver: one click, open as **draft** (do not merge, do not tag `1.0.1`):
+
+https://github.com/LibertychaserUS/AIOps/compare/main...cursor/forge-docs-pin-2e0c?expand=1
+
+Title: `docs(docs/agent): pin published v1.0.0 and add zh-CN README`. Body: the six headings in `land-docs-pin.sh` / this file.
 
 ---
 

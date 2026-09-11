@@ -429,7 +429,7 @@ python3 -m pip install -r requirements.txt
 export PYTHONPATH=/tmp/AIOps
 ```
 
-`overlay-v1.0.0` 与 `forge-v1.0.0` 是同一提交（`235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 `git checkout overlay-v1.0.1`（tag 还不存在）。AIOps `main` README 若仍写 1.0.1，忽略。人有 AIOps `contents:write` 时一条命令：`bash docs/phase1/aiops-release/land-docs-pin.sh --push`。怎么给写权限（本机 gh / 给环境挂 AIOps）：见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md) §怎么给写权限。
+`overlay-v1.0.0` 与 `forge-v1.0.0` 是同一提交（`235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 `git checkout overlay-v1.0.1`（tag 还不存在）。AIOps `main` README 若仍写 1.0.1，忽略。Docs-pin 分支已在 AIOps：`cursor/forge-docs-pin-2e0c` @ `878a690`。Oliver 用 compare 开 draft PR（deploy key 不能走 PR API）：https://github.com/LibertychaserUS/AIOps/compare/main...cursor/forge-docs-pin-2e0c?expand=1 。合进 `main` 之前不要发 `1.0.1`。怎么给写权限：见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。
 
 本仓 native skills（Codex / Cursor / Claude Code）：
 
@@ -460,7 +460,7 @@ gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 
 `overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；`manage-repo` 未加引号的 `Ops only:` 会让单独装和 `gh skill install --all` 都失败。`--all` 在 docs-pin 合进 AIOps `main` 之前保持坏。这是 **不能先发 1.0.1** 的原因之一：先把 docs-pin 合进 AIOps `main`。产品 PR #6 不能代替 AIOps GitHub 落地。以本仓 skill / 本文件为准。
 
-2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.0` @ `235e514…`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent copilot` 非法。`--all` 和 `manage-repo` 红；上面四条 per-skill 命令在 cursor / codex / claude-code 绿。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。目标未完成：AIOps 上还没有 docs-pin 分支/PR，`main` README 仍写缺失的 `v1.0.1`。
+2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.0` @ `235e514…`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent copilot` 非法。`--all` 和 `manage-repo` 红；上面四条 per-skill 命令在 cursor / codex / claude-code 绿。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。目标未完成：docs-pin 分支已推（`cursor/forge-docs-pin-2e0c` @ `878a690`），但还没有 draft PR、未合 `main`、未发 `1.0.1`；`main` README 仍写缺失的 `v1.0.1`。
 
 ```text
 npm run test:io
