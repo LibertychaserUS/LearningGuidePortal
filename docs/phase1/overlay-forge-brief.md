@@ -166,7 +166,7 @@ apprunner-deploy.yml ──不自动──► App Runner
 - 不要自动 App Runner。
 - 不要打 `ilovelearningguide.com`。
 
-workflow **每条** suite `product_command` 都跑；`tests/io` 必须在本仓。不跳过、不标 blocked。跑了 0 条必须失败。旧的 `uses:` + `overlay-check passed` 假实现已删。
+workflow 按 Overlay 的 `## function_id` 自动发现本仓测试：`tests/io/<suite-id>.test.ts` / `tests/io/<id>-*.test.ts` / `tests/unit/<id>-*.test.ts`。规则在 `.github/scripts/overlay-run-existing.py`，不改 Overlay 1.0.0。不扫 e2e / integration，不把它们塞进 Verify。
 
 ---
 
