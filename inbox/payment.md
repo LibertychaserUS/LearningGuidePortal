@@ -15,22 +15,27 @@ locale: en-GB
 
 # Intent
 
-Payment and entitlements. Cases may be written; the suite stays draft so Overlay does not gate on live Stripe.
+Payment and entitlements. Cases are black-box I/O against quote, checkout, demo confirm, entitlement, and webhook. The suite stays draft so Overlay does not gate on live Stripe.
 
 # In scope
 
 - PAY-01 Entitlement updates after a configured payment.
+- PAY-02 Server quote and checkout.
+- PAY-03 Webhook authenticity and idempotency.
 
 # Out of scope
 
 - Using payment as a merge gate.
 - Hitting production ilovelearningguide.com.
 - Changing LearningGuidePortal Verify.
+- White-box calls into productStore.
 
 # User cases
 
 1. After a configured payment completes, entitlement state updates.
+2. Quote and checkout amounts come from the server; the browser cannot set the price.
+3. Unsigned or unmatched webhook events do not grant access.
 
 # Notes
 
-`readiness: not-ready` is a hint only. A human may later mark the suite blocked. Do not arm until Stripe webhook paths are claimed testable.
+`readiness: not-ready` is a hint only. Do not arm until Stripe webhook paths are claimed testable. Executable I/O lives in `tests/io/payment.test.ts`.

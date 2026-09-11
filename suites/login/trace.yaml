@@ -2,14 +2,29 @@ schema: overlay-trace/v1
 suite: login
 items:
   - function_id: AUTH-01
-    level: e2e
-    case_id: AUTH-01/e2e/01
+    level: integration
+    case_id: AUTH-01/io/functional
     type: functional
   - function_id: AUTH-01
-    level: e2e
-    case_id: AUTH-01/e2e/02
+    level: smoke
+    case_id: AUTH-01/io/negative
     type: negative
+    span: interaction
+    relates:
+      - PAY-02
   - function_id: AUTH-01
     level: integration
-    case_id: AUTH-01/integration/01
+    case_id: AUTH-01/io/edge
+    type: edge
+  - function_id: AUTH-02
+    level: integration
+    case_id: AUTH-02/io/functional
+    type: functional
+  - function_id: AUTH-02
+    level: integration
+    case_id: AUTH-02/io/negative
+    type: negative
+  - function_id: AUTH-02
+    level: integration
+    case_id: AUTH-02/io/edge
     type: edge

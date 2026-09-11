@@ -11,4 +11,4 @@ reviewed_by: null
 reviewed_at: null
 blocked_reason: null
 armed_reason: null
-product_command: null
+product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/login.test.ts
