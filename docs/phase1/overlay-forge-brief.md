@@ -16,8 +16,8 @@
 2. **Overlay** 管需求叶子 → 可审用例 → CI 只跑人签过名的 `armed` 套件。
 3. Learning Guide 只接薄文件，**不 vendor** `overlay/` 或 `forge/`。
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
-5. 登录 / 支付套件仍是 **`draft` + `reviewed_by: null`**。`overlay select` 仍会丢掉它们。**overlay-check 不再靠这次 select 假装过关**：workflow 在 runner 里拉 `overlay-v1.0.0`，校验现有目录，然后执行本 checkout 上已经存在的 `product_command`。人没 arm 之前，那也不是 Overlay-armed。
-6. Agent **不得** 写 `reviewed_by`，**不得** 把 `status` 写成 `armed`。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
+5. overlay-check 是原生 `overlay validate` + `overlay run`。只跑 **`armed`**。`draft` / `blocked` 丢掉、不当红。login / payment 仍是 draft。portal / my-learning 已 armed（unit `product_command` 已过）。
+6. 不要再接 `overlay-run-existing.py` 硬跑。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 
 ---
@@ -166,7 +166,7 @@ apprunner-deploy.yml ──不自动──► App Runner
 - 不要自动 App Runner。
 - 不要打 `ilovelearningguide.com`。
 
-workflow 按 Overlay 的 `## function_id` 自动发现本仓测试：`tests/io/<suite-id>.test.ts` / `tests/io/<id>-*.test.ts` / `tests/unit/<id>-*.test.ts`。规则在 `.github/scripts/overlay-run-existing.py`，不改 Overlay 1.0.0。不扫 e2e / integration，不把它们塞进 Verify。
+overlay-check 只走原生 `overlay run`。测查过过关再 `armed`。不硬跑 draft。
 
 ---
 
@@ -238,7 +238,7 @@ ASCII：
 | `inbox/portal.md` `inbox/my-learning.md` | 已有叶子，套件同样 draft |
 | `suites/login` `suites/payment` | `status: draft`，`reviewed_by: null`；`product_command` → `tests/io/login.test.ts` / `payment.test.ts` |
 | `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10） |
-| `.github/workflows/overlay-check.yml` | runner checkout `LibertychaserUS/AIOps@overlay-v1.0.0` → `_aiops`，validate 后跑已有 `product_command`。不 vendor `overlay/` |
+| `.github/workflows/overlay-check.yml` | 原生 `overlay validate` + `overlay run`（armed only） |
 | `tests/io/*` | 49 条黑盒，本地 `npm run test:io` 绿。**不在** `test:ci` 里 |
 
 发布针：`overlay-v1.0.0` / `forge-v1.0.0` = `235e514…`。不要 pin `AIOps` 的 `main`。
