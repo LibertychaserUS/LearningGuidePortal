@@ -2,6 +2,19 @@
 
 **Published 1.0.1 (2026-09-11).** Official pin is **`overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`**. Docs-pin is on AIOps `main` (includes `878a690`). Annotated tags pushed over SSH. Do not force-move `1.0.0` (`235e514e673fa68b24879c8e139f2a5c6633ebb5`). Do not pin `main`.
 
+**`1.0.1` is a git tag, not a GitHub Release.** `gh release view overlay-v1.0.1` / `forge-v1.0.1` is 404. `cursor[bot]` and the GitHub MCP PAT cannot `gh release create` (403). The deploy key is not on this Cloud Agent VM. Do not link `/releases/tag/overlay-v1.0.1`. Pin via [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1).
+
+Land the README correction on AIOps `main` (Oliver, `contents:write` or the AIOps deploy key):
+
+```text
+git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
+git -C /tmp/AIOps checkout main
+git -C /tmp/AIOps am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0007-docs-link-1.0.1-to-git-tags-not-missing-releases.patch
+git -C /tmp/AIOps push origin main
+```
+
+Patch `0007` rewrites `README.md` / `README.zh-CN.md` / `docs/products.md` / `docs/release.md` so 1.0.1 links go to `/tree/overlay-v1.0.1`, and says the Release pages were never created. `1.0.0` Release links stay.
+
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
 git -C /tmp/AIOps checkout overlay-v1.0.1
