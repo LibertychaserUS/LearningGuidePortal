@@ -16,8 +16,8 @@
 2. **Overlay** 管需求叶子 → 可审用例 → CI 只跑人签过名的 `armed` 套件。
 3. Learning Guide 只接薄文件，**不 vendor** `overlay/` 或 `forge/`。
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
-5. overlay-check 是原生 `overlay validate` + `overlay run`。只跑 **`armed`**。`draft` / `blocked` 丢掉、不当红。login / payment 仍是 draft。portal / my-learning 已 armed（unit `product_command` 已过）。
-6. 不要再接 `overlay-run-existing.py` 硬跑。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
+5. 登录 / 支付套件仍是 **`draft` + `reviewed_by: null`**。`overlay select` 仍会丢掉它们。**overlay-check 不再靠这次 select 假装过关**：workflow 拉 `overlay-v1.0.0` 做 validate，然后跑 `.github/scripts/overlay-run-existing.py`。人没 arm 之前，那也不是 Overlay-armed。
+6. Agent **不得** 写 `reviewed_by`，**不得** 把 `status` 写成 `armed`。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 
 ---
@@ -166,7 +166,7 @@ apprunner-deploy.yml ──不自动──► App Runner
 - 不要自动 App Runner。
 - 不要打 `ilovelearningguide.com`。
 
-overlay-check 只走原生 `overlay run`。测查过过关再 `armed`。不硬跑 draft。
+**workflow 门禁 ≠ Overlay armed：** `.github/scripts/overlay-run-existing.py` 是 overlay-check 的 workflow gate，不是 Overlay `select` 的 armed 选择。脚本读 `overlay.yaml` 的 `never_red_statuses`（默认 `draft`, `blocked`），并仍发现/跑 login、payment。在这两套绿之前，只有已经绿的 `my-learning`、`portal` 硬红；login/payment 失败记 observe，不让 job 红。不要写 `reviewed_by`，不要把 `status` 写成 `armed`。
 
 ---
 
