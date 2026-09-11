@@ -1,0 +1,15 @@
+id: visitor-trial
+title: Visitor / Trial
+status: draft
+kind: functional
+subject: product
+source: inbox/visitor-trial.md
+packages:
+  - modules/subscription-management
+  - modules/payment-management
+  - modules/portal
+reviewed_by: null
+reviewed_at: null
+blocked_reason: null
+armed_reason: null
+product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/visitor-trial.test.ts

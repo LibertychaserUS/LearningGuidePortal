@@ -1,0 +1,30 @@
+schema: overlay-trace/v1
+suite: order
+items:
+  - function_id: AUTH-04
+    level: integration
+    case_id: AUTH-04/io/functional
+    type: functional
+  - function_id: AUTH-04
+    level: integration
+    case_id: AUTH-04/io/negative
+    type: negative
+  - function_id: AUTH-04
+    level: integration
+    case_id: AUTH-04/io/edge
+    type: edge
+  - function_id: PAY-04
+    level: integration
+    case_id: PAY-04/io/functional
+    type: functional
+    span: interaction
+    relates:
+      - AUTH-04
+  - function_id: PAY-04
+    level: integration
+    case_id: PAY-04/io/negative
+    type: negative
+  - function_id: PAY-04
+    level: integration
+    case_id: PAY-04/io/edge
+    type: edge

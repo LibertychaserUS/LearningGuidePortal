@@ -1,7 +1,8 @@
 # My Learning — overview and progress
 
 Compiled from existing unit tests. These Learning Guide ids are not Overlay kernel law.
-Suite stays draft until a human arms it.
+Suite is armed. Overlay select runs this product_command (store unit tests).
+Signed-out HTTP I/O lives in `tests/io/my-learning.test.ts`. Store unit tests do not prove signed-out HTTP.
 
 ## ML-FR-004 Course cards
 
@@ -12,8 +13,8 @@ Suite stays draft until a human arms it.
 
 ### Negative
 - Title: Signed-out user is rejected
-- Steps: Open My Learning with no session
-- Expected: Redirect or unauthorised; no other user's data
+- Steps: GET /api/my-learning/overview, GET /api/entitlements/check, and POST /api/study/events with no session (`tests/io/my-learning.test.ts`)
+- Expected: HTTP 401 on each; no other user's data. After register/quote/checkout/demo confirm, GET overview is 200. Expired `validTo` (unit helper `readProductData`/`writeProductData`) makes check `allowed: false` and locked study/events 403. Current unit product_command does not prove these HTTP statuses.
 
 ### Edge
 - Title: Purchased with no opened Learning Point does not invent a card
@@ -34,6 +35,11 @@ Suite stays draft until a human arms it.
 - Title: Repeating the same Learning Point does not increase progress
 - Steps: Open the same LP three times
 - Expected: Still 50
+
+### Depth
+- Title: Unique-LP progress does not become time progress after refund
+- Steps: Purchase; open one LP; refund; read overview
+- Expected: Progress stays 50; not a duration percentage
 
 ### Edge
 - Title: Duration / +300s inject is not the source of truth
