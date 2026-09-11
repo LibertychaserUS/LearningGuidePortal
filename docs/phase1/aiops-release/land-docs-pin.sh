@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Land LibertychaserUS/AIOps docs-pin (published v1.0.0 + zh-CN) and open a draft PR.
 #
-# One command, as a human with contents:write on AIOps (not cursor[bot]):
+# One command, as a human with contents:write on AIOps (not cursor[bot]).
+# How to grant write: APPLY.md §怎么给写权限 (Path A = this script --push; Path B = attach AIOps + Save + new agent).
 #
 #   bash docs/phase1/aiops-release/land-docs-pin.sh --push
 #
@@ -32,7 +33,7 @@ FROM_GITHUB=0
 PROBE_WRITE=0
 
 usage() {
-  sed -n '2,18p' "$0"
+  sed -n '2,19p' "$0"
   echo "Usage: $0 [--push] [--probe-write] [--no-pr] [--from-github] [--dir PATH]"
   exit 1
 }
@@ -74,6 +75,7 @@ probe_write() {
   login=${denied:-$(github_login)}
   echo "write:no on $AIOPS_REPO as ${login:-unknown}." >&2
   echo "Need LibertychaserUS with contents:write. Cloud Agents: cursor[bot] and the GitHub MCP PAT cannot push AIOps." >&2
+  echo "How to grant write: docs/phase1/aiops-release/APPLY.md §怎么给写权限" >&2
   grep -E 'Permission|denied|403|fatal' "$err" | sed 's#https://[^@]*@#https://#' >&2 || true
   rm -f "$err"
   return 1
@@ -241,7 +243,8 @@ fi
 
 if [[ "$PUSH" -eq 1 || "$PROBE_WRITE" -eq 1 ]]; then
   if ! probe_write; then
-    echo "Cloud Agents cannot land this. As Oliver: $0 --push" >&2
+    echo "Cloud Agents cannot land this. How to grant write: docs/phase1/aiops-release/APPLY.md §怎么给写权限" >&2
+    echo "Path A (own gh, no token sharing): $0 --push" >&2
     exit 1
   fi
 fi
