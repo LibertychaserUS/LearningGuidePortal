@@ -90,6 +90,8 @@ Until the AIOps patches land, install **this product repo’s** skills (hidden s
 
 ```text
 gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
+# or from GitHub after this PR is merged to main (pin the PR head SHA until then)
+# gh skill install LibertychaserUS/LearningGuidePortal --all --allow-hidden-dirs --agent cursor
 ```
 
 `gh skill` host ids are `codex`, `cursor`, `claude-code`, `github-copilot`. There is no `--agent copilot`.
