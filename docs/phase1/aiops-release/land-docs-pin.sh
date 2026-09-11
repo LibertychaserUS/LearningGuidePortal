@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Land remaining AIOps patches (0007 README tag links + 0008 deny_paths check).
+# Re-land AIOps 0007 (README tag links) + 0008 (deny_paths check). Already on main @ 075341a.
 #
 # One command, as a human with contents:write on AIOps (not cursor[bot]).
 # How to grant write: APPLY.md §怎么给写权限 (Path A = this script --push; Path B = attach AIOps + Save + new agent).

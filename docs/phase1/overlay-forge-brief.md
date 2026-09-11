@@ -240,7 +240,7 @@ ASCII：
 | `.github/workflows/overlay-check.yml` | 原生 `overlay validate` + `overlay run`（armed only） |
 | `tests/io/*` | 49 条黑盒，本地 `npm run test:io` 绿。**不在** `test:ci` 里 |
 
-发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`（annotated git tag；GitHub Release 页面可能 404，pin [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1)）。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。AIOps `0007`/`0008` 在 [`aiops-release/`](./aiops-release/APPLY.md)，不在质量门 PR #5。
+发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`（annotated git tag；GitHub Release 页面可能 404，pin [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1)）。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。AIOps `0007`/`0008` 已在工具仓 `main` @ `075341a`（官方针仍是 `overlay-v1.0.1`）。补丁副本在 [`aiops-release/`](./aiops-release/APPLY.md)，不在质量门 PR #5。
 
 ---
 
