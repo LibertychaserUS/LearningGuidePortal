@@ -380,7 +380,7 @@ test("subscription lifecycle: trial convert, renew, grace, cancel-at-period-end,
   const originalPaidValidTo = paid.validTo;
   const failed = await store.markStripeSubscriptionGrace("sub_lifecycle");
   assert.equal(failed?.state, "grace");
-  withinMs(failed?.graceEndsAt, Date.parse(originalPaidValidTo) + GRACE_MS);
+  withinMs(failed?.graceEndsAt ?? undefined, Date.parse(originalPaidValidTo) + GRACE_MS);
 
   const recoveredEnd = new Date(Date.now() + 180 * DAY_MS).toISOString();
   await store.applyStripePaidInvoice({
