@@ -34,6 +34,8 @@ git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0001-docs-docs-age
 git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0002-docs-docs-agent-fix-gh-skill-host-ids-and-Learning-G.patch
 git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0003-docs-docs-agent-quote-skill-frontmatter-so-gh-skill-.patch
 git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0004-docs-docs-agent-warn-that-overlay-v1.0.0-use-forge-s.patch
+git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0005-docs-docs-agent-require-explicit-yes-before-Forge-in.patch
+git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0006-docs-docs-agent-first-run-vs-default-run-in-EN-and-z.patch
 git push -u origin cursor/forge-docs-pin-2e0c
 # open PR into main (draft is fine)
 ```

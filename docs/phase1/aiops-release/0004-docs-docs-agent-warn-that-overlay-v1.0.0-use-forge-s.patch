@@ -1,7 +1,7 @@
 From f9557900f563c177e18318128d1764d58c862c8f Mon Sep 17 00:00:00 2001
 From: Cursor Agent <cursoragent@cursor.com>
 Date: Fri, 11 Sep 2026 14:14:37 +0000
-Subject: [PATCH 4/4] docs(docs/agent): warn that overlay-v1.0.0 use-forge
+Subject: [PATCH 4/6] docs(docs/agent): warn that overlay-v1.0.0 use-forge
  still lists apply
 
 Published-tag skills keep the old install steps. Follow the six-step
