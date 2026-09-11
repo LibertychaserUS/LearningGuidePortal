@@ -27,7 +27,9 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root . --title "feat: subject"
 4. **Overlay：不要把 `status` 改成 `blocked`。** `suite_guard` 在 agent 分支上会红。人改走 `$manage-repo`。
 5. **不要改 Verify。** 不要把 `test:io` 加进 `test:ci`。
 6. **Promote 不是 submit。** `dev` → `main` 用 `forge promote`，仍然不 merge。人批 + CODEOWNERS 后 merge commit。
-7. 本仓四套（login / payment / portal / my-learning）已是 `active`。修红靠修该 `function_id` 的代码或 `product_command`，不要靠改 `status` 躲。
+7. 本仓六套（login / payment / order / portal / my-learning / visitor-trial）已是 `active`。修红靠修该 `function_id` 的代码或 `product_command`，不要靠改 `status` 躲。
+8. **正文从 diff 写。** 开 PR 前跑 `git diff --stat origin/dev...HEAD`，六标题「做了什么」逐条对应改动的文件与行为；改了工作流 / 套件 / 配置 / 迁移必须写明。审查的 agent 会逐条对账，对不上不批（见 [`AGENTS.md`](../../../../AGENTS.md) §PR 审查）。
+9. **带上上下文。** 改了 `forge.yaml` / `overlay.yaml` / 工作流 → 重新生成 `docs/STATE.md`；发现或关闭问题 → 更新 [`overlay-forge-issues.md`](../../overlay-forge-issues.md)；`docs_sync` 表命中的路径 → 同 PR 改 brief。
 
 入口：[`AGENTS.md`](../../../../AGENTS.md)、[`overlay-forge-brief.md`](../../overlay-forge-brief.md)。
 

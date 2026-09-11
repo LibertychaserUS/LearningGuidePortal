@@ -143,6 +143,12 @@
 - 1.1.1：只扫 git 跟踪且未忽略的 `*.md`；以 `/` 开头的链接视为站点根路径。
 - 1.1.2：版本引用必须是已有 tag 的规则只在工作本根执行；接入方引用工具 tag（`overlay-v2.0.0`）不再被自己仓库没有该 tag 判红。
 
+### OF-21 PR 正文与 diff 的对应度、审查时的全局上下文维护 — 规则已记（本 PR）；工具化待做
+
+- 规则（Oliver 2026-09-11 22:23）：云 agent 审 PR 时必须逐条核对正文「做了什么」与实际 diff，对不上不批；同时维护项目全局上下文，尤其是文档（`docs/STATE.md`、本登记表、brief 的 `docs_sync` 表、ADR、工具仓 `CHANGELOG.md`）。开 PR 的 agent 正文必须从 diff 写出。已写进 `AGENTS.md` §PR 审查、`skills/dev-pr` 第 8–9 条、`skills/manage-repo` 第 6 条。
+- 机器可判定的一部分已有：`forge check` 的 `docs_sync`（路径表 + 链接 + 版本引用）与 `status --check-state`。
+- 待做（Forge 候选，记在工具仓）：`pr-body` 步骤增加「正文提到的文件路径必须在 diff 或树里存在」「diff 触碰 `deny_paths` / `suites/*/suite.yaml` / `forge.yaml` / `overlay.yaml` 时正文必须出现对应路径」两条可判定规则；其余靠审查 agent。
+
 ---
 
 ## D. 需要 Oliver 决定的（汇总）
@@ -175,6 +181,7 @@
 6. `FORBIDDEN_LIVE_REPOS` 改成 `forge.yaml` 配置项（默认空），因为 fork 要 apply。→ OF-16 反转。
 7. LG 的 `ci.yml` / `overlay-check.yml` 这轮由 agent 修改（授权），`apprunner-deploy.yml` 不碰；源仓 First-Light 这轮不动。→ OF-02 / OF-07 暂缓。
 8. 做完工具后，LG 多写有效测试：先认证 / 支付 / 订阅 / Entitlement，再 My Learning / Portal / Trial；进 `test:ci` 与 `tests/io`。
+9. （22:23 补）云 agent 审 PR 要查正文与实际内容的对应程度，并维护项目全局上下文（尤其文档）。→ OF-21。
 
 执行规格：`/tmp/audit/v2-spec.md`（会随 AIOps 大提交进 `docs/adr/` 与 `CHANGELOG.md`）。
 

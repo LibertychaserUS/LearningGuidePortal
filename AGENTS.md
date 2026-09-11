@@ -46,6 +46,11 @@ python3 -m forge status --root . --repo LibertychaserUS/LearningGuidePortal --ch
 
 Forge 是开发完成后的 GitHub 落地（`check` → PR 到 `dev` → `promote` 到 `main`），不是测试工具，不改 Overlay / Verify。本仓已有 `forge.yaml`：问一次是否按 Forge 落地；同意后说「之后默认按 Forge 落地」，然后默认跑 `check`，持有 `FORGE_SUBMIT_TOKEN` 再 `submit` 到 `dev`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply Ruleset，也不等于把套件改成 `blocked`。`FORGE_SUBMIT_TOKEN` 与 `FORGE_GITHUB_TOKEN` 是 Oliver 提供的环境密钥，agent 永不粘贴 token。若接入方还没有 Forge、且已有自己的落地方式，必须先对照新旧并等人明确同意，不能默默替换。
 
+## PR 审查（云 agent 的两项职责）
+
+1. **正文与 diff 逐条对账。** 审 PR 先读六标题正文，再读 `git diff --stat` 与关键文件，逐条核对「做了什么」：正文写了、diff 没有 → 要求删或补；diff 有、正文没写 → 要求补写（尤其是 `.github/workflows/`、套件 `status`、`forge.yaml` / `overlay.yaml`、迁移、依赖）。对不上的 PR 不批、不合，评审意见里列出不对应的条目。开 PR 的 agent 反过来同样：正文必须从 diff 写出来，不许复制模板空话。
+2. **维护全局上下文，尤其是文档。** 审 PR 时确认这次改动把该带的上下文一起带了：`docs/STATE.md`（配置 / 工作流 / 保护分支变了要重新生成）、`docs/phase1/overlay-forge-issues.md`（新问题登记、状态改动）、`docs/phase1/overlay-forge-brief.md`（`docs_sync` 表要求）、ADR（契约变更）、工具仓 `CHANGELOG.md`（工具变更）。缺了就在评审里点名到文件；agent 可以提交文档修正，但不替作者改实现。`forge check` 的 `docs_sync` / `--check-state` 只能查机器能判定的部分，剩下的靠这一条。
+
 ## 项目边界
 
 - 这是 Learning Guide Phase 1 生产网站，不是 KS 产品。
