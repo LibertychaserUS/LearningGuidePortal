@@ -17,7 +17,7 @@
 3. Learning Guide 只接薄文件，**不 vendor** `overlay/` 或 `forge/`。
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
 5. overlay-check 是原生 `overlay validate` + `overlay run`。只跑 **`armed`**。`draft` / `blocked` 丢掉、不当红。login / payment / portal / my-learning 已 armed。不要再接 `overlay-run-existing.py` 硬跑。
-6. 套件要人审后才 `armed`。I/O harness 未就绪时 login / payment 必须保持 draft。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
+6. 套件要人审后才 `armed`。Agent **不得** 写 `reviewed_by`，**不得** 把新套件标 `armed`。fork `main` 上 login / payment / portal / my-learning 已 armed（Oliver squash #4）。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → `submit`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply 或 arm。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
 
@@ -231,16 +231,16 @@ ASCII：
 | 文件 | 现在是什么 |
 |---|---|
 | `forge.yaml` | 保护 `main`；deny `ci.yml` / `apprunner-deploy.yml` / `overlay-check.yml`；required_checks = Typecheck、Lint、Build and test、overlay-check；`code_owners: false` |
-| `overlay.yaml` | `product.repo: LibertychaserUS/LearningGuidePortal`；`default_ref` 钉在 `6d8934e5811e371554a94aa47b2f56c40bf0cbd3`；`forbid_hosts: ilovelearningguide.com` |
+| `overlay.yaml` | `product.repo: LibertychaserUS/LearningGuidePortal`；`default_ref` 钉在 `d06d15abaaefd001141dbe6a739362f2aefca3b4`；`forbid_hosts: ilovelearningguide.com` |
 | `inbox/login.md` | AUTH-01..06 |
 | `inbox/payment.md` | PAY-01..10 |
-| `inbox/portal.md` `inbox/my-learning.md` | 已有叶子，套件同样 draft |
-| `suites/login` `suites/payment` | `status: draft`，`reviewed_by: null`；`product_command` → `tests/io/login.test.ts` / `payment.test.ts` |
+| `inbox/portal.md` `inbox/my-learning.md` | 已有叶子；套件 armed |
+| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` | `status: armed`（#4 squash）。login/payment → `tests/io/*.test.ts` |
 | `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10） |
 | `.github/workflows/overlay-check.yml` | 原生 `overlay validate` + `overlay run`（armed only） |
 | `tests/io/*` | 49 条黑盒，本地 `npm run test:io` 绿。**不在** `test:ci` 里 |
 
-发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。
+发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`（annotated git tag；GitHub Release 页面可能 404，pin [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1)）。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。AIOps `0007`/`0008` 已在工具仓 `main` @ `075341a`（官方针仍是 `overlay-v1.0.1`）。补丁副本在 [`aiops-release/`](./aiops-release/APPLY.md)，不在质量门 PR #5。
 
 ---
 
@@ -255,7 +255,7 @@ ASCII：
 对照：
 
 - 可执行黑盒：`tests/io/login.test.ts`、`tests/io/payment.test.ts`
-- Overlay 规格：`suites/login/cases.md`、`suites/payment/cases.md`（仍是 draft）
+- Overlay 规格：`suites/login/cases.md`、`suites/payment/cases.md`（armed on fork `main`）
 
 ### AUTH
 
@@ -453,7 +453,7 @@ gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 
 `overlay-v1.0.1` 上 `--all`（含 quoted `manage-repo` frontmatter）已通过。本仓 `$use-forge` 是六步开发冷启动；live `apply` 只在 `$manage-repo`。以本仓 skill / 本文件为准。
 
-2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent cursor --pin overlay-v1.0.1 --all` 绿（含 manage-repo）。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。
+2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`，不是浮动 `main`）：`overlay validate` / `cover` / `forge check` ok。fork `main` 上 login / payment / portal / my-learning 已 armed（#4）。`gh skill install --agent cursor --pin overlay-v1.0.1 --all` 绿（含 manage-repo）。命令见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。
 
 ```text
 npm run test:io
@@ -464,7 +464,7 @@ PYTHONPATH=/tmp/AIOps python3 -m overlay run --branch main --root . --workdir . 
 PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 ```
 
-`overlay select` 在 draft 上仍是 selected=0。那不是 overlay-check 的门禁。overlay-check 必须真跑 `product_command`。
+`overlay select --branch main` 只留下 armed。overlay-check 必须真跑 armed `product_command`。不要 hard-run。
 
 `python -m forge` 现有子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce`。没有 `brief`、`credential`、`ops-chain`、`revoke`。`required_checks` 是 job 名：`Typecheck` / `Lint` / `Build and test` / `overlay-check`，不要抄 workflow 名 `Verify`。
 

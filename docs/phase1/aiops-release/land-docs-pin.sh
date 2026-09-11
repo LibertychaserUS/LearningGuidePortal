@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Land LibertychaserUS/AIOps docs-pin (published v1.0.0 + zh-CN) and open a draft PR.
+# Re-land AIOps 0007 (README tag links) + 0008 (deny_paths check). Already on main @ 075341a.
 #
 # One command, as a human with contents:write on AIOps (not cursor[bot]).
 # How to grant write: APPLY.md §怎么给写权限 (Path A = this script --push; Path B = attach AIOps + Save + new agent).
 #
 #   bash docs/phase1/aiops-release/land-docs-pin.sh --push
 #
-# Same outcome from any directory (fetches this PR's 000*.patch files):
+# Same outcome from any directory (fetches this branch's 000*.patch files):
 #
 #   curl -fsSL https://raw.githubusercontent.com/LibertychaserUS/LearningGuidePortal/cursor/forge-agent-entry-2e0c/docs/phase1/aiops-release/land-docs-pin.sh | bash -s -- --push
 #
 # --push applies current AIOps main, pushes cursor/forge-docs-pin-2e0c, opens/reuses a draft PR.
 # --probe-write: clone/fetch + dry-run push only (no am, no PR). Exit 0 = write:yes.
 # Without --push: local apply only.
-# Never force-moves overlay-v1.0.0 / forge-v1.0.0. Does not publish 1.0.1.
+# Prefers the durable deploy key (~/.local/share/lg-secrets/aiops-deploy-ed25519 or
+# $AIOPS_DEPLOY_SSH_KEY). Real SSH must ignore the HTTPS insteadOf rewrite.
+# Never force-moves overlay-v1.0.0 / forge-v1.0.0 / 1.0.1. 0001-0006 are already on main.
 #
 # LAST_VERIFIED_MAIN is the AIOps main SHA these 000*.patch files last applied
 # onto (read-only fetch). Update it when you regenerate patches.
@@ -25,8 +27,10 @@ AIOPS_REPO=${AIOPS_REPO:-LibertychaserUS/AIOps}
 DEST=${AIOPS_DIR:-/tmp/AIOps-docs-pin}
 BRANCH=cursor/forge-docs-pin-2e0c
 REMOTE=https://github.com/${AIOPS_REPO}.git
-TITLE='docs(docs/agent): pin published v1.0.0 and add zh-CN README'
-LAST_VERIFIED_MAIN=b21dbf9641427a33640c4b11d63fb7cad102ccff
+SSH_REMOTE=git@github.com:${AIOPS_REPO}.git
+DEPLOY_KEY_DEFAULT=${HOME}/.local/share/lg-secrets/aiops-deploy-ed25519
+TITLE='docs(docs/agent): link 1.0.1 to git tags and enforce deny_paths in check'
+LAST_VERIFIED_MAIN=b4afc10ae0be4725e5109030f14a05bb2291fe4a
 PUSH=0
 NO_PR=0
 FROM_GITHUB=0
@@ -63,19 +67,58 @@ github_login() {
   return 0
 }
 
+deploy_key_file() {
+  if [[ -n "${AIOPS_DEPLOY_KEY:-}" && -f "${AIOPS_DEPLOY_KEY}" ]]; then
+    echo "$AIOPS_DEPLOY_KEY"
+    return 0
+  fi
+  if [[ -f "$DEPLOY_KEY_DEFAULT" ]]; then
+    echo "$DEPLOY_KEY_DEFAULT"
+    return 0
+  fi
+  if [[ -f "${HOME}/.local/share/lg-secrets/cursor-cloud-aiops-deploy-448c" ]]; then
+    echo "${HOME}/.local/share/lg-secrets/cursor-cloud-aiops-deploy-448c"
+    return 0
+  fi
+  if [[ -n "${AIOPS_DEPLOY_SSH_KEY:-}" ]]; then
+    local tmp
+    tmp=$(mktemp)
+    printf '%s\n' "$AIOPS_DEPLOY_SSH_KEY" >"$tmp"
+    chmod 600 "$tmp"
+    echo "$tmp"
+    return 0
+  fi
+  return 1
+}
+
+# Real SSH. Global url.*.insteadOf rewrites git@github.com to cursor[bot] HTTPS.
+with_deploy_ssh() {
+  local key=$1
+  shift
+  env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    GIT_SSH_COMMAND="ssh -i ${key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+    "$@"
+}
+
 probe_write() {
-  local err login denied
+  local err login denied key
   err=$(mktemp)
+  if key=$(deploy_key_file); then
+    if with_deploy_ssh "$key" git -C "$DEST" push --dry-run "$SSH_REMOTE" "origin/main:refs/heads/$BRANCH" 2>"$err"; then
+      echo "write:yes on $AIOPS_REPO via deploy-key SSH (dry-run push of $BRANCH)"
+      rm -f "$err"
+      return 0
+    fi
+  fi
   if git -C "$DEST" push --dry-run origin "origin/main:refs/heads/$BRANCH" 2>"$err"; then
-    echo "write:yes on $AIOPS_REPO (dry-run push of $BRANCH)"
+    echo "write:yes on $AIOPS_REPO (HTTPS dry-run push of $BRANCH)"
     rm -f "$err"
     return 0
   fi
   denied=$(sed -n 's/.*denied to \([^[:space:].]*\).*/\1/p' "$err" | head -1)
   login=${denied:-$(github_login)}
   echo "write:no on $AIOPS_REPO as ${login:-unknown}." >&2
-  echo "Need LibertychaserUS with contents:write. Cloud Agents: cursor[bot] and the GitHub MCP PAT cannot push AIOps." >&2
-  echo "How to grant write: docs/phase1/aiops-release/APPLY.md §怎么给写权限" >&2
+  echo "Need the durable deploy key (APPLY.md) or LibertychaserUS contents:write. cursor[bot] HTTPS cannot push AIOps." >&2
   grep -E 'Permission|denied|403|fatal' "$err" | sed 's#https://[^@]*@#https://#' >&2 || true
   rm -f "$err"
   return 1
@@ -88,16 +131,16 @@ sanity_docs_pin() {
     echo "sanity: missing $readme" >&2
     return 1
   fi
-  if ! grep -q '\[`overlay-v1.0.0`\]' "$readme"; then
-    echo "sanity: README pin table does not link overlay-v1.0.0" >&2
+  if ! grep -q 'tree/overlay-v1.0.1' "$readme"; then
+    echo "sanity: README does not pin overlay-v1.0.1 via /tree/" >&2
+    return 1
+  fi
+  if grep -nE '\]\(https://github.com/LibertychaserUS/AIOps/releases/tag/(overlay|forge)-v1\.0\.1\)' "$readme" "$DEST/README.zh-CN.md" 2>/dev/null; then
+    echo "sanity: README still links missing 1.0.1 Release pages" >&2
     return 1
   fi
   if grep -nE 'gh skill install.*--agent copilot' "$readme" "$DEST/README.zh-CN.md" 2>/dev/null; then
     echo "sanity: README still installs with invalid --agent copilot" >&2
-    return 1
-  fi
-  if grep -nE '^\s*git checkout overlay-v1\.0\.1\s*$' "$readme"; then
-    echo "sanity: README still instructs checkout of missing overlay-v1.0.1" >&2
     return 1
   fi
   if [[ -f "$skill" ]] && command -v python3 >/dev/null 2>&1; then
@@ -130,47 +173,41 @@ pr_body() {
   cat <<'EOF'
 ## 做了什么
 
-- Pin every public README / skill / `gh skill install --pin` example to **existing** `overlay-v1.0.0` / `forge-v1.0.0` (same SHA). Stop telling agents to checkout missing `v1.0.1`.
-- Add `README.zh-CN.md` and mutual EN ↔ zh-CN links.
-- `use-forge` is the six-step **dev** cold start only (no live `apply` in that skill).
-- Quote `manage-repo` frontmatter so `gh skill install --all` works.
-- `gh skill` host ids: `codex` / `cursor` / `claude-code` (no `--agent copilot`).
-- Forge first-run: contrast the existing landing path and wait for an explicit yes; after one yes, default-run `check` → `submit`.
+- Link 1.0.1 pins to `/tree/overlay-v1.0.1` (annotated tags exist; GitHub Release pages may 404).
+- `forge check` now fails when the local diff touches `deny_paths`. Tests in `tests/forge/test_check.py`.
+- Record `agent_branch_prefixes` on agent branches; first-cut still allows human prefixes.
+- Say honestly that 1.0.1 publishing is Human/Ops and Release objects may still be missing.
 
 ## 为什么
 
-AIOps `main` still tells agents to pin `v1.0.1`, but GitHub only has `1.0.0`. That is the workshop entry other agents follow. Learning Guide is a fixture, not a second official pin.
+Tags were treated as “published”. `deny_paths` was parsed and then ignored, so `forge check` stayed green on a workflow edit.
 
 ## 动了哪些门
 
 - 通用 `pr-title` / `sop-lock`（永远跑）.
-- `docs` title → product overlay-check / forge-check skipped.
+- `forge check` gains a `deny_paths` step. Official pin stays `overlay-v1.0.1` until Ops lands this and publishes a **new** semver.
 - No Overlay / Verify rewrite. No live `forge apply`. No tag move.
 
 ## 怎么验
 
 ```text
-git checkout overlay-v1.0.0   # until this PR is on main AND a human publishes 1.0.1
+git checkout overlay-v1.0.1
 python3 -m pip install -r requirements.txt
 export PYTHONPATH=$PWD
-python3 -m forge check --root . --title "docs(docs/agent): pin published v1.0.0 and add zh-CN README"
-python3 -m forge sop-lock --root .
-python3 -m forge pr-title --title "docs(docs/agent): pin published v1.0.0 and add zh-CN README"
-gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
+python3 -m unittest tests.forge.test_check tests.forge.test_status -q
+python3 -m forge check --root . --title "docs(docs/agent): link 1.0.1 to git tags and enforce deny_paths in check"
 ```
 
 ## 不做什么
 
-- Do not publish `overlay-v1.0.1` / `forge-v1.0.1` until this is on `main`.
-- Never force-move `1.0.0`. Never pin `main` for the Python checkout.
+- Never force-move `1.0.0` or `1.0.1`. Never pin `main` for the Python checkout.
 - Do not vendor `forge/` / `overlay/` into a product repo.
-- Do not rewrite Overlay or Verify to “make Forge work.”
 - Do not live-apply Rulesets or let an agent write `reviewed_by` / `armed`.
 
 ## 分工
 
 - 审：Oliver Zhang (LibertychaserUS)
-- 合：Oliver Zhang after `pr-title` / `sop-lock` are green. Squash, then 换底 from the new `main` SHA before any 1.0.1 release.
+- 合：Oliver Zhang after `pr-title` / `sop-lock` are green. Squash, then 换底. Ops owns the next Release / semver.
 EOF
 }
 
@@ -224,9 +261,9 @@ open_or_reuse_pr() {
 
 resolve_patch_dir
 shopt -s nullglob
-PATCHES=("$PATCH_DIR"/000*.patch)
+PATCHES=("$PATCH_DIR"/000[7-9]*.patch "$PATCH_DIR"/00[1-9][0-9]*.patch)
 if [[ ${#PATCHES[@]} -eq 0 ]]; then
-  echo "no 000*.patch in $PATCH_DIR" >&2
+  echo "no remaining 0007+ patches in $PATCH_DIR" >&2
   exit 2
 fi
 
@@ -282,13 +319,24 @@ if [[ "$PUSH" -eq 0 ]]; then
   exit 0
 fi
 
-if ! git -C "$DEST" push -u origin "$BRANCH"; then
+PUSH_OK=0
+if key=$(deploy_key_file); then
+  if with_deploy_ssh "$key" git -C "$DEST" push -u "$SSH_REMOTE" "$BRANCH"; then
+    PUSH_OK=1
+    echo "pushed $SSH_REMOTE $BRANCH via deploy-key SSH"
+  fi
+fi
+if [[ "$PUSH_OK" -eq 0 ]]; then
+  if git -C "$DEST" push -u origin "$BRANCH"; then
+    PUSH_OK=1
+    echo "pushed origin/$BRANCH"
+  fi
+fi
+if [[ "$PUSH_OK" -eq 0 ]]; then
   login=$(github_login)
-  echo "push failed as ${login:-unknown}. Run this command as LibertychaserUS with contents:write on $AIOPS_REPO (not cursor[bot])." >&2
-  echo "Cloud Agents: environment repos are Learning Guide only until AIOps is added with contents:write." >&2
+  echo "push failed as ${login:-unknown}. Add the durable deploy key in APPLY.md, or run as LibertychaserUS with contents:write (not cursor[bot])." >&2
   exit 1
 fi
-echo "pushed origin/$BRANCH"
 
 if [[ "$NO_PR" -eq 1 ]]; then
   echo "skipped PR (--no-pr). Open when ready:"
@@ -297,4 +345,4 @@ if [[ "$NO_PR" -eq 1 ]]; then
 fi
 
 open_or_reuse_pr
-echo "Do not publish overlay-v1.0.1 / forge-v1.0.1 until this PR is on main. Never force-move 1.0.0."
+echo "Do not force-move overlay-v1.0.0 / forge-v1.0.0 / 1.0.1. Ops owns the next Release / semver."
