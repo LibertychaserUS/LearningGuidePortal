@@ -1,0 +1,14 @@
+id: order
+title: Order Management
+status: draft
+kind: functional
+subject: product
+source: inbox/order.md
+packages:
+  - modules/order-management
+  - modules/payment-management
+reviewed_by: null
+reviewed_at: null
+blocked_reason: null
+armed_reason: null
+product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/order.test.ts

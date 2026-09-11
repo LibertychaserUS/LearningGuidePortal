@@ -1,11 +1,67 @@
 // I/O harness must be ready before login/payment suites are armed.
 // startPayment requires Origin === publicAppOrigin(request). jsonRequest sets it.
 // 0-arg handlers read next/headers; isolate() installs that mock first.
+import { spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import Module from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { getStripe } from "../../services/stripeClient";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const productLockWorker = path.join(repoRoot, "tests/io/workers/product-lock-worker.ts");
+const registerPaths = path.join(repoRoot, "scripts/register-tsconfig-paths.cjs");
+
+export type ProductLockWorkerResult = {
+  ok: boolean;
+  action: string;
+  id?: string;
+  orderId?: string;
+  error?: string;
+};
+
+export function runProductLockWorker(input: {
+  action: "register" | "checkout" | "trial";
+  email: string;
+  password: string;
+  quoteId?: string;
+  cwd?: string;
+}) {
+  return new Promise<ProductLockWorkerResult>((resolve, reject) => {
+    const child = spawn(process.execPath, [
+      "--import",
+      "tsx",
+      "--require",
+      registerPaths,
+      productLockWorker,
+      input.action
+    ], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        STORAGE_BACKEND: "local",
+        LG_IO_CWD: input.cwd || process.cwd(),
+        LG_IO_EMAIL: input.email,
+        LG_IO_PASSWORD: input.password,
+        LG_IO_QUOTE_ID: input.quoteId || ""
+      }
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => { stdout += String(chunk); });
+    child.stderr.on("data", (chunk) => { stderr += String(chunk); });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      const line = stdout.trim().split("\n").at(-1) || "";
+      try {
+        resolve(JSON.parse(line) as ProductLockWorkerResult);
+      } catch {
+        reject(new Error(`worker ${input.action} exited ${code}: ${stderr || stdout}`));
+      }
+    });
+  });
+}
 
 export const SESSION_COOKIE = "learning_guide_session";
 export const PASSWORD = "Passw0rd!123";
@@ -197,7 +253,7 @@ export function installStripeLocalGuard() {
     throw new Error("Stripe network is not available in I/O harness");
   };
   stripe.checkout.sessions.retrieve = blocked as typeof stripe.checkout.sessions.retrieve;
-  stripe.checkout.sessions.list = blocked as typeof stripe.checkout.sessions.list;
+  stripe.checkout.sessions.list = blocked as unknown as typeof stripe.checkout.sessions.list;
   stripe.invoices.retrieve = blocked as typeof stripe.invoices.retrieve;
   stripe.subscriptions.retrieve = blocked as typeof stripe.subscriptions.retrieve;
 }
