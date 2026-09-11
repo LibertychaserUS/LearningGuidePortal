@@ -471,6 +471,8 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 
 `overlay select --branch main` 只留下 armed（现为 login / payment / portal / my-learning）。overlay-check = validate + `typecheck:io` + `overlay run`。不要 hard-run。不要 observe。`typecheck:io` 和 `test:io` 都不进 Verify 的 `test:ci`。
 
-`python -m forge` 现有子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce`。没有 `brief`、`credential`、`ops-chain`、`revoke`。`required_checks` 是 job 名：`Typecheck` / `Lint` / `Build and test` / `overlay-check`，不要抄 workflow 名 `Verify`。
+`python -m forge` 现有子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce` `release`。没有 `brief`、`credential`、`ops-chain`、`revoke`。Cloud Agent 没有 `FORGE_SUBMIT_TOKEN`，`submit` 连 `--dry-run` 都 fail-closed；本仓目前 Forge 只有 `check` 这一道，落地走 host 的 PR 路径（见 `dev-pr`）。`required_checks` 是 job 名：`Typecheck` / `Lint` / `Build and test` / `overlay-check`，不要抄 workflow 名 `Verify`。
 
-叶子必须是 `### Functional` / `### Negative` / `### Edge`。不要 `### Depth`。不要 `## Specified / not tested now`。已有的 `overlay-check.yml`（`uses: …@overlay-v1.0.0` + wrapper job）不要换成另一种形状。Agent 不 live-apply、不代签 `armed`、不打 `ilovelearningguide.com`、不改 Verify、不把 `test:io` 塞进 `test:ci`。
+叶子必须是 `### Functional` / `### Negative` / `### Edge`。不要 `### Depth`。不要 `## Specified / not tested now`。已有的 `overlay-check.yml` 是单 job `overlay-check`（#4 起：checkout `AIOps@overlay-v1.0.0` 到 `_aiops`、`npm ci`、`overlay validate` + `overlay run --branch main`），在 `deny_paths` 里，agent 不改；换针到 1.0.1 由人提交。Agent 不 live-apply、不代签 `armed`、不打 `ilovelearningguide.com`、不改 Verify、不把 `test:io` 塞进 `test:ci`。
+
+`--branch main` 只是选 `overlay.yaml` 里 `branches.main` 那条策略；套件 `status` 读的是**当前 checkout**。PR 分支若把 `status` 改成 `armed`，该 PR 的 overlay-check 就会跑它。「agent 不得 arm」目前只有文档约束，没有工具拦截。这条和其它已知问题、待 Oliver 决定的意图，集中记在 [`overlay-forge-issues.md`](./overlay-forge-issues.md)。

@@ -25,7 +25,7 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 3. **Do not live `forge apply`.** Do not edit Rulesets, required checks, or `overlay-check.yml`.
 4. **Overlay stays draft.** Do not write `reviewed_by`. Do not set `status: armed` or `blocked`.
 5. **Do not change Verify.** Do not add `test:io` to `test:ci`.
-6. **Fix armed-red** by fixing that `function_id`’s code or `product_command`. Do not re-arm to “make it pass.” Login / payment suites are draft; leave them.
+6. **Fix armed-red** by fixing that `function_id`’s code or `product_command`. Do not re-arm to “make it pass.” On fork `main`, login / payment / portal / my-learning are already `armed` (human squash #4); never touch their `status` / `reviewed_by`. New suites you add stay `draft`.
 
 ## Never
 

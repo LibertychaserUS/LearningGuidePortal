@@ -40,7 +40,7 @@ python3 -m overlay cover --root .
 python3 -m forge check --root .
 ```
 
-需要 CPython 3.12+。`python -m forge` 子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce` `release`。没有 `brief` / `credential` / `ops-chain` / `revoke`。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check`（不要抄 workflow 名 `Verify`）。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。已有的 `overlay-check.yml`（reusable `uses:` + wrapper job）不要换成另一种形状。
+需要 CPython 3.12+。`python -m forge` 子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce` `release`。没有 `brief` / `credential` / `ops-chain` / `revoke`。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check`（不要抄 workflow 名 `Verify`）。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。已有的 `overlay-check.yml` 是单 job `overlay-check`（checkout `AIOps@overlay-v1.0.0` 到 `_aiops`、`npm ci`、`overlay validate` + `overlay run --branch main`），是 `deny_paths`，agent 不改；换针到 1.0.1 由人提交。已知问题与待定意图见 `docs/phase1/overlay-forge-issues.md`。
 
 Forge 是开发完成后的 GitHub 落地（`check` → `submit`），不是测试工具，不改 Overlay / Verify。本仓已有 `forge.yaml`：问一次是否按 Forge 落地；同意后说「之后默认按 Forge 落地」，然后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply Ruleset 或 arm Overlay。若接入方还没有 Forge、且已有自己的落地方式，必须先对照新旧并等人明确同意，不能默默替换。
 
