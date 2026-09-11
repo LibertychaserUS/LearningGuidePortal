@@ -1,7 +1,7 @@
 From 858cf0d5ad915a96a79394d57b19a8e8022028e6 Mon Sep 17 00:00:00 2001
 From: Cursor Agent <cursoragent@cursor.com>
 Date: Fri, 11 Sep 2026 14:13:45 +0000
-Subject: [PATCH 3/3] docs(docs/agent): quote skill frontmatter so gh skill
+Subject: [PATCH 3/4] docs(docs/agent): quote skill frontmatter so gh skill
  install --all works
 
 Unquoted "Ops only:" in manage-repo description is invalid YAML; gh skill

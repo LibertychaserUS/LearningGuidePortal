@@ -1,7 +1,7 @@
 From beae73173f86e1fd5c7b2e9b83c3968ad54fbc43 Mon Sep 17 00:00:00 2001
 From: Cursor Agent <cursoragent@cursor.com>
 Date: Fri, 11 Sep 2026 14:09:08 +0000
-Subject: [PATCH 2/3] docs(docs/agent): fix gh skill host ids and Learning
+Subject: [PATCH 2/4] docs(docs/agent): fix gh skill host ids and Learning
  Guide overlay-check shape
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
