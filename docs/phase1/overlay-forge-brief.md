@@ -18,6 +18,7 @@
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
 5. 登录 / 支付套件现在是 **`draft` + `reviewed_by: null`**。`overlay select --branch main` 的 selected=0，所以 **overlay-check 现在是绿的**。人没 arm 之前，I/O 不会进 CI。
 6. Agent **不得** 写 `reviewed_by`，**不得** 把 `status` 写成 `armed`。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
+7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 
 ---
 
@@ -384,6 +385,8 @@ ASCII：
 5. 黑盒不能 import `productStore` 去读 `passwordHash`、`stripeCancelIssued`、`graceEndsAt`、`stripeEvents[]`。
 
 **不要**为 PAY-01..07 再开一轮白盒 Stripe 内部战役。半锁的叶子写在 cases 里等人看，不要假装 HTTP 已经锁死。
+
+**Hop** 是链路里的一步，不是 Stripe 术语。支付主链是 `quote → checkout → Stripe → webhook → order.paid → entitlement → 进课`。当前 I/O 多半停在 quote / checkout / demo confirm。断网时用户 / 本站 / Stripe 怎么处理、成功状态怎么写入 store、其他页面怎么拉到新状态，见 [`payment-state-propagation.md`](./payment-state-propagation.md)。
 
 ---
 
