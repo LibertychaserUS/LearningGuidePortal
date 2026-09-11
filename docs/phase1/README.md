@@ -14,6 +14,7 @@
 | `backbone.md` | 第一条可运行产品切片和后续开发顺序 |
 | `ai-coding-prompt.md` | 分配给 AI coding tool 的任务格式和固定约束 |
 | `overlay-forge-brief.md` | 开发群总稿：Overlay / Forge 协作、UML DAG、AUTH-01..06 / PAY-01..10 缺陷 |
+| `git-collaboration-topology.md` | Oliver 预想协作 git 拓扑 vs 现状对照（不是流程变更，不是 PRD） |
 | `payment-state-propagation.md` | 支付 hop、断网三边处理、成功状态如何写入 store、其他页面如何拉到新状态 |
 | `Learning_Guide_Phase1_Production_GoLive_Developer_Plan_ZH_v6.docx` | 面向开发人员的完整中文实施计划和架构图 |
 | `architecture/Learning_Guide_Phase1_Production_Architecture_GPT_Image2.png` | 生产架构图源文件 |
