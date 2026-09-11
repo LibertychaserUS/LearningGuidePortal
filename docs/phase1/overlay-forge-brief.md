@@ -16,8 +16,8 @@
 2. **Overlay** 管需求叶子 → 可审用例 → CI 只跑人签过名的 `armed` 套件。
 3. Learning Guide 只接薄文件，**不 vendor** `overlay/` 或 `forge/`。
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
-5. 登录 / 支付套件仍是 **`draft` + `reviewed_by: null`**。`overlay select` 仍会丢掉它们。**overlay-check 不再靠这次 select 假装过关**：workflow 拉 `overlay-v1.0.0` 做 validate，然后跑 `.github/scripts/overlay-run-existing.py`。人没 arm 之前，那也不是 Overlay-armed。
-6. Agent **不得** 写 `reviewed_by`，**不得** 把 `status` 写成 `armed`。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
+5. overlay-check 是原生 `overlay validate` + `overlay run`。只跑 **`armed`**。`draft` / `blocked` 丢掉、不当红。login / payment / portal / my-learning 已 armed。不要再接 `overlay-run-existing.py` 硬跑。
+6. 套件要人审后才 `armed`。I/O harness 未就绪时 login / payment 必须保持 draft。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 
 ---
@@ -71,7 +71,7 @@ Overlay
 
 ## 3. 套件状态机
 
-人写 inbox → 编译成 draft 套件 → 人决定 blocked 或 armed。`overlay select` 仍丢掉 draft / blocked。**overlay-check 另外**在 workflow 里跑本 checkout 已有的 `product_command`；跑了 0 条必须失败。
+人写 inbox → 编译成 draft 套件 → 人决定 blocked 或 armed。原生 `overlay select` / `overlay run` 只执行 armed。draft / blocked 进 `never_red_statuses`：不跑、不当红。I/O harness 未就绪的套件必须停在 draft。不要硬跑。
 
 ```mermaid
 stateDiagram-v2
@@ -82,26 +82,26 @@ stateDiagram-v2
     blocked --> armed: 人解除阻塞并署名
     armed --> blocked: 人发现不能再跑
     armed --> CI: overlay select --branch main\n只留下 armed
-    draft --> CI: overlay-check 仍跑本仓 product_command
-    blocked --> CI: Overlay select 丢掉；workflow 不因此假绿
-    CI --> [*]: 跑了 0 条必须失败
+    draft --> drop: overlay select 丢掉\nnever_red
+    blocked --> drop: overlay select 丢掉\nnever_red
+    CI --> [*]: 只跑 armed 的 product_command
 ```
 
 ASCII：
 
 ```text
-[*] → inbox ──编译──► draft ──人审──► armed ──select──► CI run → receipt
+[*] → inbox ──编译──► draft ──人审──► armed ──select──► overlay run → receipt
                  │              ▲
                  └──blocked─────┘
                       │
-                      └──select 丢掉──► 不当 overlay-check 假绿
+                      └──select 丢掉──► never red
 
 规则
-  never_red = draft, blocked （只约束 overlay select）
-  Agent 可写 inbox / cases / trace / tests/io
-  Agent 不能填 reviewed_by，不能把 status 写成 armed
-  product_command 指向 tests/io/*.test.ts
-  overlay-check 跑本仓这条命令，不靠 select=0 过关
+  never_red = draft, blocked
+  I/O harness 就绪且测过优秀才能 armed
+  不要 overlay-run-existing.py
+  product_command 指向已审过的 tests/io 或 unit
+  overlay-check = overlay validate + overlay run
 ```
 
 ---

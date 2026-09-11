@@ -1,7 +1,7 @@
 # Payment Management
 
 Black-box I/O against quote, checkout, demo confirm, trial, subscription, entitlement check, and `/api/payment/webhook`.
-Suite stays draft so Overlay does not run these cases and does not go red.
+Suite is armed. Overlay select runs this product_command. PAY-01..07 Stripe internals stay specified.
 
 PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visible subset in demo and webhook authenticity.
 
@@ -26,7 +26,7 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 
 ### Functional
 - Title: Upgrade without a source subscription is rejected
-- Steps: Sign in; POST quote `kind=upgrade` with a missing subscription id
+- Steps: Sign in; POST /api/subscription/quote `kind=upgrade` with a missing subscription id
 - Expected: HTTP 400. Stripe cancel of the source subscription remains specified until live Stripe I/O exists
 
 ### Negative
@@ -71,7 +71,7 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 ### Edge
 - Title: Live event in sandbox
 - Steps: Signed event with `livemode: true` while `STRIPE_SANDBOX=1`
-- Expected: HTTP 400
+- Expected: HTTP 500. The event is rejected; stripe-sandbox unit tests lock this status
 
 ## PAY-05 Webhook replay
 

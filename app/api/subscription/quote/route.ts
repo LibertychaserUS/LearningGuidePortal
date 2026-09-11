@@ -1,4 +1,4 @@
-import { paymentFailure } from "@/services/paymentHttp";
+import { quoteFailure } from "@/services/paymentHttp";
 import { NextResponse } from "next/server";
 import { currentProductUser } from "@/services/productAuth";
 import { createQuote, createUpgradeQuote, getQuoteForUser } from "@/services/productStore";
@@ -22,6 +22,6 @@ export async function POST(request: Request) {
       : await createQuote(user.id, body.planId || "", body.kind === "trial" ? "trial" : "purchase");
     return NextResponse.json({ ok: true, quote: result.quote, plan: result.plan });
   } catch (error) {
-    return paymentFailure(error, user.locale);
+    return quoteFailure(error, user.locale);
   }
 }
