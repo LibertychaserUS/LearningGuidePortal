@@ -1,18 +1,22 @@
-# Local Overlay config. Pin is this repo SHA, not main/HEAD.
-# Adopter thin file only — do not vendor overlay/.
-# overlay-check is native overlay validate + overlay run (armed only).
+# Overlay 薄配置（接入方文件；不要 vendor overlay/）。
+# overlay-check 是原生 overlay validate + overlay run；select 按当前分支的策略选，
+# 状态读当前 checkout（active 跑，blocked 丢掉并打印 reason）。
 schema: overlay-config/v1
 product:
   repo: LibertychaserUS/LearningGuidePortal
   default_ref: d06d15abaaefd001141dbe6a739362f2aefca3b4
 branches:
+  dev:
+    run: [functional, regression]
   main:
+    run: [functional, regression]
+  # cursor/* 等功能分支：push 事件没有 base_ref，按 default 走 dev 的策略
+  default:
     run: [functional, regression]
 kinds:
   concurrency: later
   agent: later
 never_red_statuses:
-  - draft
   - blocked
 forbid_hosts:
   - ilovelearningguide.com
