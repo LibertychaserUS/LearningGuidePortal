@@ -19,6 +19,7 @@
 5. 登录 / 支付套件现在是 **`draft` + `reviewed_by: null`**。`overlay select --branch main` 的 selected=0，所以 **overlay-check 现在是绿的**。人没 arm 之前，I/O 不会进 CI。
 6. Agent **不得** 写 `reviewed_by`，**不得** 把 `status` 写成 `armed`。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
+8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → `submit`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply 或 arm。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
 
 ---
 
@@ -438,7 +439,7 @@ export PYTHONPATH=/tmp/AIOps
 | `.cursor/skills/<name>` | 同上（symlink） |
 | `.claude/skills/<name>` | 同上（symlink） |
 
-`name` = `use-forge` / `use-overlay` / `design-cases` / `dev-pr` / `manage-repo`。`use-forge` 只有开发六步；live `apply` 只在 `manage-repo`，且本仓现在不做。
+`name` = `use-forge` / `use-overlay` / `design-cases` / `dev-pr` / `manage-repo`。`use-forge` 只有开发六步；live `apply` 只在 `manage-repo`，且本仓现在不做。本仓已有 `forge.yaml`：问一次，同意后默认跑 `check` / `submit`。不要每次存盘再讲宪法。初始化同意 ≠ live-apply / arm。
 
 或从已发布 tag 装工作本 skill（`gh skill` **没有** `--agent copilot`）：
 

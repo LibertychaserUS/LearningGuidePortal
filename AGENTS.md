@@ -40,6 +40,8 @@ python3 -m forge check --root .
 
 需要 CPython 3.12+。`python -m forge` 子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce`（发布针上没有 `brief` / `credential` / `ops-chain` / `revoke`）。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check`（不要抄 workflow 名 `Verify`）。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。已有的 `overlay-check.yml`（reusable `uses:` + wrapper job）不要换成另一种形状。
 
+Forge 是开发完成后的 GitHub 落地（`check` → `submit`），不是测试工具，不改 Overlay / Verify。本仓已有 `forge.yaml`：问一次是否按 Forge 落地；同意后说「之后默认按 Forge 落地」，然后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply Ruleset 或 arm Overlay。若接入方还没有 Forge、且已有自己的落地方式，必须先对照新旧并等人明确同意，不能默默替换。
+
 ## 项目边界
 
 - 这是 Learning Guide Phase 1 生产网站，不是 KS 产品。
