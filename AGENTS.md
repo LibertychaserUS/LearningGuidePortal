@@ -7,6 +7,42 @@
 3. `docs/phase1/api-contracts.md`
 4. `docs/phase1/release-runbook.md`
 5. `DESIGN.md`
+6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`）。不要 pin `main`。不要 force-move `1.0.0`。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets。不要代签 `reviewed_by` / `armed`。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。
+
+本仓已有 native skills（不要 vendor 工具仓 Python）：`use-forge`（开发冷启动六步，无 live apply）、`use-overlay`、`design-cases`、`dev-pr`、`manage-repo`。标准路径：
+
+- `.agents/skills/`（Codex / 多 host 共用）
+- `.cursor/skills/`
+- `.claude/skills/`
+
+Canonical：`docs/phase1/skills/<name>/SKILL.md`。或从已发布 tag 装工作本（host id：`codex` / `cursor` / `claude-code` / `github-copilot`）：
+
+```text
+# overlay-v1.0.1 @ b4afc10a — verified 2026-09-11
+gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.1 --all
+gh skill install LibertychaserUS/AIOps use-forge --agent cursor --pin overlay-v1.0.1
+gh skill install LibertychaserUS/AIOps use-overlay --agent cursor --pin overlay-v1.0.1
+gh skill install LibertychaserUS/AIOps design-cases --agent cursor --pin overlay-v1.0.1
+gh skill install LibertychaserUS/AIOps dev-pr --agent cursor --pin overlay-v1.0.1
+gh skill install LibertychaserUS/AIOps manage-repo --agent cursor --pin overlay-v1.0.1
+gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
+```
+
+`overlay-v1.0.1` 上 `gh skill install --all`（含 `manage-repo` 已加引号的 frontmatter）已通过。本仓 `$use-forge` 是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。已发布针冷启动证据见 `docs/phase1/aiops-release/APPLY.md`。
+
+```text
+git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
+git -C /tmp/AIOps checkout overlay-v1.0.1
+python3 -m pip install -r /tmp/AIOps/requirements.txt
+export PYTHONPATH=/tmp/AIOps
+python3 -m overlay validate --root .
+python3 -m overlay cover --root .
+python3 -m forge check --root .
+```
+
+需要 CPython 3.12+。`python -m forge` 子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce` `release`。没有 `brief` / `credential` / `ops-chain` / `revoke`。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check`（不要抄 workflow 名 `Verify`）。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。已有的 `overlay-check.yml`（reusable `uses:` + wrapper job）不要换成另一种形状。
+
+Forge 是开发完成后的 GitHub 落地（`check` → `submit`），不是测试工具，不改 Overlay / Verify。本仓已有 `forge.yaml`：问一次是否按 Forge 落地；同意后说「之后默认按 Forge 落地」，然后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply Ruleset 或 arm Overlay。若接入方还没有 Forge、且已有自己的落地方式，必须先对照新旧并等人明确同意，不能默默替换。
 
 ## 项目边界
 
