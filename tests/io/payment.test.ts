@@ -16,7 +16,8 @@ import {
   isolate,
   jsonRequest,
   takeSetCookie,
-  uniqueEmail
+  uniqueEmail,
+  runProductLockWorker
 } from "./harness";
 
 const CONSENTS = { renewal: true, terms: true, refund: true };
@@ -160,6 +161,70 @@ test("PAY-01 negative: cancelling a demo trial never grants the course", async (
   assert.equal((await entitlementAllowed()).allowed, false);
 });
 
+test("PAY-01 depth: a second trial complete keeps the original three-day validTo", async () => {
+  await signIn("pay01-depth-window");
+  const started = await startTrial();
+  const first = await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: started.orderId,
+    action: "complete"
+  }));
+  assert.equal(first.status, 200);
+  const firstAccess = await entitlementAllowed();
+  const again = await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: started.orderId,
+    action: "complete"
+  }));
+  assert.equal(again.status, 200);
+  const secondAccess = await entitlementAllowed();
+  assert.equal(secondAccess.allowed, true);
+  assert.equal(secondAccess.source, "trial");
+  assert.equal(secondAccess.validTo, firstAccess.validTo);
+});
+
+test("PAY-01 depth: two trial checkouts on one quote reuse one pending order", async () => {
+  await signIn("pay01-depth-reuse");
+  const quoted = await quotePlan(COURSE_PLAN, { kind: "trial" });
+  const first = await callRoute(trial.POST, jsonRequest("POST", "http://localhost/api/trial", {
+    quoteId: quoted.quoteId,
+    locale: "en-GB",
+    consents: CONSENTS
+  }));
+  const second = await callRoute(trial.POST, jsonRequest("POST", "http://localhost/api/trial", {
+    quoteId: quoted.quoteId,
+    locale: "en-GB",
+    consents: CONSENTS
+  }));
+  const firstBody = await first.json();
+  const secondBody = await second.json();
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(firstBody.order.id, secondBody.order.id);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-01 depth: a completed trial checkout reuses the paid order instead of opening a second window", async () => {
+  await signIn("pay01-depth-used");
+  const started = await startTrial();
+  assert.equal((await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: started.orderId,
+    action: "complete"
+  }))).status, 200);
+  const firstAccess = await entitlementAllowed();
+  const quoted = await quotePlan(COURSE_PLAN, { kind: "trial" });
+  const again = await callRoute(trial.POST, jsonRequest("POST", "http://localhost/api/trial", {
+    quoteId: quoted.quoteId,
+    locale: "en-GB",
+    consents: CONSENTS
+  }));
+  const body = await again.json();
+  assert.equal(again.status, 200);
+  assert.equal(body.order.id, started.orderId);
+  assert.equal(body.order.status, "paid");
+  const secondAccess = await entitlementAllowed();
+  assert.equal(secondAccess.validTo, firstAccess.validTo);
+  assert.equal(secondAccess.source, "trial");
+});
+
 test("PAY-01 edge: trial quote amount is zero and the browser cannot raise it", async () => {
   await signIn("pay01-zero");
   const quoted = await quotePlan(COURSE_PLAN, { kind: "trial", amountMinor: 9900 });
@@ -182,6 +247,51 @@ test("PAY-02 negative: upgrade quote without a source subscription is 400", asyn
   const response = await callRoute(subscriptionQuote.POST, jsonRequest("POST", "http://localhost/api/subscription/quote", {
     kind: "upgrade",
     subscriptionId: "sub-missing"
+  }));
+  assert.equal(response.status, 400);
+});
+
+test("PAY-02 depth: upgrade quote for another user's subscription is 400", async () => {
+  await signIn("pay02-depth-owner");
+  await purchase(CATEGORY_PLAN);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const owner = (await listed.json()).subscriptions.find((item: { source?: string }) => item.source === "purchase");
+  assert.ok(owner?.id);
+  await signIn("pay02-depth-other");
+  const response = await callRoute(subscriptionQuote.POST, jsonRequest("POST", "http://localhost/api/subscription/quote", {
+    kind: "upgrade",
+    subscriptionId: owner.id
+  }));
+  assert.equal(response.status, 400);
+});
+
+test("PAY-02 depth: a course purchase cannot be used as an upgrade source", async () => {
+  await signIn("pay02-depth-course");
+  await purchase(COURSE_PLAN);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const current = (await listed.json()).subscriptions.find((item: { source?: string }) => item.source === "purchase");
+  assert.ok(current?.id);
+  const response = await callRoute(subscriptionQuote.POST, jsonRequest("POST", "http://localhost/api/subscription/quote", {
+    kind: "upgrade",
+    subscriptionId: current.id
+  }));
+  assert.equal(response.status, 400);
+});
+
+test("PAY-02 depth: a cancelled category subscription cannot be upgraded", async () => {
+  await signIn("pay02-depth-cancel");
+  await purchase(CATEGORY_PLAN);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const current = (await listed.json()).subscriptions.find((item: { source?: string }) => item.source === "purchase");
+  assert.ok(current?.id);
+  await subscription.POST(jsonRequest("POST", "http://localhost/api/subscription", {
+    subscriptionId: current.id,
+    action: "cancel",
+    reasonCode: "other"
+  }));
+  const response = await callRoute(subscriptionQuote.POST, jsonRequest("POST", "http://localhost/api/subscription/quote", {
+    kind: "upgrade",
+    subscriptionId: current.id
   }));
   assert.equal(response.status, 400);
 });
@@ -226,6 +336,59 @@ test("PAY-03 functional: the same quote reuses one pending order", async () => {
   const second = await checkoutQuote(quoted.quoteId as string);
   assert.equal(first.response.status, 200);
   assert.equal(second.response.status, 200);
+  assert.equal(first.orderId, second.orderId);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-03 depth: overlapping checkouts of one quote still share one order", async () => {
+  await signIn("pay03-depth-race");
+  const quoted = await quotePlan(COURSE_PLAN);
+  const quoteId = quoted.quoteId as string;
+  const [first, second] = await Promise.all([checkoutQuote(quoteId), checkoutQuote(quoteId)]);
+  assert.equal(first.response.status, 200);
+  assert.equal(second.response.status, 200);
+  assert.equal(first.orderId, second.orderId);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-03 depth: three overlapping checkouts of one quote still share one order", async () => {
+  await signIn("pay03-depth-triple");
+  const quoted = await quotePlan(COURSE_PLAN);
+  const quoteId = quoted.quoteId as string;
+  const [first, second, third] = await Promise.all([
+    checkoutQuote(quoteId),
+    checkoutQuote(quoteId),
+    checkoutQuote(quoteId)
+  ]);
+  assert.equal(first.orderId, second.orderId);
+  assert.equal(second.orderId, third.orderId);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-03 depth: checkout after demo complete still returns the same paid order", async () => {
+  await signIn("pay03-depth-paid");
+  const quoted = await quotePlan(COURSE_PLAN);
+  const pending = await checkoutQuote(quoted.quoteId as string);
+  assert.equal((await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: pending.orderId,
+    action: "complete"
+  }))).status, 200);
+  const again = await checkoutQuote(quoted.quoteId as string);
+  assert.equal(again.response.status, 200);
+  assert.equal(again.orderId, pending.orderId);
+  assert.equal(again.body.order.status, "paid");
+});
+
+test("PAY-03 depth: two processes checking out one quote share one order", async () => {
+  const email = await signIn("pay03-depth-workers");
+  const quoted = await quotePlan(COURSE_PLAN);
+  const quoteId = quoted.quoteId as string;
+  const [first, second] = await Promise.all([
+    runProductLockWorker({ action: "checkout", email, password: PASSWORD, quoteId }),
+    runProductLockWorker({ action: "checkout", email, password: PASSWORD, quoteId })
+  ]);
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
   assert.equal(first.orderId, second.orderId);
   assert.equal((await entitlementAllowed()).allowed, false);
 });
@@ -289,6 +452,84 @@ test("PAY-04 negative: a paid event without a server order does not grant access
   assert.equal((await entitlementAllowed()).allowed, false);
 });
 
+test("PAY-04 depth: unpaid then a later paid orphan still grants nothing", async () => {
+  enableStripeWebhook();
+  await signIn("pay04-depth-revive");
+  const unpaid = await webhook.POST(signedWebhook({
+    id: "evt_depth_unpaid",
+    object: "event",
+    livemode: false,
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_depth_unpaid",
+        payment_status: "unpaid",
+        metadata: { userId: "missing-user", quoteId: "missing-quote", planId: PLAN_ID }
+      }
+    }
+  }));
+  const paid = await webhook.POST(signedWebhook({
+    id: "evt_depth_paid_orphan",
+    object: "event",
+    livemode: false,
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_depth_paid",
+        payment_status: "paid",
+        amount_total: SERVER_AMOUNT_MINOR,
+        currency: "usd",
+        metadata: { userId: "missing-user", quoteId: "missing-quote", planId: PLAN_ID }
+      }
+    }
+  }));
+  assert.equal(unpaid.status, 200);
+  assert.equal(paid.status, 400);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-04 depth: invoice.paid without a server subscription grants nothing", async () => {
+  enableStripeWebhook();
+  await signIn("pay04-depth-invoice");
+  const response = await webhook.POST(signedWebhook({
+    id: "evt_pay04_invoice_orphan",
+    object: "event",
+    livemode: false,
+    type: "invoice.paid",
+    data: {
+      object: {
+        id: "in_pay04_orphan",
+        subscription: "sub_missing",
+        amount_paid: SERVER_AMOUNT_MINOR,
+        currency: "usd"
+      }
+    }
+  }));
+  assert.ok([400, 200, 500].includes(response.status));
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-04 depth: a refunded signed event does not grant access", async () => {
+  enableStripeWebhook();
+  await signIn("pay04-depth-refund");
+  const response = await webhook.POST(signedWebhook({
+    id: "evt_pay04_refunded",
+    object: "event",
+    livemode: false,
+    type: "charge.refunded",
+    data: {
+      object: {
+        id: "ch_pay04_refund",
+        paid: true,
+        refunded: true,
+        metadata: { userId: "missing-user", quoteId: "missing-quote", planId: PLAN_ID }
+      }
+    }
+  }));
+  assert.ok([200, 400, 500].includes(response.status));
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
 test("PAY-04 edge: a live event is rejected in sandbox", async () => {
   enableStripeWebhook();
   const response = await webhook.POST(signedWebhook({
@@ -346,6 +587,80 @@ test("PAY-05 edge: the same signed unknown event is ignored twice", async () => 
   assert.equal(second.status, 200);
   assert.equal((await first.json()).ignored, true);
   assert.equal((await second.json()).ignored, true);
+});
+
+test("PAY-05 depth: the same signed unpaid completion stays pending twice", async () => {
+  enableStripeWebhook();
+  await signIn("pay05-depth-replay");
+  const event = {
+    id: "evt_pay05_unpaid_same",
+    object: "event",
+    livemode: false,
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_pay05_unpaid",
+        payment_status: "unpaid",
+        metadata: { userId: "u", quoteId: "q", planId: PLAN_ID }
+      }
+    }
+  };
+  const first = await webhook.POST(signedWebhook(event));
+  const second = await webhook.POST(signedWebhook(event));
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal((await first.json()).pending, true);
+  assert.equal((await second.json()).pending, true);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-05 depth: completing a paid order three times still leaves one grant", async () => {
+  await signIn("pay05-depth-triple");
+  const bought = await purchase(PLAN_ID);
+  await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: bought.orderId,
+    action: "complete"
+  }));
+  await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: bought.orderId,
+    action: "complete"
+  }));
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const rows = ((await listed.json()).subscriptions as Array<{ planId?: string }>).filter((item) => item.planId === PLAN_ID);
+  assert.equal(rows.length, 1);
+  assert.equal((await entitlementAllowed()).allowed, true);
+});
+
+test("PAY-05 depth: a later paid event cannot reuse an ignored event id", async () => {
+  enableStripeWebhook();
+  await signIn("pay05-depth-claim");
+  const eventId = "evt_pay05_claimed";
+  const ignored = await webhook.POST(signedWebhook({
+    id: eventId,
+    object: "event",
+    livemode: false,
+    type: "ping",
+    data: { object: {} }
+  }));
+  const paid = await webhook.POST(signedWebhook({
+    id: eventId,
+    object: "event",
+    livemode: false,
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_pay05_claimed",
+        payment_status: "paid",
+        amount_total: SERVER_AMOUNT_MINOR,
+        currency: "usd",
+        metadata: { userId: "missing-user", quoteId: "missing-quote", planId: PLAN_ID }
+      }
+    }
+  }));
+  assert.equal(ignored.status, 200);
+  assert.equal((await ignored.json()).ignored, true);
+  assert.ok([200, 400].includes(paid.status));
+  assert.equal((await entitlementAllowed()).allowed, false);
 });
 
 test("PAY-05 extra: duplicate signed paid completion does not create a second grant", async () => {
@@ -421,6 +736,63 @@ test("PAY-06 negative: payment_failed for an unknown subscription grants nothing
   assert.equal((await entitlementAllowed()).allowed, false);
 });
 
+test("PAY-06 depth: payment_failed without a subscription field grants nothing", async () => {
+  enableStripeWebhook();
+  await signIn("pay06-depth-blank");
+  const response = await webhook.POST(signedWebhook({
+    id: "evt_pay06_blank",
+    object: "event",
+    livemode: false,
+    type: "invoice.payment_failed",
+    data: {
+      object: {
+        id: "in_pay06_blank"
+      }
+    }
+  }));
+  assert.ok([400, 200, 500].includes(response.status));
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-06 depth: invoice.paid for an unknown subscription grants nothing", async () => {
+  enableStripeWebhook();
+  await signIn("pay06-depth-paid");
+  const response = await webhook.POST(signedWebhook({
+    id: "evt_pay06_paid_unknown",
+    object: "event",
+    livemode: false,
+    type: "invoice.paid",
+    data: {
+      object: {
+        id: "in_pay06_unknown",
+        subscription: "sub_missing",
+        amount_paid: SERVER_AMOUNT_MINOR
+      }
+    }
+  }));
+  assert.ok([400, 200, 500].includes(response.status));
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-06 depth: customer.subscription.updated for an unknown id grants nothing", async () => {
+  enableStripeWebhook();
+  await signIn("pay06-depth-updated");
+  const response = await webhook.POST(signedWebhook({
+    id: "evt_pay06_updated",
+    object: "event",
+    livemode: false,
+    type: "customer.subscription.updated",
+    data: {
+      object: {
+        id: "sub_missing",
+        status: "active"
+      }
+    }
+  }));
+  assert.ok([400, 200, 500].includes(response.status));
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
 test("PAY-06 edge: an unknown event type is ignored", async () => {
   enableStripeWebhook();
   const response = await webhook.POST(signedWebhook({
@@ -468,6 +840,56 @@ test("PAY-07 negative: a paid purchase cannot be resumed", async () => {
   assert.match((await resumed.json()).error, /cannot be restored|cannot be resumed/i);
 });
 
+test("PAY-07 depth: cancelling a paid purchase twice still keeps access", async () => {
+  await signIn("pay07-depth-twice");
+  await purchase(COURSE_PLAN);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const current = (await listed.json()).subscriptions.find((item: { source?: string }) => item.source === "purchase");
+  assert.ok(current);
+  const first = await subscription.POST(jsonRequest("POST", "http://localhost/api/subscription", {
+    subscriptionId: current.id,
+    action: "cancel",
+    reasonCode: "other"
+  }));
+  const second = await subscription.POST(jsonRequest("POST", "http://localhost/api/subscription", {
+    subscriptionId: current.id,
+    action: "cancel",
+    reasonCode: "other"
+  }));
+  assert.equal(first.status, 200);
+  assert.ok([200, 400].includes(second.status));
+  assert.equal((await entitlementAllowed()).allowed, true);
+});
+
+test("PAY-07 depth: cancel at period end still rejects a same-plan quote", async () => {
+  await signIn("pay07-depth-requote");
+  await purchase(COURSE_PLAN);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const current = (await listed.json()).subscriptions.find((item: { source?: string }) => item.source === "purchase");
+  await subscription.POST(jsonRequest("POST", "http://localhost/api/subscription", {
+    subscriptionId: current.id,
+    action: "cancel",
+    reasonCode: "other"
+  }));
+  const quoted = await quotePlan(COURSE_PLAN);
+  assert.equal(quoted.response.status, 400);
+  assert.equal((await entitlementAllowed()).allowed, true);
+});
+
+test("PAY-07 depth: cancel at period end still allows a PC device check", async () => {
+  await signIn("pay07-depth-device");
+  await purchase(COURSE_PLAN);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const current = (await listed.json()).subscriptions.find((item: { source?: string }) => item.source === "purchase");
+  await subscription.POST(jsonRequest("POST", "http://localhost/api/subscription", {
+    subscriptionId: current.id,
+    action: "cancel",
+    reasonCode: "other"
+  }));
+  assert.equal((await entitlementAllowed("pc")).allowed, true);
+  assert.equal((await entitlementAllowed("mobile")).allowed, false);
+});
+
 test("PAY-07 edge: resume without a subscription id is 400", async () => {
   await signIn("pay07-missing");
   const response = await subscription.POST(jsonRequest("POST", "http://localhost/api/subscription", { action: "resume" }));
@@ -492,6 +914,36 @@ test("PAY-08 edge: the previous subscription row remains after an overlapping pu
   assert.ok(rows.some((item) => item.planId === CATEGORY_PLAN));
 });
 
+test("PAY-08 depth: an overlapping purchase does not expire the first subscription row", async () => {
+  await signIn("pay08-depth-keep");
+  await purchase(COURSE_PLAN);
+  await purchase(CATEGORY_PLAN);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const first = (await listed.json()).subscriptions.find((item: { planId?: string }) => item.planId === COURSE_PLAN);
+  assert.ok(first);
+  assert.notEqual(first.state, "expired");
+  assert.equal((await entitlementAllowed()).allowed, true);
+});
+
+test("PAY-08 depth: overlapping access still denies a mobile device check", async () => {
+  await signIn("pay08-depth-device");
+  await purchase(COURSE_PLAN);
+  await purchase(CATEGORY_PLAN);
+  assert.equal((await entitlementAllowed("pc")).allowed, true);
+  assert.equal((await entitlementAllowed("mobile")).allowed, false);
+});
+
+test("PAY-08 depth: a third covering purchase still allows the course", async () => {
+  await signIn("pay08-depth-third");
+  await purchase(COURSE_PLAN);
+  await purchase(CATEGORY_PLAN);
+  await purchase(PLAN_ID);
+  assert.equal((await entitlementAllowed()).allowed, true);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const rows = (await listed.json()).subscriptions as Array<{ planId?: string; state?: string }>;
+  assert.ok(rows.some((item) => item.planId === COURSE_PLAN && item.state !== "expired"));
+});
+
 test("PAY-08 negative: quote or checkout without a session is 401", async () => {
   clearCookies();
   assert.equal((await quote.POST(jsonRequest("POST", "http://localhost/api/purchase/quote", { planId: PLAN_ID }))).status, 401);
@@ -514,6 +966,36 @@ test("PAY-09 negative: the same plan cannot be quoted again while access is acti
   const quoted = await quotePlan(PLAN_ID);
   assert.equal(quoted.response.status, 400);
   assert.match(quoted.body.error, /already has active access/i);
+});
+
+test("PAY-09 depth: a client amount cannot reopen a quote while access is active", async () => {
+  await signIn("pay09-depth-price");
+  await purchase(PLAN_ID);
+  const quoted = await quotePlan(PLAN_ID, { amountMinor: 1 });
+  assert.equal(quoted.response.status, 400);
+  assert.notEqual(quoted.body.quote?.amountMinor, 1);
+});
+
+test("PAY-09 depth: Everything PC access does not allow a mobile device check", async () => {
+  await signIn("pay09-depth-everything");
+  await purchase(PLAN_ID);
+  assert.equal((await entitlementAllowed("pc")).allowed, true);
+  assert.equal((await entitlementAllowed("mobile")).allowed, false);
+});
+
+test("PAY-09 depth: an active purchase cannot start a trial for a covered course", async () => {
+  await signIn("pay09-depth-trial");
+  await purchase(PLAN_ID);
+  const quoted = await quotePlan(COURSE_PLAN, { kind: "trial" });
+  const response = await callRoute(trial.POST, jsonRequest("POST", "http://localhost/api/trial", {
+    quoteId: quoted.quoteId,
+    locale: "en-GB",
+    consents: CONSENTS
+  }));
+  assert.notEqual(response.status, 200);
+  const access = await entitlementAllowed();
+  assert.equal(access.allowed, true);
+  assert.notEqual(access.source, "trial");
 });
 
 test("PAY-09 edge: a signed-in user without purchase is not entitled", async () => {
@@ -555,6 +1037,62 @@ test("PAY-10 negative: a second complete after trial cancel does not revive acce
     action: "complete"
   }));
   assert.equal(again.status, 400);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-10 depth: completing after a demo trial cancel does not grant access", async () => {
+  await signIn("pay10-depth-order-cancel");
+  const started = await startTrial();
+  const cancelled = await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: started.orderId,
+    action: "cancel"
+  }));
+  assert.equal(cancelled.status, 200);
+  const again = await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: started.orderId,
+    action: "complete"
+  }));
+  assert.equal(again.status, 400);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-10 depth: two trial quotes still share one pending trial order", async () => {
+  await signIn("pay10-depth-two-quotes");
+  const first = await startTrial();
+  const second = await startTrial();
+  assert.equal(first.pending.status, 200);
+  assert.equal(second.pending.status, 200);
+  assert.equal(first.orderId, second.orderId);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-10 depth: a failed demo trial cannot be completed later", async () => {
+  await signIn("pay10-depth-failed");
+  const started = await startTrial();
+  const failed = await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: started.orderId,
+    action: "fail"
+  }));
+  assert.equal(failed.status, 200);
+  const again = await confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", {
+    orderId: started.orderId,
+    action: "complete"
+  }));
+  assert.equal(again.status, 400);
+  assert.equal((await entitlementAllowed()).allowed, false);
+});
+
+test("PAY-10 depth: two processes starting one trial quote share one order", async () => {
+  const email = await signIn("pay10-depth-workers");
+  const quoted = await quotePlan(COURSE_PLAN, { kind: "trial" });
+  const quoteId = quoted.quoteId as string;
+  const [first, second] = await Promise.all([
+    runProductLockWorker({ action: "trial", email, password: PASSWORD, quoteId }),
+    runProductLockWorker({ action: "trial", email, password: PASSWORD, quoteId })
+  ]);
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+  assert.equal(first.orderId, second.orderId);
   assert.equal((await entitlementAllowed()).allowed, false);
 });
 

@@ -17,6 +17,11 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Steps: Same checkout; POST confirm `cancel`
 - Expected: Order `canceled`; entitlement stays false; INV-unauth-no-grant for the unpaid path
 
+### Depth
+- Title: A second trial complete keeps the original three-day validTo
+- Steps: Complete a demo trial twice; GET entitlements
+- Expected: `validTo` does not move; still trial, not a longer purchase
+
 ### Edge
 - Title: Trial quote amount is zero
 - Steps: POST quote `kind=trial` with a client `amountMinor`
@@ -33,6 +38,11 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Title: Checkout without a session
 - Steps: POST checkout with no cookie
 - Expected: HTTP 401; INV-unauth-no-grant
+
+### Depth
+- Title: Upgrade quote for another user's subscription is 400
+- Steps: Buyer A completes a category plan; buyer B POSTs upgrade with A's subscription id
+- Expected: HTTP 400
 
 ### Edge
 - Title: Checkout without consents
@@ -54,6 +64,14 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Title: The same quote reuses one pending order
 - Steps: Quote; POST checkout twice with the same quote id
 - Expected: Same `order.id`; entitlement still false
+
+### Depth
+- Title: Overlapping checkouts of one quote still share one order
+- Steps: Two parallel POST checkout with the same quote id
+- Expected: Same `order.id`; entitlement still false. Same-process `editData` queues the writes.
+- Title: Two processes checking out one quote share one order
+- Steps: Two worker processes call createPendingDemoOrder on the same product.json
+- Expected: Same `order.id`. This is the file-lock proof, not the in-process queue.
 
 ### Negative
 - Title: Quote amount is server-owned
@@ -77,6 +95,11 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Steps: Signed paid completion whose metadata does not match a stored order
 - Expected: HTTP 400; entitlement stays false; INV-one-charge
 
+### Depth
+- Title: Unpaid then a later paid orphan still grants nothing
+- Steps: Signed unpaid completion; later signed paid completion whose metadata matches no order
+- Expected: Second call HTTP 400; entitlement stays false
+
 ### Edge
 - Title: Live event in sandbox
 - Steps: Signed event with `livemode: true` while `STRIPE_SANDBOX=1`
@@ -90,9 +113,17 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Expected: Still allowed once; INV-one-charge. Table UNIQUE on stripe_events remains specified
 
 ### Negative
-- Title: Webhook without a secret is 503
-- Steps: POST webhook with no `Stripe-Signature` after deleting `STRIPE_WEBHOOK_SECRET`
+- Title: Missing STRIPE_WEBHOOK_SECRET
+- Steps: POST webhook with `STRIPE_WEBHOOK_SECRET` unset
 - Expected: HTTP 503
+- Title: Secret present, no stripe-signature
+- Steps: Set `STRIPE_WEBHOOK_SECRET`; POST webhook with no `stripe-signature` header
+- Expected: HTTP 400
+
+### Depth
+- Title: The same signed unpaid completion stays pending twice
+- Steps: POST the same unpaid `checkout.session.completed` event id twice
+- Expected: Both HTTP 200 `pending`; entitlement false
 
 ### Edge
 - Title: Same signed unknown event twice
@@ -100,9 +131,6 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Expected: Both HTTP 200 `ignored`
 
 ### Extra
-- Title: Webhook without a signature is 400
-- Steps: `enableStripeWebhook()`; POST webhook with no `stripe-signature` header
-- Expected: HTTP 400
 
 - Title: Duplicate signed paid completion does not create a second grant
 - Steps: Demo purchase; signed `ping` twice; signed paid `checkout.session.completed` twice with the same event id
@@ -118,7 +146,12 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 ### Negative
 - Title: payment_failed for an unknown subscription
 - Steps: Signed `invoice.payment_failed` for a missing subscription
-- Expected: HTTP 500; no entitlement grant
+- Expected: HTTP 500; entitlement stays false. The webhook cannot reconcile an unknown Stripe subscription in the I/O harness. Do not treat 200 or 400 as pass. Grace = original expiry + 3 days remains specified.
+
+### Depth
+- Title: payment_failed without a subscription field grants nothing
+- Steps: Signed `invoice.payment_failed` with no subscription
+- Expected: No entitlement grant
 
 ### Edge
 - Title: Unknown event type
@@ -137,6 +170,11 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Steps: Cancel; POST `resume`
 - Expected: HTTP 400; cannot be restored
 
+### Depth
+- Title: Cancelling a paid purchase twice still keeps access
+- Steps: Complete a demo purchase; POST cancel twice; GET entitlements
+- Expected: Entitlement stays true until the period ends
+
 ### Edge
 - Title: Resume without a subscription id
 - Steps: POST /api/subscription `{ action: "resume" }`
@@ -148,6 +186,11 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Title: Overlapping purchase still allows the course
 - Steps: Complete a course plan; complete a covering category plan; GET entitlements
 - Expected: `allowed` is true
+
+### Depth
+- Title: An overlapping purchase does not expire the first subscription row
+- Steps: Complete a course plan; complete a covering category plan; GET /api/subscription
+- Expected: First plan row is still listed and not `expired`; course check stays allowed
 
 ### Negative
 - Title: Quote or checkout without a session
@@ -171,6 +214,11 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Steps: Complete a plan; POST quote for the same plan
 - Expected: HTTP 400; already has active access; INV-browser-not-price for client amount on a fresh quote
 
+### Depth
+- Title: A client amount cannot reopen a quote while access is active
+- Steps: Complete a plan; POST quote for the same plan with `amountMinor: 1`
+- Expected: HTTP 400; client amount is ignored
+
 ### Edge
 - Title: Signed-in without purchase is not entitled
 - Steps: Register; GET entitlements
@@ -188,7 +236,31 @@ PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visib
 - Steps: Complete trial; POST subscription cancel; POST confirm `complete` again
 - Expected: Confirm 400; entitlement stays false; INV-one-charge
 
+### Depth
+- Title: Completing after a demo trial cancel does not grant access
+- Steps: POST trial; POST confirm `cancel`; POST confirm `complete`
+- Expected: Confirm 400; entitlement stays false
+
+- Title: Two processes starting one trial quote share one order
+- Steps: Two worker processes call createPendingDemoTrialOrderFromQuote on the same product.json
+- Expected: Same `order.id`
+
 ### Edge
 - Title: Trial checkout without consents
 - Steps: POST /api/trial without consents
 - Expected: HTTP 400
+
+## Specified / not tested now
+
+No live Stripe in this suite. Do not treat demo `order.id` reuse or webhook fixtures as these proofs:
+
+1. PAY-01 true `$0 invoice.paid` on a trialing Stripe subscription
+2. PAY-02 Stripe cancel of the source subscription
+3. PAY-03 a second Stripe Checkout Session (`sessions.create`)
+4. PAY-04 operator refund then later `invoice.paid` revive
+5. PAY-05 table UNIQUE on `stripe_events`
+6. PAY-06 grace = original `validTo` + 3 days
+7. PAY-07 `invoice.paid` clearing `cancel_at_period_end`
+8. PAY-08 Stripe resync `filter()` deleting the previous entitlement row
+
+AUTH-04 Google signup promotion stays specified until a real OAuth path exists.
