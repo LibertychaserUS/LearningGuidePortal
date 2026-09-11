@@ -1103,3 +1103,85 @@ test("PAY-10 edge: trial checkout without consents is 400", async () => {
   const response = await trial.POST(jsonRequest("POST", "http://localhost/api/trial", { quoteId, locale: "en-GB" }));
   assert.equal(response.status, 400);
 });
+
+const UNAUTH_SHAPE = { ok: false, error: "Sign in is required." };
+
+test("HTTP unauth: quote, checkout, entitlements and subscription return 401 with a stable JSON shape", async () => {
+  clearCookies();
+  const quoted = await quote.POST(jsonRequest("POST", "http://localhost/api/purchase/quote", { planId: PLAN_ID }));
+  const checkoutResponse = await checkout.POST(jsonRequest("POST", "http://localhost/api/purchase/checkout", {
+    quoteId: "quote-missing",
+    consents: CONSENTS
+  }));
+  const check = await entitlements.GET(jsonRequest("GET", `http://localhost/api/entitlements/check?courseId=${COURSE_ID}`));
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  assert.equal(quoted.status, 401);
+  assert.deepEqual(await quoted.json(), UNAUTH_SHAPE);
+  assert.equal(checkoutResponse.status, 401);
+  assert.deepEqual(await checkoutResponse.json(), UNAUTH_SHAPE);
+  assert.equal(check.status, 401);
+  assert.deepEqual(await check.json(), UNAUTH_SHAPE);
+  assert.equal(listed.status, 401);
+  assert.deepEqual(await listed.json(), UNAUTH_SHAPE);
+});
+
+test("PAY-05 extra: unsigned and junk-signature webhooks are 400 and grant nothing", async () => {
+  enableStripeWebhook();
+  await signIn("pay-webhook-unsigned");
+  const unsigned = await webhook.POST(new Request("http://localhost/api/payment/webhook", {
+    method: "POST",
+    body: JSON.stringify({ id: "evt_unsigned_write", type: "checkout.session.completed", data: { object: { payment_status: "paid" } } })
+  }));
+  const junk = await webhook.POST(new Request("http://localhost/api/payment/webhook", {
+    method: "POST",
+    headers: { "stripe-signature": "t=1,v1=deadbeef" },
+    body: JSON.stringify({ id: "evt_junk_write", type: "invoice.paid", data: { object: { subscription: "sub_x" } } })
+  }));
+  assert.equal(unsigned.status, 400);
+  assert.equal(junk.status, 400);
+  assert.equal((await entitlementAllowed()).allowed, false);
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  assert.equal(listed.status, 200);
+  assert.equal(((await listed.json()).subscriptions as unknown[]).length, 0);
+});
+
+test("PAY-05 extra: replaying a signed ping after a purchase leaves entitlement unchanged", async () => {
+  enableStripeWebhook();
+  await signIn("pay-webhook-replay");
+  await purchase(COURSE_PLAN);
+  const listedBefore = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const countBefore = ((await listedBefore.json()).subscriptions as unknown[]).length;
+  const event = {
+    id: "evt_pay05_replay_after_grant",
+    object: "event",
+    livemode: false,
+    type: "ping",
+    data: { object: {} }
+  };
+  const first = await webhook.POST(signedWebhook(event));
+  const second = await webhook.POST(signedWebhook(event));
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal((await first.json()).ignored, true);
+  assert.equal((await second.json()).ignored, true);
+  assert.equal((await entitlementAllowed()).allowed, true);
+  const listedAfter = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  assert.equal(((await listedAfter.json()).subscriptions as unknown[]).length, countBefore);
+});
+
+test("PAY-05 extra: concurrent demo complete of one order still grants once", async () => {
+  await signIn("pay-double-complete");
+  const quoted = await quotePlan(COURSE_PLAN);
+  const pending = await checkoutQuote(quoted.quoteId as string);
+  const body = { orderId: pending.orderId, action: "complete" };
+  const [first, second] = await Promise.all([
+    confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", body)),
+    confirm.POST(jsonRequest("POST", "http://localhost/api/purchase/demo/confirm", body))
+  ]);
+  assert.equal(first.status, 200);
+  assert.ok([200, 400].includes(second.status));
+  const listed = await subscription.GET(jsonRequest("GET", "http://localhost/api/subscription"));
+  const rows = ((await listed.json()).subscriptions as Array<{ planId?: string }>).filter((item) => item.planId === COURSE_PLAN);
+  assert.equal(rows.length, 1);
+  assert.equal((await entitlementAllowed()).allowed, true);
+});
