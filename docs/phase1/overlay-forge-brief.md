@@ -16,7 +16,7 @@
 2. **Overlay** 管需求叶子 → 可审用例 → CI 只跑人签过名的 `armed` 套件。
 3. Learning Guide 只接薄文件，**不 vendor** `overlay/` 或 `forge/`。
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
-5. 登录 / 支付套件现在是 **`draft` + `reviewed_by: null`**。`overlay select --branch main` 的 selected=0，所以 **overlay-check 现在是绿的**。人没 arm 之前，I/O 不会进 CI。
+5. 登录 / 支付套件仍是 **`draft` + `reviewed_by: null`**。`overlay select` 仍会丢掉它们。**overlay-check 不再靠这次 select 假装过关**：workflow 在 runner 里拉 `overlay-v1.0.0`，校验现有目录，然后执行本 checkout 上已经存在的 `product_command`。人没 arm 之前，那也不是 Overlay-armed。
 6. Agent **不得** 写 `reviewed_by`，**不得** 把 `status` 写成 `armed`。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 
@@ -65,13 +65,13 @@ Overlay
 - `inbox/*`
 - `suites/*`
 - `invariants.yaml`
-- `.github/workflows/overlay-check.yml`（薄 `uses:`，wrapper 职务名必须叫 `overlay-check`）
+- `.github/workflows/overlay-check.yml`（职务名必须叫 `overlay-check`；workflow 内 checkout `overlay-v1.0.0`，不 vendor `overlay/`）
 
 ---
 
 ## 3. 套件状态机
 
-人写 inbox → 编译成 draft 套件 → 人决定 blocked 或 armed → CI 只跑 armed。draft / blocked 进 select 会被丢掉，check 仍绿。
+人写 inbox → 编译成 draft 套件 → 人决定 blocked 或 armed。`overlay select` 仍丢掉 draft / blocked。**overlay-check 另外**在 workflow 里跑本 checkout 已有的 `product_command`；跑了 0 条必须失败。
 
 ```mermaid
 stateDiagram-v2
@@ -108,12 +108,12 @@ ASCII：
 
 ## 4. 产品仓 CI DAG
 
-push / PR 同时走两条线：左边 Verify 不改用途；右边 overlay-check 薄调用工具仓。deploy 不自动。
+push / PR 同时走两条线：左边 Verify 不改用途；右边 overlay-check 在 runner 里拉 `overlay-v1.0.0`，不把工具仓拷进产品树。deploy 不自动。
 
 ```mermaid
 flowchart TD
     push["push / pull_request"] --> verify["Verify  ci.yml"]
-    push --> overlayCall["overlay.yml@overlay-v1.0.0"]
+    push --> overlayJob["overlay-check.yml"]
 
     subgraph verifyJobs["Verify 不改用途"]
         tc["Typecheck"] --> lint["Lint"]
@@ -121,16 +121,15 @@ flowchart TD
         build --> testci["test:ci = tsc + unit + Playwright auth"]
     end
 
-    subgraph overlayJobs["overlay-check.yml 薄调用"]
-        overlayCall --> v["overlay validate"]
-        v --> s["overlay select --branch main"]
-        s --> drop["draft / blocked 丢掉"]
-        drop --> wrap["wrapper 职务名 overlay-check"]
-        s -.->|"以后人 arm"| run["overlay run\nproduct_command = test:io"]
+    subgraph overlayJobs["overlay-check 不 vendor Overlay"]
+        overlayJob --> checkoutTool["checkout AIOps@overlay-v1.0.0 → _aiops"]
+        checkoutTool --> v["overlay validate"]
+        v --> s["overlay select 仅作记录"]
+        v --> runExisting["跑本 checkout 已有的 product_command"]
     end
 
     verify --> gate["required_checks\nTypecheck / Lint / Build and test / overlay-check"]
-    wrap --> gate
+    runExisting --> gate
 
     deploy["apprunner-deploy.yml"] -.->|"workflow_dispatch only\n且仅 First-Light-TechHK 仓"| prod["App Runner"]
     push -.->|"不自动"| deploy
@@ -143,15 +142,15 @@ ASCII：
                      /              \
                     /                \
             Verify ci.yml          overlay-check.yml
-            Typecheck                 uses AIOps overlay.yml@overlay-v1.0.0
+            Typecheck              checkout AIOps@overlay-v1.0.0 → _aiops
                ↓                      validate
              Lint                        ↓
-               ↓                   select --branch main
-        Build and test              draft/blocked 丢掉
+               ↓                   跑本 checkout 已有的 product_command
+        Build and test              （select 只记录；draft 不是 armed）
                ↓                         ↓
-     test:ci = tsc+unit          wrapper 名 overlay-check
+     test:ci = tsc+unit          职务名 overlay-check
      + Playwright auth                   │
-                    \                    │  （人 arm 之后才 run test:io）
+                    \                    │
                      \                   │
                       → required_checks ←
                         Typecheck / Lint / Build and test / overlay-check
@@ -167,7 +166,7 @@ apprunner-deploy.yml ──不自动──► App Runner
 - 不要自动 App Runner。
 - 不要打 `ilovelearningguide.com`。
 
-`overlay-check.yml` 里 `branch: main` 是故意的：`cursor/*` PR 也按 **main 上已 armed 的集合** 选套件，不会因为 PR 分支上有 draft 就红。
+`overlay select --branch main` 仍只选 armed，只作记录。workflow 跑的是**当前 checkout 上已经存在的** `product_command` 文件；缺文件就跳过。跑了 0 条必须失败。
 
 ---
 
@@ -239,7 +238,7 @@ ASCII：
 | `inbox/portal.md` `inbox/my-learning.md` | 已有叶子，套件同样 draft |
 | `suites/login` `suites/payment` | `status: draft`，`reviewed_by: null`；`product_command` → `tests/io/login.test.ts` / `payment.test.ts` |
 | `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10） |
-| `.github/workflows/overlay-check.yml` | `uses: LibertychaserUS/AIOps/.github/workflows/overlay.yml@overlay-v1.0.0`，`branch: main`，`enable_run: true` |
+| `.github/workflows/overlay-check.yml` | runner checkout `LibertychaserUS/AIOps@overlay-v1.0.0` → `_aiops`，validate 后跑已有 `product_command`。不 vendor `overlay/` |
 | `tests/io/*` | 49 条黑盒，本地 `npm run test:io` 绿。**不在** `test:ci` 里 |
 
 发布针：`overlay-v1.0.0` / `forge-v1.0.0` = `235e514…`。不要 pin `AIOps` 的 `main`。

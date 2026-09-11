@@ -1,5 +1,7 @@
 # Local Overlay config. Pin is this repo SHA, not main/HEAD.
 # Adopter thin file only — do not vendor overlay/.
+# overlay-check checks out overlay-v1.0.0 in the runner and runs suite
+# product_command when those files exist. That is not Overlay-armed.
 schema: overlay-config/v1
 product:
   repo: LibertychaserUS/LearningGuidePortal
