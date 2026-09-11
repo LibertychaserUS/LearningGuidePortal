@@ -11,7 +11,7 @@ metadata:
 
 # Dev PR (Learning Guide)
 
-You write product code and draft Overlay files. You do **not** manage merge gates. Pin `/tmp/AIOps` at `overlay-v1.0.0`. SOP: [`../use-forge/SKILL.md`](../use-forge/SKILL.md), [`../use-overlay/SKILL.md`](../use-overlay/SKILL.md).
+You write product code and draft Overlay files. You do **not** manage merge gates. Pin `/tmp/AIOps` at `overlay-v1.0.1`. SOP: [`../use-forge/SKILL.md`](../use-forge/SKILL.md), [`../use-overlay/SKILL.md`](../use-overlay/SKILL.md).
 
 ## Instructions
 
@@ -30,7 +30,7 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 ## Never
 
 - Do not vendor the tool.
-- Do not pin `main` or missing `v1.0.1`.
+- Do not pin `main`. Do not force-move `1.0.0`.
 - Do not self-merge or self-approve.
 - Do not hit `ilovelearningguide.com`.
 - Do not invent `python -m forge brief|credential|ops-chain|revoke`.

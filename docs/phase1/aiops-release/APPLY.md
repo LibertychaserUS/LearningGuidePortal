@@ -1,5 +1,21 @@
 # Apply the AIOps docs/skills pin
 
+**Published 1.0.1 (2026-09-11).** Official pin is **`overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`**. Docs-pin is on AIOps `main` (includes `878a690`). Annotated tags pushed over SSH. Do not force-move `1.0.0` (`235e514e673fa68b24879c8e139f2a5c6633ebb5`). Do not pin `main`.
+
+```text
+git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
+git -C /tmp/AIOps checkout overlay-v1.0.1
+python3 -m pip install -r /tmp/AIOps/requirements.txt
+export PYTHONPATH=/tmp/AIOps
+gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.1 --all
+```
+
+`gh skill` host ids: `codex` / `cursor` / `claude-code` / `github-copilot`. `--all` on this pin includes `manage-repo` (quoted frontmatter).
+
+---
+
+## Historical: land the docs-pin (already on main)
+
 **One command**, as you (Oliver Zhang / `LibertychaserUS`) with `contents:write` on `LibertychaserUS/AIOps` — not `cursor[bot]`. From this Learning Guide checkout (PR #6 / `cursor/forge-agent-entry-2e0c`):
 
 ```text
@@ -42,11 +58,11 @@ bash docs/phase1/aiops-release/land-docs-pin.sh --push
 
 **Path B（给下一只 Cloud Agent）：** [Environment](https://cursor.com/dashboard/cloud-agents/environments/e/bba32537-ad04-11f1-bf4b-42ffb4d10ea7) → 挂上 `LibertychaserUS/AIOps` → Cursor GitHub App 对该仓 `contents:write` → **Save** → 开一只 **新** Cloud Agent。Save 救不了当前这只。
 
-不要让 agent pin 还不存在的 `v1.0.1` 或 `main`。
+不要让 agent pin `main`。不要 force-move `1.0.0`。
 
 ---
 
-Until that draft is on AIOps `main`, every other agent checkouts the **existing** pin `overlay-v1.0.0` (same SHA as `forge-v1.0.0`). Ignore `main` README if it still says `v1.0.1`. Do not invent a second official pin on Learning Guide.
+Official pin is now **`overlay-v1.0.1`**. Do not invent a second official pin on Learning Guide.
 
 Forge stays full-stack **post-dev** GitHub landing (`check` → `submit`). First run: contrast the existing landing path and wait for an explicit yes. After one yes: default-run. Do not rewrite Overlay or Verify.
 
@@ -58,27 +74,27 @@ Forge stays full-stack **post-dev** GitHub landing (`check` → `submit`). First
 python3 -m forge sop-lock --root .
 ```
 
-Then, and only then, optional publish:
+`1.0.1` is already published. Next semver (never force-move an existing tag):
 
 ```text
-python3 -m forge release --repo LibertychaserUS/AIOps --version 1.0.1 --dry-run
-python3 -m forge release --repo LibertychaserUS/AIOps --version 1.0.1
+python3 -m forge release --repo LibertychaserUS/AIOps --version X.Y.Z --dry-run
+python3 -m forge release --repo LibertychaserUS/AIOps --version X.Y.Z
 ```
 
-Publishing `1.0.1` from **today’s** `main` (no docs-pin) would make the missing tag exist while shipping old `use-forge` (apply in install steps), no zh-CN, and a `manage-repo` description that breaks `gh skill install --all`.
+`cursor[bot]` cannot POST GitHub Releases (403). Deploy-key SSH can push annotated tags.
 
-## Other agents until AIOps GitHub is updated
+## Other agents (published 1.0.1)
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
-git -C /tmp/AIOps checkout overlay-v1.0.0
+git -C /tmp/AIOps checkout overlay-v1.0.1
 python3 -m pip install -r /tmp/AIOps/requirements.txt
 export PYTHONPATH=/tmp/AIOps
-gh skill install LibertychaserUS/AIOps --agent {codex|cursor|claude-code} --pin overlay-v1.0.0 --all
+gh skill install LibertychaserUS/AIOps --agent {codex|cursor|claude-code} --pin overlay-v1.0.1 --all
 gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 ```
 
-On `overlay-v1.0.0`, `manage-repo` fails `--all` (unquoted `Ops only:`). Follow this repo’s six-step `$use-forge`. `gh skill` host ids are `codex` / `cursor` / `claude-code` (also `github-copilot`). There is **no** `--agent copilot`.
+On `overlay-v1.0.1`, `manage-repo` frontmatter is quoted; `--all` succeeds. Follow this repo’s six-step `$use-forge`. `gh skill` host ids are `codex` / `cursor` / `claude-code` / `github-copilot`.
 
 ---
 
@@ -98,23 +114,22 @@ Title: `docs(docs/agent): pin published v1.0.0 and add zh-CN README`. Body: the 
 
 ---
 
-## Published-pin cold start (2026-09-11)
+## Published-pin cold start (2026-09-11, 1.0.1)
 
-Official pin is still **`overlay-v1.0.0` / `forge-v1.0.0` @ `235e514e673fa68b24879c8e139f2a5c6633ebb5`**. `git ls-remote --tags` shows only those two tags. There are **no** `v1.0.1` tags. Do not pin `main`. AIOps `main` README still tells agents to checkout `overlay-v1.0.1` and uses `--agent copilot`.
+Official pin is **`overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`**. Older pin `overlay-v1.0.0` / `forge-v1.0.0` stays at `235e514e673fa68b24879c8e139f2a5c6633ebb5` (do not force-move). Do not pin `main`.
 
 Fresh clone (not a floating `/tmp/AIOps` checkout of `main`):
 
 ```text
-git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps-pin-v1.0.0
-git -C /tmp/AIOps-pin-v1.0.0 checkout overlay-v1.0.0
-# HEAD 235e514e673fa68b24879c8e139f2a5c6633ebb5 (also forge-v1.0.0)
-# overlay-v1.0.1 → unknown revision
+git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps-pin-v1.0.1
+git -C /tmp/AIOps-pin-v1.0.1 checkout overlay-v1.0.1
+# HEAD b4afc10ae0be4725e5109030f14a05bb2291fe4a (also forge-v1.0.1)
 python3 --version   # Python 3.12.3
-python3 -m pip install -r /tmp/AIOps-pin-v1.0.0/requirements.txt
-export PYTHONPATH=/tmp/AIOps-pin-v1.0.0
+python3 -m pip install -r /tmp/AIOps-pin-v1.0.1/requirements.txt
+export PYTHONPATH=/tmp/AIOps-pin-v1.0.1
 ```
 
-Results against this Learning Guide tree (committed suites only: login / payment / my-learning / portal — all `### Functional` / `### Negative` / `### Edge`. Do not treat leftover `/tmp` workshop fixtures or any `## Specified` draft as product truth):
+Results against this Learning Guide tree (committed suites only: login / payment / my-learning / portal — all `### Functional` / `### Negative` / `### Edge`):
 
 ```text
 python3 -m overlay validate --root .     # ok (4 inbox, 4 suite)
@@ -123,27 +138,17 @@ python3 -m overlay select --branch main --root .
 # dropped 4 drafts (never_red_statuses); selected=0
 python3 -m forge check --root .          # ok
 python3 -m forge --help
-# apply status check submit pr-title|title sop-lock ci-select ops-review bounce
-# no brief / credential / ops-chain / revoke; no release on this pin
+# apply status check submit pr-title|title sop-lock ci-select ops-review bounce release
+# no brief / credential / ops-chain / revoke
 ```
 
-Skill paths on the **tag**: `skills/{design-cases,dev-pr,manage-repo,use-forge,use-overlay}` and `.agents/skills/*` symlinks. **No** `.cursor/skills` or `.claude/skills` on `overlay-v1.0.0`.
-
-`gh skill` host ids (this CLI): `cursor` / `codex` / `claude-code` / `github-copilot`. `--agent copilot` is invalid. Default non-interactive agent is `github-copilot`.
+Skill paths on the **tag**: `skills/{design-cases,dev-pr,manage-repo,use-forge,use-overlay}` plus `.agents/skills` / `.cursor/skills` / `.claude/skills` symlinks.
 
 ```text
-gh skill install LibertychaserUS/AIOps --agent copilot --pin overlay-v1.0.0 --all
-# invalid argument "copilot" for "--agent"
-
-gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.0 --all --dir /tmp/gh-skill-pin-v1.0.0
-# Using ref overlay-v1.0.0 (235e514e)
-# installed design-cases / dev-pr / use-forge / use-overlay
-# failed to install skill "manage-repo": invalid frontmatter YAML
-#   yaml: line 2: mapping values are not allowed in this context
-# exit 1
-
-# same PARSE_FAIL on PyYAML: unquoted `Ops only:` in skills/manage-repo/SKILL.md
-# use-forge alone: ok (old install steps still list apply — use this repo’s six-step $use-forge)
+gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.1 --all --dir /tmp/gh-skill-pin-v1.0.1
+# Using ref overlay-v1.0.1 (b4afc10a)
+# installed design-cases / dev-pr / manage-repo / use-forge / use-overlay
+# exit 0
 ```
 
-That `manage-repo` break is why **1.0.1 must not ship** until the docs-pin is on AIOps `main`. Publishing 1.0.1 from today’s `main` would create the missing tag while still teaching `v1.0.1` / `--agent copilot` and shipping the broken frontmatter. Never force-move `1.0.0`.
+Never force-move `1.0.0`. GitHub Releases API as `cursor[bot]` is 403; product tags were pushed over SSH.

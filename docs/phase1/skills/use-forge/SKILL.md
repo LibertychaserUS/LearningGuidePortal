@@ -1,7 +1,7 @@
 ---
 name: use-forge
 description: >-
-  Learning Guide developer cold start for Forge — pin published overlay-v1.0.0,
+  Learning Guide developer cold start for Forge — pin published overlay-v1.0.1,
   pip install, PYTHONPATH, python -m forge check, then draft PR. Live apply and
   Rulesets belong to manage-repo. Do not use for Overlay inbox or suites
   (use use-overlay). Do not auto-merge. Do not submit when local check is red.
@@ -16,7 +16,7 @@ Forge is the developer gate: local `check`, then optional `submit` (draft PR). I
 
 **This product repo already has** `forge.yaml`. Do not vendor `forge/` or `overlay/`. Do not live-apply Rulesets. Token details: in the tool checkout, `docs/submit-credential.md`.
 
-Pin **published** tags only: `overlay-v1.0.0` / `forge-v1.0.0` (same SHA `235e514e673fa68b24879c8e139f2a5c6633ebb5`). Do not pin `main`. Do not checkout `v1.0.1` — those tags are **not** on GitHub. AIOps `main` README may still say 1.0.1; ignore it until a human publishes.
+Pin **published** tags only: `overlay-v1.0.1` / `forge-v1.0.1` (same SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`). Do not pin `main`. Do not force-move `1.0.0`.
 
 Entry: [`../../../AGENTS.md`](../../../AGENTS.md) item 6 and [`../overlay-forge-brief.md`](../overlay-forge-brief.md) §11.
 
@@ -24,9 +24,9 @@ Entry: [`../../../AGENTS.md`](../../../AGENTS.md) item 6 and [`../overlay-forge-
 
 `python -m forge --help` on the published pin:
 
-`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce`
+`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce` `release`
 
-(`release` exists on unreleased `main` only.) There is **no** `brief`, `credential`, `ops-chain`, or `revoke`.
+There is **no** `brief`, `credential`, `ops-chain`, or `revoke`.
 
 | Action | Agent | Human / Ops |
 |---|---|---|
@@ -43,10 +43,10 @@ Six cold-start steps. Live apply is **not** in this list.
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
-git -C /tmp/AIOps checkout overlay-v1.0.0
+git -C /tmp/AIOps checkout overlay-v1.0.1
 ```
 
-Need CPython **3.12+**. `forge-v1.0.0` is the same commit.
+Need CPython **3.12+**. `forge-v1.0.1` is the same commit.
 
 ### 2. Install Python deps
 
@@ -85,7 +85,7 @@ Hold `FORGE_SUBMIT_TOKEN` (see tool-repo `docs/submit-credential.md`). Then [`..
 ## Never
 
 - Do not vendor `forge/` / `overlay/` / `schema/` / `prompts/`.
-- Do not pin `main`. Do not checkout missing `v1.0.1`.
+- Do not pin `main`. Do not force-move `1.0.0`.
 - Do not live-apply Forge to LearningGuidePortal.
 - Do not change Verify. Do not add `test:io` to `test:ci`.
 - Do not hit `ilovelearningguide.com`.
@@ -98,7 +98,7 @@ Hold `FORGE_SUBMIT_TOKEN` (see tool-repo `docs/submit-credential.md`). Then [`..
 PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 ```
 
-Illegal: `git checkout overlay-v1.0.1`. Illegal: `required_checks: [Verify]`. Illegal: live `forge apply`.
+Illegal: `required_checks: [Verify]`. Illegal: live `forge apply`. Illegal: pin `main`.
 
 ## Performance Notes
 
@@ -109,6 +109,6 @@ Illegal: `git checkout overlay-v1.0.1`. Illegal: `required_checks: [Verify]`. Il
 | 现象 | 处理 |
 |---|---|
 | 想把 `forge/` 拷进本仓 | 停。工具留在 `/tmp/AIOps`。 |
-| checkout `overlay-v1.0.1` 失败 | tag 不存在。改 pin `overlay-v1.0.0`。 |
+| checkout `overlay-v1.0.1` 失败 | `git fetch --tags` 后再 pin `overlay-v1.0.1`。不要 pin `main`。 |
 | `required_checks` 写成 Verify | 改成 Typecheck / Lint / Build and test / overlay-check。 |
 | 想 live apply | 停。`$manage-repo`。本仓现在不 apply。 |

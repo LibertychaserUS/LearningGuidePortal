@@ -6,7 +6,7 @@
 **PR：** https://github.com/LibertychaserUS/LearningGuidePortal/pull/2  
 **基线：** `cursor/local-forge-overlay-2e0c` → 这支是 `cursor/io-login-payment-overlay-2e0c`
 
-这不是 KS。产品仓是 `LibertychaserUS/LearningGuidePortal`。工具仓是 `LibertychaserUS/AIOps`。发布针只认 tag：`overlay-v1.0.0` / `forge-v1.0.0`（同一 SHA `235e514…`），不认 `main`。
+这不是 KS。产品仓是 `LibertychaserUS/LearningGuidePortal`。工具仓是 `LibertychaserUS/AIOps`。发布针只认 tag：`overlay-v1.0.1` / `forge-v1.0.1`（同一 SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`），不认 `main`。
 
 ---
 
@@ -243,7 +243,7 @@ ASCII：
 | `.github/workflows/overlay-check.yml` | `uses: LibertychaserUS/AIOps/.github/workflows/overlay.yml@overlay-v1.0.0`，`branch: main`，`enable_run: true` |
 | `tests/io/*` | 49 条黑盒，本地 `npm run test:io` 绿。**不在** `test:ci` 里 |
 
-发布针：`overlay-v1.0.0` / `forge-v1.0.0` = `235e514…`。不要 pin `AIOps` 的 `main`。
+发布针：`overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10ae0be4725e5109030f14a05bb2291fe4a`。不要 pin `AIOps` 的 `main`。不要 force-move `1.0.0`。产品仓 `overlay-check.yml` 仍 `uses: …@overlay-v1.0.0`（已有 reusable + wrapper，不要换针换形状）。
 
 ---
 
@@ -424,12 +424,12 @@ ASCII：
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
 cd /tmp/AIOps
-git checkout overlay-v1.0.0
+git checkout overlay-v1.0.1
 python3 -m pip install -r requirements.txt
 export PYTHONPATH=/tmp/AIOps
 ```
 
-`overlay-v1.0.0` 与 `forge-v1.0.0` 是同一提交（`235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 `git checkout overlay-v1.0.1`（tag 还不存在）。AIOps `main` README 若仍写 1.0.1，忽略。Docs-pin 分支已在 AIOps：`cursor/forge-docs-pin-2e0c` @ `878a690`。Oliver 用 compare 开 draft PR（deploy key 不能走 PR API）：https://github.com/LibertychaserUS/AIOps/compare/main...cursor/forge-docs-pin-2e0c?expand=1 。合进 `main` 之前不要发 `1.0.1`。怎么给写权限：见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。
+`overlay-v1.0.1` 与 `forge-v1.0.1` 是同一提交（`b4afc10ae0be4725e5109030f14a05bb2291fe4a`）。不要 pin `main`。不要 force-move `1.0.0`。发布记录见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。
 
 本仓 native skills（Codex / Cursor / Claude Code）：
 
@@ -441,26 +441,22 @@ export PYTHONPATH=/tmp/AIOps
 
 `name` = `use-forge` / `use-overlay` / `design-cases` / `dev-pr` / `manage-repo`。`use-forge` 只有开发六步；live `apply` 只在 `manage-repo`，且本仓现在不做。本仓已有 `forge.yaml`：问一次，同意后默认跑 `check` / `submit`。不要每次存盘再讲宪法。初始化同意 ≠ live-apply / arm。
 
-或从已发布 tag **按 skill** 装工作本（`gh skill` **没有** `--agent copilot`；发布针上不要 `--all`）：
+或从已发布 tag 装工作本（host id：`codex` / `cursor` / `claude-code` / `github-copilot`）：
 
 ```text
-# overlay-v1.0.0 @ 235e514e — verified 2026-09-11
-# works on --agent cursor / codex / claude-code:
-gh skill install LibertychaserUS/AIOps use-forge --agent cursor --pin overlay-v1.0.0
-gh skill install LibertychaserUS/AIOps use-overlay --agent cursor --pin overlay-v1.0.0
-gh skill install LibertychaserUS/AIOps design-cases --agent cursor --pin overlay-v1.0.0
-gh skill install LibertychaserUS/AIOps dev-pr --agent cursor --pin overlay-v1.0.0
-# same four with --agent codex and --agent claude-code
-# fails: manage-repo — invalid frontmatter YAML (unquoted Ops only:)
-# fails: --all — same manage-repo; stays broken until docs-pin is on AIOps main
-# invalid: --agent copilot. missing tag: overlay-v1.0.1 / forge-v1.0.1
-# AIOps main README still points at v1.0.1 and --agent copilot — ignore it
+# overlay-v1.0.1 @ b4afc10a — verified 2026-09-11
+gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.1 --all
+gh skill install LibertychaserUS/AIOps use-forge --agent cursor --pin overlay-v1.0.1
+gh skill install LibertychaserUS/AIOps use-overlay --agent cursor --pin overlay-v1.0.1
+gh skill install LibertychaserUS/AIOps design-cases --agent cursor --pin overlay-v1.0.1
+gh skill install LibertychaserUS/AIOps dev-pr --agent cursor --pin overlay-v1.0.1
+gh skill install LibertychaserUS/AIOps manage-repo --agent cursor --pin overlay-v1.0.1
 gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 ```
 
-`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；`manage-repo` 未加引号的 `Ops only:` 会让单独装和 `gh skill install --all` 都失败。`--all` 在 docs-pin 合进 AIOps `main` 之前保持坏。这是 **不能先发 1.0.1** 的原因之一：先把 docs-pin 合进 AIOps `main`。产品 PR #6 不能代替 AIOps GitHub 落地。以本仓 skill / 本文件为准。
+`overlay-v1.0.1` 上 `--all`（含 quoted `manage-repo` frontmatter）已通过。本仓 `$use-forge` 是六步开发冷启动；live `apply` 只在 `$manage-repo`。以本仓 skill / 本文件为准。
 
-2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.0` @ `235e514…`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent copilot` 非法。`--all` 和 `manage-repo` 红；上面四条 per-skill 命令在 cursor / codex / claude-code 绿。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。目标未完成：docs-pin 分支已推（`cursor/forge-docs-pin-2e0c` @ `878a690`），但还没有 draft PR、未合 `main`、未发 `1.0.1`；`main` README 仍写缺失的 `v1.0.1`。
+2026-09-11 对**已发布针**做过冷启动（fresh clone `overlay-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`，不是浮动 `main`）：`overlay validate` ok（4 inbox / 4 suite）、`cover` ok（19 function_id，三技法齐全）、`select --branch main` selected=0 dropped=4 drafts、`forge check` ok。`gh skill install --agent cursor --pin overlay-v1.0.1 --all` 绿（含 manage-repo）。命令和原文见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。未跟踪的 `/tmp` 套件、`## Specified`、缺 Edge 的叶子都不是产品真相。
 
 ```text
 npm run test:io

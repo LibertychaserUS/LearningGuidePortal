@@ -22,8 +22,8 @@ Review and merge live on **GitHub**. Agents must not use this skill to arm suite
    - `status: armed` or `blocked`
    - non-empty `reviewed_by` + ISO-8601 `reviewed_at`
    - `armed_reason` or `blocked_reason`
-5. After a human edit: `PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .` (`/tmp/AIOps` @ `overlay-v1.0.0`).
-6. **AIOps tags:** only a human with `contents:write` / release on `LibertychaserUS/AIOps` publishes `overlay-v1.0.1` / `forge-v1.0.1`. Never force-move `1.0.0`. Until those tags exist, agents pin `v1.0.0`. Land the docs-pin first: `bash docs/phase1/aiops-release/land-docs-pin.sh --push` ([`../aiops-release/APPLY.md`](../aiops-release/APPLY.md)).
+5. After a human edit: `PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .` (`/tmp/AIOps` @ `overlay-v1.0.1`).
+6. **AIOps tags:** official pin is `overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`. Never force-move `1.0.0`. Next semver: `python -m forge release --version X.Y.Z --dry-run` then live, or push annotated tags over SSH. Spec: [`../aiops-release/APPLY.md`](../aiops-release/APPLY.md).
 
 ## Never
 
@@ -53,4 +53,4 @@ Arm is a yaml edit + local validate. No model.
 | 想对本仓 live apply | 停。Phase 1 不做。 |
 | Agent 代写 reviewed_by | 拒收。自己写。 |
 | required_checks 抄了 Verify | 改回 job 名 Typecheck / Lint / Build and test / overlay-check。 |
-| 想发 overlay-v1.0.1 | 先确认 tag 不存在，再 `python -m forge release --version 1.0.1 --dry-run`。不要 force-move 1.0.0。 |
+| 想发下一版 tag | 确认新 tag 不存在，再 `python -m forge release --version X.Y.Z --dry-run`。不要 force-move 已有针。 |

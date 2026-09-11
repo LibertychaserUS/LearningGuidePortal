@@ -2,7 +2,7 @@
 name: use-overlay
 description: >-
   Operate Overlay on Learning Guide — inbox, suites, validate, cover, select.
-  Pin overlay-v1.0.0. Leaves must use ### Functional / ### Negative / ### Edge.
+  Pin overlay-v1.0.1. Leaves must use ### Functional / ### Negative / ### Edge.
   Do not generate or arm. Do not replace the existing overlay-check.yml reusable
   caller. Do not use for GitHub Rulesets (use use-forge).
 metadata:
@@ -15,7 +15,7 @@ Overlay turns requirement leaves into reviewable suites. CI runs only **`armed`*
 
 This repo already has `overlay.yaml`, `inbox/`, `suites/`, `invariants.yaml`, and `.github/workflows/overlay-check.yml`. Do not vendor `overlay/`. Agents never write `reviewed_by` and never arm.
 
-Pin **`overlay-v1.0.0`**. Do not checkout `overlay-v1.0.1`. Case method: [`../design-cases/SKILL.md`](../design-cases/SKILL.md). Brief: [`../overlay-forge-brief.md`](../overlay-forge-brief.md).
+Pin **`overlay-v1.0.1`**. Do not pin `main`. Do not force-move `1.0.0`. Case method: [`../design-cases/SKILL.md`](../design-cases/SKILL.md). Brief: [`../overlay-forge-brief.md`](../overlay-forge-brief.md).
 
 ## Contract (leaves)
 
@@ -36,7 +36,7 @@ Pin **`overlay-v1.0.0`**. Do not checkout `overlay-v1.0.1`. Case method: [`../de
 
 ## Instructions
 
-1. Checkout the pin: `git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps && git -C /tmp/AIOps checkout overlay-v1.0.0`
+1. Checkout the pin: `git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps && git -C /tmp/AIOps checkout overlay-v1.0.1`
 2. `python3 -m pip install -r /tmp/AIOps/requirements.txt` and `export PYTHONPATH=/tmp/AIOps`
 3. Write or edit `inbox/<id>.md` and `suites/<id>/` as **draft**. One slice = one id. Use existing AUTH- / PAY- / portal ids — do not invent `REQ-n`.
 4. Design cases against the **whole** overlay root (`$design-cases`).
@@ -80,4 +80,4 @@ validate / cover / select are local YAML. No model. `run` only executes `armed` 
 | 跨套件重复 `function_id` | 契约红。全局唯一。 |
 | invariant 点了不存在的 `##` | 契约红。先对齐标题。 |
 | 想把 overlay-check 改成另一种形状 | 停。已有 reusable + wrapper，不要换。 |
-| 想 pin `main` 或 `v1.0.1` | 停。pin `overlay-v1.0.0`。 |
+| 想 pin `main` | 停。pin `overlay-v1.0.1`。 |
