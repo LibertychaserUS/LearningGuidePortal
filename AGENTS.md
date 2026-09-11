@@ -7,7 +7,7 @@
 3. `docs/phase1/api-contracts.md`
 4. `docs/phase1/release-runbook.md`
 5. `DESIGN.md`
-6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.0` / `forge-v1.0.0`（同一 SHA `235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 checkout 还不存在的 `v1.0.1`（AIOps `main` README 若已写 1.0.1，忽略，等人类发布；补丁在 `docs/phase1/aiops-release/APPLY.md`）。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets。不要代签 `reviewed_by` / `armed`。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。
+6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.0` / `forge-v1.0.0`（同一 SHA `235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 checkout 还不存在的 `v1.0.1`（AIOps `main` README 若已写 1.0.1，忽略。人有 `contents:write` 时一条命令：`bash docs/phase1/aiops-release/land-docs-pin.sh --push`，见 `APPLY.md`）。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets。不要代签 `reviewed_by` / `armed`。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。
 
 本仓已有 native skills（不要 vendor 工具仓 Python）：`use-forge`（开发冷启动六步，无 live apply）、`use-overlay`、`design-cases`、`dev-pr`、`manage-repo`。标准路径：
 

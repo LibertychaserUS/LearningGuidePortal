@@ -23,7 +23,7 @@ Review and merge live on **GitHub**. Agents must not use this skill to arm suite
    - non-empty `reviewed_by` + ISO-8601 `reviewed_at`
    - `armed_reason` or `blocked_reason`
 5. After a human edit: `PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .` (`/tmp/AIOps` @ `overlay-v1.0.0`).
-6. **AIOps tags:** only a human with `contents:write` / release on `LibertychaserUS/AIOps` publishes `overlay-v1.0.1` / `forge-v1.0.1`. Never force-move `1.0.0`. Until those tags exist, agents pin `v1.0.0`. Commands: [`../aiops-release/APPLY.md`](../aiops-release/APPLY.md).
+6. **AIOps tags:** only a human with `contents:write` / release on `LibertychaserUS/AIOps` publishes `overlay-v1.0.1` / `forge-v1.0.1`. Never force-move `1.0.0`. Until those tags exist, agents pin `v1.0.0`. Land the docs-pin first: `bash docs/phase1/aiops-release/land-docs-pin.sh --push` ([`../aiops-release/APPLY.md`](../aiops-release/APPLY.md)).
 
 ## Never
 

@@ -429,7 +429,7 @@ python3 -m pip install -r requirements.txt
 export PYTHONPATH=/tmp/AIOps
 ```
 
-`overlay-v1.0.0` 与 `forge-v1.0.0` 是同一提交（`235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 `git checkout overlay-v1.0.1`（tag 还不存在）。AIOps `main` README 若仍写 1.0.1，忽略；人把补丁合进 AIOps 的步骤见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。
+`overlay-v1.0.0` 与 `forge-v1.0.0` 是同一提交（`235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 `git checkout overlay-v1.0.1`（tag 还不存在）。AIOps `main` README 若仍写 1.0.1，忽略。人有 AIOps `contents:write` 时一条命令：`bash docs/phase1/aiops-release/land-docs-pin.sh --push`（见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)）。
 
 本仓 native skills（Codex / Cursor / Claude Code）：
 
