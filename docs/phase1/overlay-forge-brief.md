@@ -428,7 +428,27 @@ python3 -m pip install -r requirements.txt
 export PYTHONPATH=/tmp/AIOps
 ```
 
-`overlay-v1.0.0` 与 `forge-v1.0.0` 是同一提交。不要 pin `main`。不要 `git checkout overlay-v1.0.1`（tag 还不存在）。
+`overlay-v1.0.0` 与 `forge-v1.0.0` 是同一提交（`235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 `git checkout overlay-v1.0.1`（tag 还不存在）。AIOps `main` README 若仍写 1.0.1，忽略；人把补丁合进 AIOps 的步骤见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。
+
+本仓 native skills（Codex / Cursor / Claude Code）：
+
+| 标准路径 | Canonical |
+|---|---|
+| `.agents/skills/<name>` | `docs/phase1/skills/<name>/SKILL.md` |
+| `.cursor/skills/<name>` | 同上（symlink） |
+| `.claude/skills/<name>` | 同上（symlink） |
+
+`name` = `use-forge` / `use-overlay` / `design-cases` / `dev-pr` / `manage-repo`。`use-forge` 只有开发六步；live `apply` 只在 `manage-repo`，且本仓现在不做。
+
+或从已发布 tag 装工作本 skill（`gh skill` **没有** `--agent copilot`）：
+
+```text
+gh skill install LibertychaserUS/AIOps --agent codex --pin overlay-v1.0.0 --all
+gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.0 --all
+gh skill install LibertychaserUS/AIOps --agent claude-code --pin overlay-v1.0.0 --all
+```
+
+`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；以本仓 skill / 本文件为准。
 
 ```text
 npm run test:io
@@ -441,4 +461,6 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
 
 现在应看到：`test:io` 49 pass；validate / cover 过；`select --branch main` selected=0、dropped=4 drafts；`overlay run` 不执行产品命令；`forge check` ok。
 
-叶子必须是 `### Functional` / `### Negative` / `### Edge`。不要 `### Depth`。不要 `## Specified / not tested now`。Agent 不 live-apply、不代签 `armed`。
+`python -m forge` 现有子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce`。没有 `brief`、`credential`、`ops-chain`、`revoke`。`required_checks` 是 job 名：`Typecheck` / `Lint` / `Build and test` / `overlay-check`，不要抄 workflow 名 `Verify`。
+
+叶子必须是 `### Functional` / `### Negative` / `### Edge`。不要 `### Depth`。不要 `## Specified / not tested now`。已有的 `overlay-check.yml`（`uses: …@overlay-v1.0.0` + wrapper job）不要换成另一种形状。Agent 不 live-apply、不代签 `armed`、不打 `ilovelearningguide.com`、不改 Verify、不把 `test:io` 塞进 `test:ci`。

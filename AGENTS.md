@@ -7,7 +7,23 @@
 3. `docs/phase1/api-contracts.md`
 4. `docs/phase1/release-runbook.md`
 5. `DESIGN.md`
-6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.0` / `forge-v1.0.0`（同一 SHA `235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 checkout 还不存在的 `v1.0.1`（AIOps `main` README 若已写 1.0.1，忽略，等人类发布）。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets。不要代签 `reviewed_by` / `armed`。不要把 `test:io` 加进 Verify。
+6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。本地只 pin 已发布的 `overlay-v1.0.0` / `forge-v1.0.0`（同一 SHA `235e514e673fa68b24879c8e139f2a5c6633ebb5`）。不要 pin `main`。不要 checkout 还不存在的 `v1.0.1`（AIOps `main` README 若已写 1.0.1，忽略，等人类发布；补丁在 `docs/phase1/aiops-release/APPLY.md`）。不要 vendor `overlay/` 或 `forge/`。不要 live-apply Forge Rulesets。不要代签 `reviewed_by` / `armed`。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。
+
+本仓已有 native skills（不要 vendor 工具仓 Python）：`use-forge`（开发冷启动六步，无 live apply）、`use-overlay`、`design-cases`、`dev-pr`、`manage-repo`。标准路径：
+
+- `.agents/skills/`（Codex / 多 host 共用）
+- `.cursor/skills/`
+- `.claude/skills/`
+
+Canonical：`docs/phase1/skills/<name>/SKILL.md`。或从**已存在的 tag** 装工作本 skill（`gh skill` 没有 `--agent copilot`）：
+
+```text
+gh skill install LibertychaserUS/AIOps --agent codex --pin overlay-v1.0.0 --all
+gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.0 --all
+gh skill install LibertychaserUS/AIOps --agent claude-code --pin overlay-v1.0.0 --all
+```
+
+`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧安装步骤；本仓 `$use-forge` 才是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
@@ -19,7 +35,7 @@ python3 -m overlay cover --root .
 python3 -m forge check --root .
 ```
 
-需要 CPython 3.12+。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check`。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。
+需要 CPython 3.12+。`python -m forge` 子命令：`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce`（发布针上没有 `brief` / `credential` / `ops-chain` / `revoke`）。`required_checks` 用本仓 CI **job 名**：`Typecheck` / `Lint` / `Build and test` / `overlay-check`（不要抄 workflow 名 `Verify`）。叶子标题必须是 `### Functional` / `### Negative` / `### Edge`；不要写 `### Depth` 或 `## Specified`。`function_id` 全局唯一；invariant 必须对上 `##` 标题。已有的 `overlay-check.yml`（reusable `uses:` + wrapper job）不要换成另一种形状。
 
 ## 项目边界
 
