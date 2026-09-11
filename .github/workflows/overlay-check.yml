@@ -2,6 +2,8 @@
 # Pin overlay-v1.0.0. Do not pin main. Do not vendor overlay/.
 # Do not workflow_call Verify. Draft / blocked suites must not redden this job.
 # branch=main so cursor/* PRs still select main's armed set.
+# overlay-v1.0.0 installs the product requirements.txt first; PyYAML lives there
+# so validate can import yaml. Do not add test:io to Verify.
 
 name: overlay-check
 
