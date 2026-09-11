@@ -15,8 +15,8 @@
 2. **Overlay** 管需求叶子 → 可审用例 → CI 只跑人签过名的 `armed` 套件。
 3. Learning Guide 只接薄文件，**不 vendor** `overlay/` 或 `forge/`。
 4. **Verify 用途不变**：Typecheck → Lint → Build and test（`test:ci` = tsc + unit + Playwright auth）。不把 `test:io` 塞进 Verify。
-5. overlay-check 是原生 `overlay validate` + `typecheck:io` + `overlay run`。只跑 **`armed`**。`draft` / `blocked` 丢掉、不当红。login / payment / portal / my-learning 已 armed。不要再接 `overlay-run-existing.py` 硬跑。不要 observe。`typecheck:io` 不进 Verify。
-6. 新 BF 套件要人审后才 `armed`。I/O harness 未就绪时必须保持 draft。login / payment / portal / my-learning 已经 armed（`main` 上是 Oliver 的 #4 squash；人写 `reviewed_by`）。Ops **不得** 对本仓 live-apply Rulesets（声明在 `forge.yaml`，GitHub 上还是空的）。任何人 **不得** 打 `ilovelearningguide.com`。
+5. overlay-check 是原生 `overlay validate` + `typecheck:io` + `overlay run`。只跑 **`armed`**。六套都 armed。不要再接 `overlay-run-existing.py` 硬跑。不要 observe。`typecheck:io` 和 `test:io` 都不进 Verify。
+6. 以后新套件默认 draft，除非 Oliver 当面授权 arm。Ops **不得** 对本仓 live-apply Rulesets。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → `submit`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check` / `submit`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply 或 arm。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
 
@@ -238,9 +238,8 @@ ASCII：
 | `inbox/login.md` | AUTH-01..06；套件 armed |
 | `inbox/payment.md` | PAY-01..10；套件 armed |
 | `inbox/portal.md` `inbox/my-learning.md` | 已有叶子；套件 armed。HTTP I/O 在 `tests/io/portal.test.ts` / `my-learning.test.ts`，尚未改 product_command |
-| `inbox/order.md` `inbox/visitor-trial.md` | 新 BF；套件 **draft**，等人审 |
-| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` | `status: armed`；login/payment → `tests/io/*.test.ts`；portal/my-learning → store unit |
-| `suites/order` `suites/visitor-trial` | `status: draft`；`product_command` → `tests/io/order.test.ts` / `visitor-trial.test.ts` |
+| `inbox/order.md` `inbox/visitor-trial.md` | 新 BF；套件 armed（Oliver 授权） |
+| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` `suites/order` `suites/visitor-trial` | 全部 `status: armed`；`product_command` → `tests/io/<id>.test.ts`。Unit 仍在 `test:ci`。 |
 | `invariants.yaml` | `INV-unauth-no-grant`（AUTH-04/06, ORDER-01, PAY-01/02/08, ML-FR-004）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10, TRIAL-02）；`INV-expired-no-learn`（ML-FR-004, PAY-09） |
 | `.github/workflows/overlay-check.yml` | 原生 `overlay validate` + `typecheck:io` + `overlay run`（armed only） |
 | `tests/io/*` | login/payment 黑盒，本地 `npm run test:io`。**不在** `test:ci` 里。`typecheck:io` 也不在 Verify |

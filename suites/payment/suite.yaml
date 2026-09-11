@@ -11,5 +11,5 @@ packages:
 reviewed_by: LibertychaserUS
 reviewed_at: 2026-09-11T11:20:00Z
 blocked_reason: null
-armed_reason: I/O harness ready; PAY-01..10 product_command passes (66/66)
+armed_reason: I/O harness ready; PAY-01..10 HTTP product_command green.
 product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/payment.test.ts

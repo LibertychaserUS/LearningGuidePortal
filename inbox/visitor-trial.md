@@ -15,7 +15,7 @@ locale: en-GB
 
 # Intent
 
-Visitor / Trial. Cases are black-box I/O against trial quote, `/api/trial`, demo confirm, entitlement check, and study/events. The suite stays draft so Overlay does not gate until a human arms it.
+Visitor / Trial. Cases are black-box I/O against trial quote, `/api/trial`, demo confirm, entitlement check, and study/events. The suite is armed: Overlay CI runs TRIAL-01/02 HTTP I/O.
 
 # In scope
 

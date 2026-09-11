@@ -8,7 +8,7 @@ packages:
   - modules/portal
   - modules/course-management
 reviewed_by: LibertychaserUS
-reviewed_at: 2026-09-11T11:03:00Z
+reviewed_at: 2026-09-11T19:52:00Z
 blocked_reason: null
-armed_reason: unit product_command passes (UC-PORTAL course page primitives)
-product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test tests/unit/UC-PORTAL-course-page-primitives.test.ts
+armed_reason: Oliver authorized arm; UC-PORTAL-1 HTTP I/O green (published catalog, tourist entitlement 401). Unit stays in test:ci.
+product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/portal.test.ts

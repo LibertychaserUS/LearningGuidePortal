@@ -1,14 +1,14 @@
 id: order
 title: Order Management
-status: draft
+status: armed
 kind: functional
 subject: product
 source: inbox/order.md
 packages:
   - modules/order-management
   - modules/payment-management
-reviewed_by: null
-reviewed_at: null
+reviewed_by: LibertychaserUS
+reviewed_at: 2026-09-11T19:52:00Z
 blocked_reason: null
-armed_reason: null
+armed_reason: Oliver authorized arm; ORDER-01 HTTP I/O green (student/unauth 403). ORDER-02 stays specified in cases (no operator seed).
 product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/order.test.ts

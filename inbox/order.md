@@ -14,7 +14,7 @@ locale: en-GB
 
 # Intent
 
-Backoffice Order Management. Cases are black-box I/O against `/api/backoffice/orders`. The suite stays draft so Overlay does not gate until a human arms it.
+Backoffice Order Management. Cases are black-box I/O against `/api/backoffice/orders`. The suite is armed: Overlay CI runs ORDER-01 HTTP I/O. ORDER-02 stays specified in cases.
 
 # In scope
 
