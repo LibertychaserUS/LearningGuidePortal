@@ -1,6 +1,10 @@
 ---
 name: design-cases
-description: Design Learning Guide Overlay cases — leaf triad Functional / Negative / Edge plus declared invariants. Use when writing cases.md or invariants.yaml or running overlay cover. Not line coverage. Use with use-overlay. Do not arm. Do not use ### Depth or ## Specified.
+description: >-
+  Design Learning Guide Overlay cases — leaf triad Functional / Negative / Edge
+  plus declared invariants. Use when writing cases.md or invariants.yaml or
+  running overlay cover. Not line coverage. Use with use-overlay. Do not arm.
+  Do not use ### Depth or ## Specified.
 metadata:
   short-description: Overlay triad, invariants, unique function_id
 ---

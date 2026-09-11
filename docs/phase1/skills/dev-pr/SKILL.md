@@ -1,6 +1,10 @@
 ---
 name: dev-pr
-description: Land a Learning Guide draft PR after python -m forge check is green. Do not apply Rulesets, merge, or write reviewed_by / armed (use manage-repo). Do not change Verify. Do not vendor forge/ or overlay/. Agents must not self-merge.
+description: >-
+  Land a Learning Guide draft PR after python -m forge check is green.
+  Do not apply Rulesets, merge, or write reviewed_by / armed (use manage-repo).
+  Do not change Verify. Do not vendor forge/ or overlay/. Agents must not
+  self-merge.
 metadata:
   short-description: Open PRs; do not arm or apply Forge
 ---

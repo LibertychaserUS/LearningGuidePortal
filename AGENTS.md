@@ -21,9 +21,10 @@ Canonical：`docs/phase1/skills/<name>/SKILL.md`。或从**已存在的 tag** �
 gh skill install LibertychaserUS/AIOps --agent codex --pin overlay-v1.0.0 --all
 gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.0 --all
 gh skill install LibertychaserUS/AIOps --agent claude-code --pin overlay-v1.0.0 --all
+gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 ```
 
-`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧安装步骤；本仓 `$use-forge` 才是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。
+`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧安装步骤；`manage-repo` 的 description 有未加引号的 `Ops only:`，`gh skill install --all` 会失败。本仓 `$use-forge` 才是六步开发冷启动。live `apply` 只在 `$manage-repo`，且本仓现在不做。
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps

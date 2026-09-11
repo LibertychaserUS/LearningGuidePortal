@@ -1,6 +1,10 @@
 ---
 name: use-overlay
-description: Operate Overlay on Learning Guide — inbox, suites, validate, cover, select. Pin overlay-v1.0.0. Leaves must use ### Functional / ### Negative / ### Edge. Do not generate or arm. Do not replace the existing overlay-check.yml reusable caller. Do not use for GitHub Rulesets (use use-forge).
+description: >-
+  Operate Overlay on Learning Guide — inbox, suites, validate, cover, select.
+  Pin overlay-v1.0.0. Leaves must use ### Functional / ### Negative / ### Edge.
+  Do not generate or arm. Do not replace the existing overlay-check.yml reusable
+  caller. Do not use for GitHub Rulesets (use use-forge).
 metadata:
   short-description: Overlay contract and validate; no arm
 ---

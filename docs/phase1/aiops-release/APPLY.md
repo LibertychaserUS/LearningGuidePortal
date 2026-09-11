@@ -32,6 +32,7 @@ git pull origin main
 git checkout -b cursor/forge-docs-pin-2e0c
 git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0001-docs-docs-agent-pin-published-v1.0.0-and-add-zh-CN-R.patch
 git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0002-docs-docs-agent-fix-gh-skill-host-ids-and-Learning-G.patch
+git am /path/to/LearningGuidePortal/docs/phase1/aiops-release/0003-docs-docs-agent-quote-skill-frontmatter-so-gh-skill-.patch
 git push -u origin cursor/forge-docs-pin-2e0c
 # open PR into main (draft is fine)
 ```
@@ -77,12 +78,18 @@ python3 -m pip install -r /tmp/AIOps/requirements.txt
 export PYTHONPATH=/tmp/AIOps
 ```
 
-Install workshop skills from the **existing** tag (older `use-forge` text still mentions apply — follow this repo’s six-step `$use-forge` instead):
+Install workshop skills from the **existing** tag (older `use-forge` text still mentions apply — follow this repo’s six-step `$use-forge` instead). On `overlay-v1.0.0`, `manage-repo` fails `gh skill install --all` because its description contains unquoted `Ops only:` (invalid YAML). The third patch quotes that frontmatter.
 
 ```text
 gh skill install LibertychaserUS/AIOps --agent codex --pin overlay-v1.0.0 --all
 gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.0 --all
 gh skill install LibertychaserUS/AIOps --agent claude-code --pin overlay-v1.0.0 --all
+```
+
+Until the AIOps patches land, install **this product repo’s** skills (hidden standard paths):
+
+```text
+gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 ```
 
 `gh skill` host ids are `codex`, `cursor`, `claude-code`, `github-copilot`. There is no `--agent copilot`.

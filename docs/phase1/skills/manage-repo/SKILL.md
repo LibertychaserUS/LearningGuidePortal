@@ -1,6 +1,10 @@
 ---
 name: manage-repo
-description: Human maintainer actions on Learning Guide — review Overlay suites (write reviewed_by / armed yourself), merge when required checks are green. Do not live-apply Forge Rulesets to this repo. Do not forge submit for developers (use dev-pr). Agents must not use this skill to arm or apply.
+description: >-
+  Human maintainer actions on Learning Guide — review Overlay suites
+  (write reviewed_by / armed yourself), merge when required checks are green.
+  Do not live-apply Forge Rulesets to this repo. Do not forge submit for
+  developers (use dev-pr). Agents must not use this skill to arm or apply.
 metadata:
   short-description: Human review and merge; no live apply here
 ---

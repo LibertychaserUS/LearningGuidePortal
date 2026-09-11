@@ -1,6 +1,11 @@
 ---
 name: use-forge
-description: Learning Guide developer cold start for Forge — pin published overlay-v1.0.0, pip install, PYTHONPATH, python -m forge check, then draft PR. Live apply and Rulesets belong to manage-repo. Do not use for Overlay inbox or suites (use use-overlay). Do not auto-merge. Do not submit when local check is red. Do not live-apply to this repo.
+description: >-
+  Learning Guide developer cold start for Forge — pin published overlay-v1.0.0,
+  pip install, PYTHONPATH, python -m forge check, then draft PR. Live apply and
+  Rulesets belong to manage-repo. Do not use for Overlay inbox or suites
+  (use use-overlay). Do not auto-merge. Do not submit when local check is red.
+  Do not live-apply to this repo.
 metadata:
   short-description: Six-step Forge cold start; no live apply
 ---

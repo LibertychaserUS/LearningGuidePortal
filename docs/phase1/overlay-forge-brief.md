@@ -446,9 +446,10 @@ export PYTHONPATH=/tmp/AIOps
 gh skill install LibertychaserUS/AIOps --agent codex --pin overlay-v1.0.0 --all
 gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v1.0.0 --all
 gh skill install LibertychaserUS/AIOps --agent claude-code --pin overlay-v1.0.0 --all
+gh skill install . --from-local --all --allow-hidden-dirs --agent cursor
 ```
 
-`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；以本仓 skill / 本文件为准。
+`overlay-v1.0.0` 上的 `use-forge` 仍把 `apply` 写进旧步骤；`manage-repo` 未加引号的 `Ops only:` 会让 `gh skill install --all` 失败。以本仓 skill / 本文件为准。
 
 ```text
 npm run test:io
