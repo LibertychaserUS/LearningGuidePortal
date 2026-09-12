@@ -21,6 +21,7 @@
 6. 人审是 GitHub PR 审批 + CODEOWNERS，不是 yaml 签名。Agent **不得** 把套件改成 `blocked`（`suite_guard`），**不得** 改 `.github/workflows/`（`deny_paths`）。`docs_sync` 在本地 `forge check` 和 CI `forge-check` 都会跑。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → PR 到 `dev` → `promote` 到 `main`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check`，持有 `FORGE_SUBMIT_TOKEN` 再 `submit` 到 `dev`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply。`FORGE_SUBMIT_TOKEN` 与 `FORGE_GITHUB_TOKEN` 是 Oliver 提供的环境密钥，agent 永不粘贴 token。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
+9. **内容包按层配对。** 封顶是 squash PR。碰哪一层，同单带那一层的配对物。不是每个 PR 都交文档 + 代码 + workflow。agent 包不得改 `.github/workflows/`。升针是单独的 Ops 包（OF-23）。
 
 ---
 
@@ -250,6 +251,38 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 | CI forge-check | `forge check` + `status --check-state` | live-apply；merge |
 | CI Verify | Typecheck / Lint / `test:ci` | 跑 `test:io`、e2e、k6、生产冒烟 |
 
+### 提交内容包（按层配对）
+
+内容包是**进保护枝的那单 squash PR**，不是功能枝上每一颗 WIP。登记：[OF-23](./overlay-forge-issues.md)。
+
+**不是**「每次都必须同时交文档 + 代码 + workflow」。  
+**是**「碰哪一层，同单带上那一层的配对物；没碰的层不要塞进来」。
+
+| 层 | 谁改 | 同单必须带 | 机器锁 | 不要塞进 |
+|---|---|---|---|---|
+| 产品代码 / Overlay 叶子 | agent | 改了 `suites/**` / `inbox/**` / `invariants.yaml` / `overlay.yaml` / `forge.yaml` → 同改 brief | `docs_sync`；overlay validate / cover | `.github/workflows/` |
+| 工具 `forge/**` / `overlay/**`（AIOps） | agent / 开发 | `CHANGELOG.md`；Forge 配置面还要 `docs/forge-config.md` | 工具仓 `docs_sync` | 产品仓 workflow；force-move tag |
+| 解说（标题 + 六标题正文） | 开 PR 的人 | 正文从 diff 写；触碰 deny_paths / `suite.yaml` / `forge.yaml` / `overlay.yaml` 时正文点名路径 | `pr-title` / `pr-body`；其余 [OF-21](./overlay-forge-issues.md) | 模板空话 |
+| CI workflow | 人 / Ops | 已发布针存在之后才升 pin；同改 brief 针表；job 名或 protect 变了就 `forge status --write` | `deny_paths`（agent 红）；CODEOWNERS；`status --check-state` | 功能 PR、auth / 支付切片 |
+
+五种包：
+
+| 包 | 装什么 | 标题主产品 | 禁止 |
+|---|---|---|---|
+| 产品包 | 代码 + 测试；行为变了才带 Overlay 叶子；`docs_sync` 命中才带 brief | 不是 `ci` | `.github/workflows/` |
+| 工具包 | AIOps `forge/**` 或 `overlay/**` + CHANGELOG + 契约文档 | `forge` / `overlay` | 产品仓 workflow；force-move tag |
+| 文档包 | 只改 docs | `docs` | 顺手改代码或 workflow |
+| 工作流 / 升针包 | 人改 `overlay-check.yml` / `forge-check.yml`；同单 brief；必要时 STATE | `ci` | 夹产品功能（OF-22 的教训） |
+| 升级包 | `forge promote`，没有新内容 | — | agent 自合 |
+
+非法：功能切片 + 升 pin。非法：agent PR 改 workflow。非法：改 suites / 配置不改 brief。
+
+为什么不「每次三件套」：agent 碰 `.github/workflows/` 会被 `deny_paths` 红；把 workflow 塞进功能 PR 会把合入锁和产品切片绑死（#12 / OF-22）。workflow 是**独立的 Ops 包**，不是每个功能 PR 的第三份必交文件。
+
+机器已经锁住的配对：`forge.yaml` `docs_sync`（套件 / 配置 → brief）。workflow 层靠 `deny_paths` 把 agent 挡在外面，靠人的升针包 + `status --check-state` 保鲜 STATE。不把「每个 PR 必须改 workflow」写成规则。升针文件要不要再加一条 `docs_sync` → brief，见 OF-23 待点头。
+
+OF-21 锁的是「正文是否描述了 diff」。本条锁的是「这一单该装哪一层」。
+
 ---
 
 ## 6. 本仓当前针脚
@@ -258,7 +291,7 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 | 文件 | 现在是什么 |
 |---|---|
-| `forge.yaml` | `protect: [dev, main]`；`deny_paths: .github/workflows/`；`branches.dev` approvals=0；`branches.main` approvals=1、CODEOWNERS、`promote_from: dev`；required_checks = Typecheck、Lint、Build and test、overlay-check、forge-check；`docs_sync`；`title.scopes: any` |
+| `forge.yaml` | `protect: [dev, main]`；`deny_paths: .github/workflows/`；`branches.dev` approvals=0；`branches.main` approvals=1、CODEOWNERS、`promote_from: dev`；required_checks = Typecheck、Lint、Build and test、overlay-check、forge-check；`docs_sync`（套件 / 配置 → brief，不是每个 PR 必须改 workflow）；`title.scopes: any` |
 | `overlay.yaml` | `product.repo: LibertychaserUS/LearningGuidePortal`；`default_ref` 钉在 `d06d15abaaefd001141dbe6a739362f2aefca3b4`；`branches` 含 `dev` / `main` / `default`；`never_red_statuses: [blocked]`；`forbid_hosts: ilovelearningguide.com` |
 | `inbox/login.md` | AUTH-01..06 |
 | `inbox/payment.md` | PAY-01..10 |
@@ -430,6 +463,7 @@ PAY-01 / 03 / 06 / 07 / 08 的服务层锁已经进 `tests/unit/pay-invariants.t
 6. 不 vendor `overlay/` 或 `forge/`。
 7. 不把上游 First-Light 的超前提交混进这支 Overlay PR。fork `main` 仍是 `6d8934e`。
 8. 不为半锁叶子再发明第二套 ID。
+9. 不要求每个提交都带文档 + 代码 + workflow。按层配对（§5）。agent 包不改 `.github/workflows/`。
 
 ---
 

@@ -30,6 +30,9 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root . --title "feat: subject"
 7. 本仓六套（login / payment / order / portal / my-learning / visitor-trial）已是 `active`。修红靠修该 `function_id` 的代码或 `product_command`，不要靠改 `status` 躲。
 8. **正文从 diff 写。** 开 PR 前跑 `git diff --stat origin/dev...HEAD`，六标题「做了什么」逐条对应改动的文件与行为；改了工作流 / 套件 / 配置 / 迁移必须写明。审查的 agent 会逐条对账，对不上不批（见 [`AGENTS.md`](../../../../AGENTS.md) §PR 审查）。
 9. **带上上下文。** 改了 `forge.yaml` / `overlay.yaml` / 工作流 → 重新生成 `docs/STATE.md`；发现或关闭问题 → 更新 [`overlay-forge-issues.md`](../../overlay-forge-issues.md)；`docs_sync` 表命中的路径 → 同 PR 改 brief。
+10. **内容包按层配对（OF-23）。** 封顶 PR 只装碰到的层。改 suites / inbox / 配置 → 同 PR 改 brief。不要改 `.github/workflows/`。升针等 Oliver 的独立 PR，不要塞进功能切片。不是每个 PR 都要同时交文档 + 代码 + workflow。
+10. **内容包按层配对（OF-23）。** 封顶 PR 只装碰到的层。改 suites / inbox / 配置 → 同 PR 改 brief。不要改 `.github/workflows/`。升针等 Oliver 的独立 PR，不要塞进功能切片。不是每个 PR 都要同时交文档 + 代码 + workflow。
+10. **内容包按层配对（OF-23）。** 封顶 PR 只装碰到的层。改 suites / inbox / 配置 → 同 PR 改 brief。不要改 `.github/workflows/`。升针等 Oliver 的独立 PR，不要塞进功能切片。不是每个 PR 都要同时交文档 + 代码 + workflow。
 
 入口：[`AGENTS.md`](../../../../AGENTS.md)、[`overlay-forge-brief.md`](../../overlay-forge-brief.md)。
 
@@ -67,3 +70,6 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root . --title "feat: subject"
 | 想把套件改成 blocked | 停。`$manage-repo`。 |
 | 想改 Verify / 加 test:io | 停。 |
 | `docs_sync` 红了 | 修相对链接；改 suites/inbox/配置时同步改 brief。 |
+| 想把 workflow 和功能写进同一单 | 停。升针是 Ops 包（OF-23）。agent 不改 `.github/workflows/`。 |
+| 想把 workflow 和功能写进同一单 | 停。升针是 Ops 包（OF-23）。agent 不改 `.github/workflows/`。 |
+| 想把 workflow 和功能写进同一单 | 停。升针是 Ops 包（OF-23）。agent 不改 `.github/workflows/`。 |
