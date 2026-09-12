@@ -148,6 +148,7 @@
 - 规则（Oliver 2026-09-11 22:23）：云 agent 审 PR 时必须逐条核对正文「做了什么」与实际 diff，对不上不批；同时维护项目全局上下文，尤其是文档（`docs/STATE.md`、本登记表、brief 的 `docs_sync` 表、ADR、工具仓 `CHANGELOG.md`）。开 PR 的 agent 正文必须从 diff 写出。已写进 `AGENTS.md` §PR 审查、`skills/dev-pr` 第 8–9 条、`skills/manage-repo` 第 6 条。
 - 机器可判定的一部分已有：`forge check` 的 `docs_sync`（路径表 + 链接 + 版本引用）与 `status --check-state`。
 - 待做（Forge 候选，记在工具仓）：`pr-body` 步骤增加「正文提到的文件路径必须在 diff 或树里存在」「diff 触碰 `deny_paths` / `suites/*/suite.yaml` / `forge.yaml` / `overlay.yaml` 时正文必须出现对应路径」两条可判定规则；其余靠审查 agent。
+- 和 OF-23 分工：本条锁「正文是否描述了 diff」；OF-23 锁「这一单该装哪一层」。
 
 ### OF-22 PR 规格夹具没锁到 push × 空 `PR_TITLE` — 工具仓已迭代（AIOps `dev` `efbc74e`）；本仓针仍 `forge-v1.1.2`
 
@@ -157,6 +158,17 @@
 - 规格（未发布 `forge-1.1.3`）：按事件 × 来源取值。`--title` / `--body`（含显式空串）按参数 lint；非空环境变量按环境 lint；`pull_request` + 空白或未设 → 空规格红；`push` 或 Actions 空串 → lint HEAD 提交第一行；本地无事件且环境未设才 skip。叶子 `FN-forge-pr-title`，invariant `INV-pr-spec-event-states`。
 - 工具仓：`LibertychaserUS/AIOps` `dev` 与 `cursor/forge-empty-pr-title-9bdf` 均 `efbc74e`。CHANGELOG 已登记 `## [forge-1.1.3]`。`cursor[bot]` 开不了 AIOps PR（403）。发针走 `release` workflow，不要 force-move `forge-v1.1.2`。
 - 本仓：继续 pin `forge-v1.1.2`。`25a3a3c` 拆变量只是针未升前的权宜。升针后，push 即使 `PR_TITLE` 空或未设也锁提交 subject。agent 不改 `deny_paths` 里的工作流。
+
+### OF-23 提交内容包按层配对 — 补设计（一开始没写）；待接受；未实现新锁
+
+- 问法：每次提交是不是都要同时交文档、代码、CI workflow？
+- 缺口：一开始只实现了 `docs_sync` / `deny_paths` / workflow，没有先定义一单内容包是什么。锁先于设计。
+- 设计（提议）：**否，不是三件套。** 包是进保护枝的 squash PR。碰哪一层，同单带那一层的配对物。权威表在 brief §5。工具仓 [ADR 0007](https://github.com/LibertychaserUS/AIOps/blob/cursor/forge-content-package-9bdf/docs/adr/0007-content-package-layers.md) 状态是**提议**，不是已接受。
+- 顺序：先设计 → 人把 0007 / 本条改成已接受 → 再决定要不要加新锁。未接受之前不改 `forge.yaml`、不加 `docs_sync` 行、不改 `.github/workflows/`。
+- 已经在跑、先于本设计的锁：`docs_sync`（套件 / 配置 → brief）；`deny_paths`；`status --check-state`。不当成本条已实现。
+- 不是修法：把「每个 agent PR 必须改 workflow」写成规则；把升针塞进功能切片（#12 / OF-22）；先加锁再补说明。
+- 接受之后才点头的实现：要不要给 `overlay-check.yml` / `forge-check.yml` 加一条 `docs_sync` → brief。STATE 不走这条（`check-state` 已锁一致性）。
+- 和 OF-21 分工：OF-21 = 正文 ↔ diff；本条 = 这一单该装哪一层。
 
 ---
 
@@ -176,6 +188,7 @@
 | OF-15 | reusable 要不要装依赖 | 加输入 / 改口 |
 | OF-16 | fork 进 `FORBIDDEN_REPOS` | 是 / 否 |
 | OF-22 | 发 `forge-v1.1.3` 并升本仓 pin | `release` workflow；升针后才改 `forge-check.yml` |
+| OF-23 | 接受内容包补设计；是否再给升针加 `docs_sync` | 接受 / 改设计；接受之后再决定加不加锁 |
 
 2026-09-11：§F + 本 PR 已覆盖上表多项。仍待 Oliver：OF-01（环境密钥 `FORGE_SUBMIT_TOKEN`）、OF-03（`AIOPS_DEPLOY_SSH_KEY`）、OF-08（`FORGE_GITHUB_TOKEN` + `forge apply` 于 fork 的 `dev`+`main` 以及 AIOps；各 tag 的 GitHub Release 页面各点一次）。
 

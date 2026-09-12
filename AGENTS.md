@@ -49,7 +49,7 @@ Forge 是开发完成后的 GitHub 落地（`check` → PR 到 `dev` → `promot
 ## PR 审查（云 agent 的两项职责）
 
 1. **正文与 diff 逐条对账。** 审 PR 先读六标题正文，再读 `git diff --stat` 与关键文件，逐条核对「做了什么」：正文写了、diff 没有 → 要求删或补；diff 有、正文没写 → 要求补写（尤其是 `.github/workflows/`、套件 `status`、`forge.yaml` / `overlay.yaml`、迁移、依赖）。对不上的 PR 不批、不合，评审意见里列出不对应的条目。开 PR 的 agent 反过来同样：正文必须从 diff 写出来，不许复制模板空话。
-2. **维护全局上下文，尤其是文档。** 审 PR 时确认这次改动把该带的上下文一起带了：`docs/STATE.md`（配置 / 工作流 / 保护分支变了要重新生成）、`docs/phase1/overlay-forge-issues.md`（新问题登记、状态改动）、`docs/phase1/overlay-forge-brief.md`（`docs_sync` 表要求）、ADR（契约变更）、工具仓 `CHANGELOG.md`（工具变更）。缺了就在评审里点名到文件；agent 可以提交文档修正，但不替作者改实现。`forge check` 的 `docs_sync` / `--check-state` 只能查机器能判定的部分，剩下的靠这一条。
+2. **维护全局上下文，尤其是文档。** 审 PR 时确认这次改动把该带的上下文一起带了：`docs/STATE.md`（配置 / 工作流 / 保护分支变了要重新生成）、`docs/phase1/overlay-forge-issues.md`（新问题登记、状态改动）、`docs/phase1/overlay-forge-brief.md`（`docs_sync` 表要求）、ADR（契约变更）、工具仓 `CHANGELOG.md`（工具变更）。缺了就在评审里点名到文件；agent 可以提交文档修正，但不替作者改实现。`forge check` 的 `docs_sync` / `--check-state` 只能查机器能判定的部分，剩下的靠这一条。内容包按层配对是补设计（brief §5 / OF-23，待接受）：改了 suites / 配置必须带已有 `docs_sync` 要求的 brief；agent 包不得带 `.github/workflows/`。不是每个 PR 都要同时交文档 + 代码 + workflow。新合入规则先设计后实现；未接受前不加新锁。
 
 ## 项目边界
 
