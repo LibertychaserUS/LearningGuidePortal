@@ -155,7 +155,7 @@
 - 根因：`.github/workflows/forge-check.yml` 对 `push` / `pull_request` 都写 `PR_TITLE: ${{ github.event.pull_request.title }}`。push 没有 PR，表达式是空串。`forge-v1.1.2` 的 `run_check` 用 `env.get("PR_TITLE")`；空串 `is not None`，于是跑 `pr-title`，`lint_title("")` 报 `empty PR title`。省略该环境变量时本应 skip（`design.md`：push 无 PR 面，跳过 spec）。
 - 不修的修法：把 `deny_paths` 改成 advisory、在 agent 分支改 workflow（相对 `dev` 会再红 `deny_paths`）、force-move `forge-v1.1.2`。
 - 修法：`dev` 上把 `PR_TITLE` 只留给 `pull_request`；push 不设该变量。功能 PR 从新 `dev` 快进，diff 不含 workflow，`deny_paths` 仍锁 agent 改 `.github/workflows/`。
-- 工具仓候选（未做）：`run_check` 把空白 `PR_TITLE` 当成未设置。本仓继续 pin `forge-v1.1.2`。
+- 工具仓：已推 `LibertychaserUS/AIOps` `cursor/forge-empty-pr-title-9bdf`（`cedf154`）。`forge check` 把空白 `PR_TITLE` / `PR_BODY` 视为省略；显式 `--title ""` 仍红。CHANGELOG 已登记 `## [forge-1.1.3]`。`cursor[bot]` 开不了 AIOps PR（403），请 Oliver 从 https://github.com/LibertychaserUS/AIOps/compare/dev...cursor/forge-empty-pr-title-9bdf 开 draft。发针仍走 `release` workflow，不要 force-move `forge-v1.1.2`。本仓继续 pin `forge-v1.1.2`，push 侧已用 OF-22 工作流绕过空串。
 
 ---
 
