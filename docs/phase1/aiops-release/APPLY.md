@@ -1,6 +1,16 @@
 # Apply the AIOps docs/skills pin
 
-**Official pin:** `overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`.
+## 2026-09-11 Overlay 2.0.0 / Forge 1.1.2
+
+**官方针（现在）：** `overlay-v2.0.0`（Overlay）与 `forge-v1.1.2`（Forge）。同一工具仓、两件产品，不要手抄 SHA；现状看产品仓 [`docs/STATE.md`](../../STATE.md)。
+
+本目录的 lander（`000*.patch`、`land-docs-pin.sh`）是 **历史**：当时 agent 推不了 AIOps。新的 AIOps 改动走 `dev` → `forge promote` → `main`。`1.0.x` 与 `2.0.0` / `1.1.2` 的 GitHub Release 页面仍需 Oliver 每个 tag 点一次。
+
+下面原文保留作历史记录，针脚与「Humans arm」叙述已过期。
+
+---
+
+**历史针：** `overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`。
 
 `1.0.1` is an **annotated git tag**, not a GitHub Release page. `gh release view overlay-v1.0.1` is 404. Pin [`/tree/overlay-v1.0.1`](https://github.com/LibertychaserUS/AIOps/tree/overlay-v1.0.1). Do not link `/releases/tag/overlay-v1.0.1`. Do not pin `main`. Do not force-move `1.0.0` (`235e514e673fa68b24879c8e139f2a5c6633ebb5`) or `1.0.1`. Next Release / semver is Human/Ops (`forge release` or Actions `release`).
 

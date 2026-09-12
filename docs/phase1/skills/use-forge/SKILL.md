@@ -1,114 +1,100 @@
 ---
 name: use-forge
 description: >-
-  Learning Guide developer cold start for Forge — pin published overlay-v1.0.1,
-  pip install, PYTHONPATH, python -m forge check, then draft PR. Live apply and
-  Rulesets belong to manage-repo. Do not use for Overlay inbox or suites
-  (use use-overlay). Do not auto-merge. Do not submit when local check is red.
-  Do not live-apply to this repo.
+  Learning Guide 开发冷启动：pin overlay-v2.0.0 / forge-v1.1.2，pip install，
+  PYTHONPATH，python -m forge check，再把 PR 打到 dev。promote 与 live apply
+  属于 manage-repo。不要合入。check 红不要 submit。agent 不做 apply。
 metadata:
-  short-description: Six-step Forge cold start; no live apply
+  short-description: Forge v1.1 冷启动；submit 到 dev；无 live apply
 ---
 
-# Use Forge (Learning Guide)
+# Use Forge（Learning Guide）
 
-Forge is the developer gate: local `check`, then optional `submit` (draft PR). It does not merge. It must not edit Overlay `status`.
+本仓薄操作说明。权威步骤见工具仓 [use-forge](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/skills/use-forge/SKILL.md)。子命令见 [cli.md](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/docs/cli.md)。配置见 [forge-config.md](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/docs/forge-config.md)。路径图见 [dev-main-flow.md](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/docs/dev-main-flow.md)。
 
-**This product repo already has** `forge.yaml`. Do not vendor `forge/` or `overlay/`. Do not live-apply Rulesets. Token details: in the tool checkout, `docs/submit-credential.md`.
+Forge 是开发门：本地 `check`，再 `submit`（draft PR 到 `protect[0]` = `dev`）。不合入。不改 Overlay 套件 `status`。
 
-Pin **published** tags only: `overlay-v1.0.1` / `forge-v1.0.1` (same SHA `b4afc10ae0be4725e5109030f14a05bb2291fe4a`). Do not pin `main`. Do not force-move `1.0.0`.
+**本仓已有** `forge.yaml`。不要 vendor `forge/` 或 `overlay/`。live `apply` 只由 Oliver 做（[`manage-repo`](../manage-repo/SKILL.md)）。密钥：工具仓 `docs/submit-credential.md`；`FORGE_SUBMIT_TOKEN` 与 `FORGE_GITHUB_TOKEN` 是环境密钥，agent 永不粘贴。
 
-Entry: [`../../../AGENTS.md`](../../../AGENTS.md) item 6 and [`../overlay-forge-brief.md`](../overlay-forge-brief.md) §11.
+Pin **已发布** tag：`overlay-v2.0.0` / `forge-v1.1.2`。不要 pin `main`。不要手抄 SHA（现状看 [`docs/STATE.md`](../../../STATE.md)）。
 
-## Real CLI
-
-`python -m forge --help` on the published pin:
-
-`apply` `status` `check` `submit` `pr-title`/`title` `sop-lock` `ci-select` `ops-review` `bounce` `release`
-
-There is **no** `brief`, `credential`, `ops-chain`, or `revoke`.
-
-| Action | Agent | Human / Ops |
-|---|---|---|
-| `forge check` | yes | — |
-| `forge submit` | yes, with `FORGE_SUBMIT_TOKEN` | — |
-| live `forge apply` | **no** | Ops (`$manage-repo`). Learning Guide **does not** live-apply |
-| write `reviewed_by` / `armed` | **no** | human review |
+入口：[`AGENTS.md`](../../../../AGENTS.md) 第 6 条和 [`overlay-forge-brief.md`](../../overlay-forge-brief.md) §11。
 
 ## Instructions
 
-Six cold-start steps. Live apply is **not** in this list.
-
-### 1. Checkout a published pin beside this repo
+### 1. Checkout 已发布针
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
-git -C /tmp/AIOps checkout overlay-v1.0.1
+git -C /tmp/AIOps checkout overlay-v2.0.0
+# Forge CLI 用 forge-v1.1.2
 ```
 
-Need CPython **3.12+**. `forge-v1.0.1` is the same commit.
+需要 CPython **3.12+**。
 
-### 2. Install Python deps
+### 2. 装 Python 依赖
 
 ```text
 python3 -m pip install -r /tmp/AIOps/requirements.txt
 export PYTHONPATH=/tmp/AIOps
 ```
 
-### 3. Keep the existing `forge.yaml` job names
+### 3. 沿用本仓 `forge.yaml` 的 job 名
 
-This repo’s `required_checks` are the CI **job names** on a PR:
+本仓 `required_checks` 是 PR 上的 **CI job 名**：
 
-`Typecheck` / `Lint` / `Build and test` / `overlay-check`
+`Typecheck` / `Lint` / `Build and test` / `overlay-check` / `forge-check`
 
-The workflow file is named `Verify`. Do **not** put `Verify` in `required_checks`. Do not copy example `Verify` from the workshop. Do not add `test:io` to Verify.
+workflow 名是 `Verify`。不要把 `Verify` 写进 `required_checks`。不要把 `test:io` 加进 Verify。不要改 `.github/workflows/`（`deny_paths`）。
 
-### 4. Do not copy `forge/`
+### 4. 不要拷 `forge/`
 
-Policy text already lives in `AGENTS.md`. “Copy these files” means **text**, not `git add forge/`.
+政策文本在 [`AGENTS.md`](../../../../AGENTS.md)。「贴条文」是**文本**，不是 `git add forge/`。
 
-### 5. `python -m forge check` from this repo
+### 5. 在本仓跑 `forge check`
 
 ```text
-cd /path/to/LearningGuidePortal
-PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
+PYTHONPATH=/tmp/AIOps python3 -m forge check --root . --title "feat: subject"
+PYTHONPATH=/tmp/AIOps python3 -m forge status --root . --repo LibertychaserUS/LearningGuidePortal --check-state
 ```
 
-Check also runs `overlay validate` + `overlay cover`. Red → stop. Do not push. Do not submit.
+`check` 会跑 overlay validate / cover、`docs_sync`、`deny_paths`、`suite_guard`。红 → 停。不要 push。不要 submit。
 
-Overlay contract: [`../use-overlay/SKILL.md`](../use-overlay/SKILL.md).
+Overlay 契约：[`use-overlay`](../use-overlay/SKILL.md)。
 
-### 6. Draft PR only when check is green
+### 6. check 绿之后 PR 打到 `dev`
 
-Hold `FORGE_SUBMIT_TOKEN` (see tool-repo `docs/submit-credential.md`). Then [`../dev-pr/SKILL.md`](../dev-pr/SKILL.md). Ambient `gh auth` is not enough. Never merge. Never arm. Never live-apply.
+持有 `FORGE_SUBMIT_TOKEN` 才 `forge submit`。否则走 host 的 PR 路径。见 [`dev-pr`](../dev-pr/SKILL.md)。`dev → main` 用 `forge promote`，永不 merge。永不自批。永不 live-apply。
 
 ## Never
 
-- Do not vendor `forge/` / `overlay/` / `schema/` / `prompts/`.
-- Do not pin `main`. Do not force-move `1.0.0`.
-- Do not live-apply Forge to LearningGuidePortal.
-- Do not change Verify. Do not add `test:io` to `test:ci`.
-- Do not hit `ilovelearningguide.com`.
-- Do not write `reviewed_by` or `armed`.
-- Do not invent `python -m forge brief|credential|ops-chain|revoke`.
+- 不要 vendor `forge/` / `overlay/`。
+- 不要 pin `main`。不要 force-move 旧针。
+- 不要 live-apply。不要改 `.github/workflows/`。
+- 不要在 agent 分支把套件改成 `blocked`。
+- 不要发明 `python -m forge brief|credential|ops-chain|revoke`。
+- 不要打 `ilovelearningguide.com`。不要改 Verify。
 
 ## Examples
 
 ```text
-PYTHONPATH=/tmp/AIOps python3 -m forge check --root .
+PYTHONPATH=/tmp/AIOps python3 -m forge check --root . --title "feat: adopt Overlay 2.0.0 and Forge 1.1.2 with dev/main"
 ```
 
-Illegal: `required_checks: [Verify]`. Illegal: live `forge apply`. Illegal: pin `main`.
+非法：`required_checks: [Verify]`。非法：live `forge apply`。非法：pin `main`。
 
 ## Performance Notes
 
-`check` is local. Token details stay in the tool checkout `docs/submit-credential.md`.
+`check` 是本地的。token 细节只在工具仓 `docs/submit-credential.md`。现状页 [`docs/STATE.md`](../../../STATE.md) 是生成的。
 
 ## Troubleshooting
 
 | 现象 | 处理 |
 |---|---|
 | 想把 `forge/` 拷进本仓 | 停。工具留在 `/tmp/AIOps`。 |
-| checkout `overlay-v1.0.1` 失败 | `git fetch --tags` 后再 pin `overlay-v1.0.1`。不要 pin `main`。 |
-| `required_checks` 写成 Verify | 改成 Typecheck / Lint / Build and test / overlay-check。 |
-| 想 live apply | 停。`$manage-repo`。本仓现在不 apply。 |
+| checkout 已发布针失败 | `git fetch --tags` 后再 pin `overlay-v2.0.0` / `forge-v1.1.2`。不要 pin `main`。 |
+| `required_checks` 写成 Verify | 改成 Typecheck / Lint / Build and test / overlay-check / forge-check。 |
+| 想 live apply | 停。Oliver / `$manage-repo`。agent 不做。 |
+| 想把套件标 blocked | 停。人写。`$manage-repo`。 |
+| `docs_sync` 红了 | 修相对链接；改 suites/inbox/配置时同步改 [`overlay-forge-brief.md`](../../overlay-forge-brief.md)。 |
+| 缺 `FORGE_SUBMIT_TOKEN` | 停。不要粘贴 token。用 host PR，或等 Oliver 配环境密钥。 |

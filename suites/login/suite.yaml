@@ -1,14 +1,12 @@
+schema: overlay-suite/v2
 id: login
 title: Registration and Authentication
-status: armed
+status: active
 kind: functional
 subject: product
 source: inbox/login.md
 packages:
   - modules/user-registration
   - app/api/auth
-reviewed_by: LibertychaserUS
-reviewed_at: 2026-09-11T11:20:00Z
 blocked_reason: null
-armed_reason: I/O harness ready; AUTH-01..06 HTTP product_command green.
 product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/login.test.ts

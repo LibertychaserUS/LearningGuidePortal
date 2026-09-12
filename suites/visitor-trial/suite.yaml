@@ -1,6 +1,7 @@
+schema: overlay-suite/v2
 id: visitor-trial
 title: Visitor / Trial
-status: armed
+status: active
 kind: functional
 subject: product
 source: inbox/visitor-trial.md
@@ -8,8 +9,5 @@ packages:
   - modules/subscription-management
   - modules/payment-management
   - modules/portal
-reviewed_by: LibertychaserUS
-reviewed_at: 2026-09-11T19:52:00Z
 blocked_reason: null
-armed_reason: Oliver authorized arm; TRIAL-01/02 HTTP I/O green (quote, cancel, no second grant, resume without extending validTo).
 product_command: node --import tsx --require ./scripts/register-tsconfig-paths.cjs --test --test-concurrency=1 tests/io/visitor-trial.test.ts

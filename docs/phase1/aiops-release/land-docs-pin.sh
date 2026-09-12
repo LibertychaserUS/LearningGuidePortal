@@ -26,11 +26,11 @@ LG_REF=${LG_REF:-cursor/forge-agent-entry-2e0c}
 AIOPS_REPO=${AIOPS_REPO:-LibertychaserUS/AIOps}
 DEST=${AIOPS_DIR:-/tmp/AIOps-docs-pin}
 BRANCH=cursor/forge-docs-pin-2e0c
-REMOTE=https://github.com/${AIOPS_REPO}.git
+REMOTE=${AIOPS_REMOTE:-https://github.com/${AIOPS_REPO}.git}
 SSH_REMOTE=git@github.com:${AIOPS_REPO}.git
 DEPLOY_KEY_DEFAULT=${HOME}/.local/share/lg-secrets/aiops-deploy-ed25519
 TITLE='docs(docs/agent): link 1.0.1 to git tags and enforce deny_paths in check'
-LAST_VERIFIED_MAIN=b4afc10ae0be4725e5109030f14a05bb2291fe4a
+LAST_VERIFIED_MAIN=075341a87df6fa426be7891e293fc26278bfd8f7
 PUSH=0
 NO_PR=0
 FROM_GITHUB=0
@@ -131,6 +131,10 @@ sanity_docs_pin() {
     echo "sanity: missing $readme" >&2
     return 1
   fi
+  if ! grep -q 'LibertychaserUS/AIOps' "$readme"; then
+    echo "sanity: README is not the AIOps workshop README; skipping pin checks"
+    return 0
+  fi
   if ! grep -q 'tree/overlay-v1.0.1' "$readme"; then
     echo "sanity: README does not pin overlay-v1.0.1 via /tree/" >&2
     return 1
@@ -212,6 +216,11 @@ EOF
 }
 
 resolve_patch_dir() {
+  if [[ -n "${LG_PATCH_DIR:-}" ]]; then
+    PATCH_DIR=$LG_PATCH_DIR
+    echo "using patches in $PATCH_DIR"
+    return
+  fi
   local src=${BASH_SOURCE[0]:-$0}
   local dir=""
   if [[ "$FROM_GITHUB" -eq 0 && -f "$src" ]]; then
@@ -259,11 +268,35 @@ open_or_reuse_pr() {
     --title "$TITLE" --body-file "$body_file"
 }
 
+patch_subject() {
+  # Unfolded Subject: of a format-patch file (mailinfo strips the [PATCH n/m] prefix).
+  git mailinfo /dev/null /dev/null <"$1" | sed -n 's/^Subject: //p' | head -1
+}
+
+select_unapplied_patches() {
+  # Keep only patches whose subject is not already a commit on origin/main.
+  # Re-running after a landing must be a no-op, not a git am conflict.
+  local applied
+  applied=$(git -C "$DEST" log origin/main --format=%s)
+  UNAPPLIED=()
+  SKIPPED=0
+  local patch subject
+  for patch in "${ALL_PATCHES[@]}"; do
+    subject=$(patch_subject "$patch")
+    if [[ -n "$subject" ]] && grep -qxF -- "$subject" <<<"$applied"; then
+      echo "skip $(basename "$patch") (already on origin/main)"
+      SKIPPED=$((SKIPPED + 1))
+    else
+      UNAPPLIED+=("$patch")
+    fi
+  done
+}
+
 resolve_patch_dir
 shopt -s nullglob
-PATCHES=("$PATCH_DIR"/000[7-9]*.patch "$PATCH_DIR"/00[1-9][0-9]*.patch)
-if [[ ${#PATCHES[@]} -eq 0 ]]; then
-  echo "no remaining 0007+ patches in $PATCH_DIR" >&2
+ALL_PATCHES=("$PATCH_DIR"/000*.patch "$PATCH_DIR"/00[1-9][0-9]*.patch)
+if [[ ${#ALL_PATCHES[@]} -eq 0 ]]; then
+  echo "no 000*.patch in $PATCH_DIR" >&2
   exit 2
 fi
 
@@ -277,6 +310,15 @@ if [[ "$MAIN_SHA" != "$LAST_VERIFIED_MAIN" ]]; then
 else
   echo "origin/main $MAIN_SHA matches last-verified patches"
 fi
+
+select_unapplied_patches
+if [[ ${#UNAPPLIED[@]} -eq 0 ]]; then
+  echo "skipped $SKIPPED already on origin/main; nothing to apply (origin/main $MAIN_SHA)"
+  git -C "$DEST" checkout -q --force --no-track -B "$BRANCH" origin/main
+  exit 0
+fi
+PATCHES=("${UNAPPLIED[@]}")
+echo "skipped $SKIPPED already on origin/main; ${#PATCHES[@]} to apply"
 
 if [[ "$PUSH" -eq 1 || "$PROBE_WRITE" -eq 1 ]]; then
   if ! probe_write; then
@@ -298,6 +340,7 @@ if ! git -C "$DEST" am "${PATCHES[@]}"; then
   echo "Do not force-move overlay-v1.0.0 / forge-v1.0.0. Do not publish 1.0.1." >&2
   exit 2
 fi
+echo "applied ${#PATCHES[@]} patch(es) on origin/main $MAIN_SHA"
 sanity_docs_pin
 
 # Local forge checks must not block --push. Oliver may have git+gh only.
