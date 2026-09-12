@@ -18,12 +18,21 @@ Visitor-facing checks are TRIAL-01 / TRIAL-02 (unique ids; payment suite keeps P
 - Title: Cancelling checkout never grants the course
 - Steps: Same trial checkout; POST confirm `cancel`; GET entitlements; POST /api/study/events on a locked lesson
 - Expected: Order `canceled`; entitlement false; study/events 403
+- Title: Unauthenticated trial is 401
+- Steps: POST /api/trial with no cookie
+- Expected: HTTP 401; `ok: false`; no order; INV-unauth-no-grant
 
 
 ### Edge
 - Title: Resume trial_canceled inside the original window does not extend validTo
 - Steps: Complete trial; record `validTo`; POST /api/subscription `cancel`; POST `resume`; GET entitlements
 - Expected: Cancel removes access; resume is Trial Active; `validTo` equals the original trial end. Matches Trial Canceled → Trial Active before original `trial_end`, no extension. If resume is 400, keep this intended assertion (do not weaken)
+- Title: Second trial start while live does not extend validTo
+- Steps: Complete trial; POST trial quote + /api/trial again; complete again
+- Expected: Same order id; entitlement `source=trial`; `validTo` unchanged
+- Title: Trial expiry at validTo denies check and study writes
+- Steps: Complete trial; set entitlement.validTo to now; GET entitlements/check; POST study/events on a locked lesson
+- Expected: `allowed` false; study/events 403; INV-expired-no-learn
 ## TRIAL-02 Cancelled trial does not revive
 
 
@@ -43,3 +52,6 @@ Visitor-facing checks are TRIAL-01 / TRIAL-02 (unique ids; payment suite keeps P
 - Title: Trial checkout without consents
 - Steps: Specified in `tests/io/payment.test.ts` PAY-10 edge; visitor path is TRIAL-02
 - Expected: HTTP 400
+- Title: Trial after a paid purchase does not grant
+- Steps: Purchase the course; POST trial quote + /api/trial
+- Expected: HTTP 400; entitlement `source` stays purchase; INV-one-charge

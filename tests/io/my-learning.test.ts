@@ -86,6 +86,7 @@ test("ML-FR-004 signed-out: GET /api/my-learning/overview without a session is 4
   clearCookies();
   const response = await callRoute(overview.GET, jsonRequest("GET", "http://localhost/api/my-learning/overview"));
   assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { ok: false, error: "Sign in is required." });
 });
 
 test("AUTH-06 / unauth learning: GET /api/entitlements/check without a session is 401", async () => {
@@ -138,4 +139,8 @@ test("E2E-B1-010 / ML-FR-011 expired entitlement: check is not allowed and locke
   const lockedBody = await locked.json();
   assert.equal(locked.status, 403);
   assert.match(String(lockedBody.error || ""), /Course access is required/i);
+
+  const stillOpen = await callRoute(overview.GET, jsonRequest("GET", "http://localhost/api/my-learning/overview"));
+  assert.equal(stillOpen.status, 200);
+  assert.equal((await stillOpen.json()).ok, true);
 });
