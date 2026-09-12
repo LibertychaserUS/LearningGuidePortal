@@ -267,7 +267,7 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 | `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10） |
 | `.github/CODEOWNERS` | `suites/**`、`inbox/**`、`.github/workflows/**`、入口文档归 `@LibertychaserUS` |
 | `.github/workflows/overlay-check.yml` | 单 job `overlay-check`：checkout `AIOps@overlay-v2.0.0` → `_aiops`、`npm ci`、`overlay validate` + `cover` + `run` |
-| `.github/workflows/forge-check.yml` | 单 job `forge-check`：checkout `AIOps@forge-v1.1.2` → `_aiops`、`forge check` + `forge status --check-state` |
+| `.github/workflows/forge-check.yml` | 单 job `forge-check`：checkout `AIOps@forge-v1.1.2` → `_aiops`、`forge check` + `forge status --check-state`。`PR_TITLE` 只在 `pull_request` 传入；push 省略以免空串把 `pr-title` 染红（OF-22） |
 | `docs/STATE.md` | 生成；不要手改 |
 | `tests/io/*` | 黑盒，本地 `npm run test:io`。**不在** `test:ci` 里 |
 
