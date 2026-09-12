@@ -457,6 +457,7 @@ git checkout overlay-v2.0.0
 # Forge CLI：git checkout forge-v1.1.2（同一仓、另一件产品）
 python3 -m pip install -r requirements.txt
 export PYTHONPATH=/tmp/AIOps
+# overlay-check 产品门里会再跑 npm ci；本地 I/O 用 npm run test:io。不要把 test:io 加进 Verify。
 ```
 
 不要 pin `main`。不要 force-move 旧针。不要手抄 SHA。现状看 [`docs/STATE.md`](../STATE.md)。发布记录见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。

@@ -7,7 +7,7 @@
 3. `docs/phase1/api-contracts.md`
 4. `docs/phase1/release-runbook.md`
 5. `DESIGN.md`
-6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。先读 `docs/STATE.md`（生成，不要手改）和 `docs/phase1/overlay-forge-issues.md`。本地只 pin 已发布 tag：`overlay-v2.0.0`（Overlay）/ `forge-v1.1.2`（Forge）；同一仓、两件产品，不要手抄 SHA。不要 pin `main`。不要 force-move 旧针。不要 vendor `overlay/` 或 `forge/`。A 路线：`forge check` 绿之后 PR 打到 `dev`（CI required，无人批）；`dev → main` 由 `forge promote`（1 人批 + CODEOWNERS，merge commit）。套件状态只有 `active | blocked`，没有 `armed`，没有 `reviewed_by`；人审是 PR 审批 + CODEOWNERS。Agent 不得把套件改成 `blocked`（`suite_guard`），不得改 `.github/workflows/`（`deny_paths`）。`docs_sync` 在本地 `forge check` 和 CI `forge-check` 都会跑。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。
+6. `docs/phase1/overlay-forge-brief.md` — Overlay / Forge 入口。先读 `docs/STATE.md`（生成，不要手改）和 `docs/phase1/overlay-forge-issues.md`。本地只 pin **已经存在的** tag：`overlay-v2.0.0`（Overlay）/ `forge-v1.1.2`（Forge）；同一仓、两件产品，不要手抄 SHA。不要 pin `main`。不要 checkout 还没打出来的 tag。不要 force-move 旧针。不要 vendor `overlay/` 或 `forge/`。政策条文贴在本条，不是 `git add forge/`。A 路线：`forge check` 绿之后 PR 打到 `dev`（CI required，无人批）；`dev → main` 由 `forge promote`（1 人批 + CODEOWNERS，merge commit）。套件状态只有 `active | blocked`。Agent **不得**代签已删除的 `reviewed_by` / `armed`，不得把套件改成 `blocked`（`suite_guard`），不得改 `.github/workflows/`（`deny_paths`）。`docs_sync` 在本地 `forge check` 和 CI `forge-check` 都会跑。不要把 `test:io` 加进 Verify。不要打 `ilovelearningguide.com`。不要改 Verify。 Learning Guide **现在不** live-apply Ruleset。
 
 本仓已有 native skills（不要 vendor 工具仓 Python）：`use-forge`（开发冷启动六步，无 live apply）、`use-overlay`、`design-cases`、`dev-pr`、`manage-repo`。标准路径：
 
@@ -36,6 +36,7 @@ git -C /tmp/AIOps checkout overlay-v2.0.0
 # Forge CLI 用 forge-v1.1.2（同一仓、另一件产品）
 python3 -m pip install -r /tmp/AIOps/requirements.txt
 export PYTHONPATH=/tmp/AIOps
+# overlay-check 产品门里会再跑 npm ci；本地 I/O 用 npm run test:io
 python3 -m overlay validate --root .
 python3 -m overlay cover --root .
 python3 -m forge check --root .

@@ -92,7 +92,7 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root . --title "feat: adopt Overl
 | 现象 | 处理 |
 |---|---|
 | 想把 `forge/` 拷进本仓 | 停。工具留在 `/tmp/AIOps`。 |
-| checkout 已发布针失败 | `git fetch --tags` 后再 pin `overlay-v2.0.0` / `forge-v1.1.2`。不要 pin `main`。 |
+| checkout 已发布针失败 | `git fetch --tags` 后再 pin **已存在的** `overlay-v2.0.0` / `forge-v1.1.2`。不要 pin `main`。不要 checkout 还没打出来的 tag。 |
 | `required_checks` 写成 Verify | 改成 Typecheck / Lint / Build and test / overlay-check / forge-check。 |
 | 想 live apply | 停。Oliver / `$manage-repo`。agent 不做。 |
 | 想把套件标 blocked | 停。人写。`$manage-repo`。 |
