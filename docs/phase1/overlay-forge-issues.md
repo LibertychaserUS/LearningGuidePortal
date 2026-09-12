@@ -149,6 +149,14 @@
 - 机器可判定的一部分已有：`forge check` 的 `docs_sync`（路径表 + 链接 + 版本引用）与 `status --check-state`。
 - 待做（Forge 候选，记在工具仓）：`pr-body` 步骤增加「正文提到的文件路径必须在 diff 或树里存在」「diff 触碰 `deny_paths` / `suites/*/suite.yaml` / `forge.yaml` / `overlay.yaml` 时正文必须出现对应路径」两条可判定规则；其余靠审查 agent。
 
+### OF-22 `forge-check` 在 push 上把空 `PR_TITLE` 传给 `forge check` — 已修（`dev` `25a3a3c`）
+
+- 现象：#12 的 `push` job `forge-check`（run `34669346160`）红：`pr-title FAIL empty PR title`。同 SHA 的 `pull_request` `forge-check`、Verify、overlay-check 全绿。
+- 根因：`.github/workflows/forge-check.yml` 对 `push` / `pull_request` 都写 `PR_TITLE: ${{ github.event.pull_request.title }}`。push 没有 PR，表达式是空串。`forge-v1.1.2` 的 `run_check` 用 `env.get("PR_TITLE")`；空串 `is not None`，于是跑 `pr-title`，`lint_title("")` 报 `empty PR title`。省略该环境变量时本应 skip（`design.md`：push 无 PR 面，跳过 spec）。
+- 不修的修法：把 `deny_paths` 改成 advisory、在 agent 分支改 workflow（相对 `dev` 会再红 `deny_paths`）、force-move `forge-v1.1.2`。
+- 修法：`dev` 上把 `PR_TITLE` 只留给 `pull_request`；push 不设该变量。功能 PR 从新 `dev` 快进，diff 不含 workflow，`deny_paths` 仍锁 agent 改 `.github/workflows/`。
+- 工具仓：已推 `LibertychaserUS/AIOps` `cursor/forge-empty-pr-title-9bdf`（`cedf154`）。`forge check` 把空白 `PR_TITLE` / `PR_BODY` 视为省略；显式 `--title ""` 仍红。CHANGELOG 已登记 `## [forge-1.1.3]`。`cursor[bot]` 开不了 AIOps PR（403），请 Oliver 从 https://github.com/LibertychaserUS/AIOps/compare/dev...cursor/forge-empty-pr-title-9bdf 开 draft。发针仍走 `release` workflow，不要 force-move `forge-v1.1.2`。本仓继续 pin `forge-v1.1.2`，push 侧已用 OF-22 工作流绕过空串。
+
 ---
 
 ## D. 需要 Oliver 决定的（汇总）
@@ -190,3 +198,4 @@
 - 2026-09-11 #7：brief 套件状态、`default_ref`、Release → `/tree/`、`selected=0`；APPLY / lander 记 `075341a`；密钥 `448c`。
 - 2026-09-11 本 PR：OF-06 列出的四处；新增本文件；AGENTS.md 与 brief 链到这里。
 - 2026-09-11 本 PR（v2 采纳）：OF-02 / OF-05 / OF-10 / OF-13 / OF-14 / OF-15 / OF-16 / OF-18 / OF-19 / OF-20 已修；OF-11 / OF-12 关闭；入口文档改 pin `overlay-v2.0.0` / `forge-v1.1.2`，路线 A `dev`→`main`。
+- 2026-09-12 `dev` `25a3a3c` + #12：OF-22，`forge-check` push 不再传入空 `PR_TITLE`。
