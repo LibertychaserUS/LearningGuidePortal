@@ -159,14 +159,15 @@
 - 工具仓：`LibertychaserUS/AIOps` `dev` 与 `cursor/forge-empty-pr-title-9bdf` 均 `efbc74e`。CHANGELOG 已登记 `## [forge-1.1.3]`。`cursor[bot]` 开不了 AIOps PR（403）。发针走 `release` workflow，不要 force-move `forge-v1.1.2`。
 - 本仓：继续 pin `forge-v1.1.2`。`25a3a3c` 拆变量只是针未升前的权宜。升针后，push 即使 `PR_TITLE` 空或未设也锁提交 subject。agent 不改 `deny_paths` 里的工作流。
 
-### OF-23 提交内容包按层配对，不要求每次都带 workflow — 规则已记（本 PR）
+### OF-23 提交内容包按层配对 — 补设计（一开始没写）；待接受；未实现新锁
 
 - 问法：每次提交是不是都要同时交文档、代码、CI workflow？
-- 设计：**否。** 包是进保护枝的 squash PR。碰哪一层，同单带那一层的配对物；没碰的层不要塞进来。权威表在 brief §5「提交内容包」。
-- 已有机器锁：`docs_sync`（`suites/**` / `inbox/**` / `invariants.yaml` / `overlay.yaml` / `forge.yaml` → brief）；`deny_paths`（agent 改 `.github/workflows/` 红）；`status --check-state`（STATE 与 job / protect 一致）。
-- 不是修法：把「每个 agent PR 必须改 workflow」写成规则（会红，或把 `deny_paths` 卸掉）。把升针塞进功能切片（#12 / OF-22）。
-- 五种包：产品包、工具包、文档包、工作流 / 升针包（人 / Ops，等 tag 先发布）、升级包（`forge promote`）。
-- 待点头：要不要给 `overlay-check.yml` / `forge-check.yml` 加一条 `docs_sync` → brief（只锁人的升针包；agent 仍被 `deny_paths` 挡住）。STATE 不走这条（`check-state` 已经锁一致性；workflow 改注释不必强行碰 STATE）。
+- 缺口：一开始只实现了 `docs_sync` / `deny_paths` / workflow，没有先定义一单内容包是什么。锁先于设计。
+- 设计（提议）：**否，不是三件套。** 包是进保护枝的 squash PR。碰哪一层，同单带那一层的配对物。权威表在 brief §5。工具仓 [ADR 0007](https://github.com/LibertychaserUS/AIOps/blob/cursor/forge-content-package-9bdf/docs/adr/0007-content-package-layers.md) 状态是**提议**，不是已接受。
+- 顺序：先设计 → 人把 0007 / 本条改成已接受 → 再决定要不要加新锁。未接受之前不改 `forge.yaml`、不加 `docs_sync` 行、不改 `.github/workflows/`。
+- 已经在跑、先于本设计的锁：`docs_sync`（套件 / 配置 → brief）；`deny_paths`；`status --check-state`。不当成本条已实现。
+- 不是修法：把「每个 agent PR 必须改 workflow」写成规则；把升针塞进功能切片（#12 / OF-22）；先加锁再补说明。
+- 接受之后才点头的实现：要不要给 `overlay-check.yml` / `forge-check.yml` 加一条 `docs_sync` → brief。STATE 不走这条（`check-state` 已锁一致性）。
 - 和 OF-21 分工：OF-21 = 正文 ↔ diff；本条 = 这一单该装哪一层。
 
 ---
@@ -187,7 +188,7 @@
 | OF-15 | reusable 要不要装依赖 | 加输入 / 改口 |
 | OF-16 | fork 进 `FORBIDDEN_REPOS` | 是 / 否 |
 | OF-22 | 发 `forge-v1.1.3` 并升本仓 pin | `release` workflow；升针后才改 `forge-check.yml` |
-| OF-23 | pin workflow 要不要加 `docs_sync` → brief | 加 / 不加（靠升针时审查） |
+| OF-23 | 接受内容包补设计；是否再给升针加 `docs_sync` | 接受 / 改设计；接受之后再决定加不加锁 |
 
 2026-09-11：§F + 本 PR 已覆盖上表多项。仍待 Oliver：OF-01（环境密钥 `FORGE_SUBMIT_TOKEN`）、OF-03（`AIOPS_DEPLOY_SSH_KEY`）、OF-08（`FORGE_GITHUB_TOKEN` + `forge apply` 于 fork 的 `dev`+`main` 以及 AIOps；各 tag 的 GitHub Release 页面各点一次）。
 

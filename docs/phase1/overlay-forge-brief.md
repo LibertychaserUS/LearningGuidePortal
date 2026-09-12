@@ -21,7 +21,7 @@
 6. 人审是 GitHub PR 审批 + CODEOWNERS，不是 yaml 签名。Agent **不得** 把套件改成 `blocked`（`suite_guard`），**不得** 改 `.github/workflows/`（`deny_paths`）。`docs_sync` 在本地 `forge check` 和 CI `forge-check` 都会跑。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → PR 到 `dev` → `promote` 到 `main`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check`，持有 `FORGE_SUBMIT_TOKEN` 再 `submit` 到 `dev`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply。`FORGE_SUBMIT_TOKEN` 与 `FORGE_GITHUB_TOKEN` 是 Oliver 提供的环境密钥，agent 永不粘贴 token。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
-9. **内容包按层配对。** 封顶是 squash PR。碰哪一层，同单带那一层的配对物。不是每个 PR 都交文档 + 代码 + workflow。agent 包不得改 `.github/workflows/`。升针是单独的 Ops 包（OF-23）。
+9. **内容包按层配对（补设计，OF-23）。** 封顶是 squash PR。碰哪一层，同单带那一层的配对物。不是每个 PR 都交文档 + 代码 + workflow。agent 包不得改 `.github/workflows/`。升针是单独的 Ops 包。一开始没写这层规格，锁先于设计；人接受前不加新锁。
 
 ---
 
@@ -253,7 +253,7 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 ### 提交内容包（按层配对）
 
-内容包是**进保护枝的那单 squash PR**，不是功能枝上每一颗 WIP。登记：[OF-23](./overlay-forge-issues.md)。
+内容包是**进保护枝的那单 squash PR**，不是功能枝上每一颗 WIP。登记：[OF-23](./overlay-forge-issues.md)。这是**补设计**：`docs_sync` / `deny_paths` / workflow 先实现，包规格一开始没写。顺序是先设计、人接受、再加新锁。未接受之前不改 `forge.yaml`、不加新的 `docs_sync` 行、不改 `.github/workflows/`。
 
 **不是**「每次都必须同时交文档 + 代码 + workflow」。  
 **是**「碰哪一层，同单带上那一层的配对物；没碰的层不要塞进来」。
@@ -279,9 +279,9 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 为什么不「每次三件套」：agent 碰 `.github/workflows/` 会被 `deny_paths` 红；把 workflow 塞进功能 PR 会把合入锁和产品切片绑死（#12 / OF-22）。workflow 是**独立的 Ops 包**，不是每个功能 PR 的第三份必交文件。
 
-机器已经锁住的配对：`forge.yaml` `docs_sync`（套件 / 配置 → brief）。workflow 层靠 `deny_paths` 把 agent 挡在外面，靠人的升针包 + `status --check-state` 保鲜 STATE。不把「每个 PR 必须改 workflow」写成规则。升针文件要不要再加一条 `docs_sync` → brief，见 OF-23 待点头。
+已经在跑、但是先于本设计的锁：`forge.yaml` `docs_sync`（套件 / 配置 → brief）；`deny_paths`（agent 不得改 workflow）；`status --check-state`。它们不是本条的实现完成。升针文件要不要再加一条 `docs_sync` → brief，等本设计被接受后再做（OF-23）。
 
-OF-21 锁的是「正文是否描述了 diff」。本条锁的是「这一单该装哪一层」。
+OF-21 是「正文是否描述了 diff」。本条是「这一单该装哪一层」。先设计后实现，不要先加锁。
 
 ---
 
@@ -464,6 +464,7 @@ PAY-01 / 03 / 06 / 07 / 08 的服务层锁已经进 `tests/unit/pay-invariants.t
 7. 不把上游 First-Light 的超前提交混进这支 Overlay PR。fork `main` 仍是 `6d8934e`。
 8. 不为半锁叶子再发明第二套 ID。
 9. 不要求每个提交都带文档 + 代码 + workflow。按层配对（§5）。agent 包不改 `.github/workflows/`。
+10. 不在内容包设计被接受之前加新的 `docs_sync` 行或改 workflow。先设计后实现。
 
 ---
 

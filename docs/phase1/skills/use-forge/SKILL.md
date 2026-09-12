@@ -97,5 +97,5 @@ PYTHONPATH=/tmp/AIOps python3 -m forge check --root . --title "feat: adopt Overl
 | 想 live apply | 停。Oliver / `$manage-repo`。agent 不做。 |
 | 想把套件标 blocked | 停。人写。`$manage-repo`。 |
 | `docs_sync` 红了 | 修相对链接；改 suites/inbox/配置时同步改 [`overlay-forge-brief.md`](../../overlay-forge-brief.md)。 |
-| 想把 workflow 写进功能 PR | 停。内容包按层配对（OF-23）。升针是 Ops 包。 |
+| 想把 workflow 写进功能 PR | 停。内容包按层配对是补设计（OF-23，待接受）。升针是 Ops 包。未接受前不加新锁。 |
 | 缺 `FORGE_SUBMIT_TOKEN` | 停。不要粘贴 token。用 host PR，或等 Oliver 配环境密钥。 |

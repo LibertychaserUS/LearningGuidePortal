@@ -36,7 +36,7 @@ PYTHONPATH=/tmp/AIOps python3 -m forge status --repo LibertychaserUS/LearningGui
 
 5. **Overlay `blocked`** 是人手改 yaml。Agent 不得在 agent 分支上做（`suite_guard` 红）。`blocked` 必须有带链接或编号的 `blocked_reason`。不要写已删除的旧字段。改完：`PYTHONPATH=/tmp/AIOps python3 -m overlay validate --root .`（针 `overlay-v2.0.0`）。
 
-6. **审 PR 的两项职责（人和审查 agent 都适用）。** 一、正文与 diff 逐条对账：「做了什么」每条能在 `git diff --stat` 里找到；diff 里的工作流 / 套件 `status` / 配置 / 迁移改动正文必须写；对不上 → request changes，列出条目。二、全局上下文：`docs/STATE.md` 是否随配置重生成；[`overlay-forge-issues.md`](../../overlay-forge-issues.md) 是否登记 / 改状态；brief 是否按 `docs_sync` 表同步；契约变更有没有 ADR；工具仓改动有没有 `CHANGELOG.md`。缺就点名到文件再批。规则出处：[`AGENTS.md`](../../../../AGENTS.md) §PR 审查。内容包按层配对（brief §5 / OF-23）：agent 包不得带 `.github/workflows/`；升针是单独的 Ops 包，不要和功能切片混在一单。内容包按层配对（brief §5 / OF-23）：agent 包不得带 `.github/workflows/`；升针是单独的 Ops 包，不要和功能切片混在一单。
+6. **审 PR 的两项职责（人和审查 agent 都适用）。** 一、正文与 diff 逐条对账：「做了什么」每条能在 `git diff --stat` 里找到；diff 里的工作流 / 套件 `status` / 配置 / 迁移改动正文必须写；对不上 → request changes，列出条目。二、全局上下文：`docs/STATE.md` 是否随配置重生成；[`overlay-forge-issues.md`](../../overlay-forge-issues.md) 是否登记 / 改状态；brief 是否按 `docs_sync` 表同步；契约变更有没有 ADR；工具仓改动有没有 `CHANGELOG.md`。缺就点名到文件再批。规则出处：[`AGENTS.md`](../../../../AGENTS.md) §PR 审查。内容包按层配对是补设计（brief §5 / OF-23，待接受）：agent 包不得带 `.github/workflows/`；升针不要和功能切片混在一单。未接受前不要加新锁。先设计后实现。
 
 7. **AIOps 发布：** Oliver 点工具仓 `release` workflow。每个 tag 的 GitHub Release 页面仍需 Oliver 点一次。不要 force-move 已有针。官方针 `overlay-v2.0.0` / `forge-v1.1.2`。记录见 [`APPLY.md`](../../aiops-release/APPLY.md)。
 
