@@ -42,9 +42,17 @@ jobs:
           pip install -r _aiops/requirements.txt
           echo "PYTHONPATH=${GITHUB_WORKSPACE}/_aiops" >> "$GITHUB_ENV"
 
+      # pull_request 才有标题。push 上 github.event.pull_request.title 是空串，
+      # 若仍写入 PR_TITLE，forge-v1.1.2 会当成「有标题」并判 empty PR title。
+      # 省略 PR_TITLE 时 pr-title 跳过（设计如此）；deny_paths / docs_sync 照跑。
       - name: forge check
+        if: github.event_name == 'pull_request'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+        run: python -m forge check --root .
+
+      - name: forge check
+        if: github.event_name != 'pull_request'
         run: python -m forge check --root .
 
       - name: STATE is fresh
