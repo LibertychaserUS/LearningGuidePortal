@@ -285,8 +285,9 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 对照：
 
-- 可执行黑盒：`tests/io/login.test.ts`、`tests/io/payment.test.ts`
-- Overlay 规格：`suites/login/cases.md`、`suites/payment/cases.md`（`active` on fork）
+- 可执行黑盒：`tests/io/login.test.ts`、`tests/io/payment.test.ts`、`tests/io/portal.test.ts`、`tests/io/visitor-trial.test.ts`
+- 服务层：`tests/unit/pay-invariants.test.ts`、`tests/unit/pay-stripe-fake.test.ts`（假 Stripe，不打真网）
+- Overlay 规格：`suites/login/cases.md`、`suites/payment/cases.md`（`active`）
 
 ### AUTH
 
@@ -328,11 +329,11 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 ### PAY
 
-#### 7. PAY-01 `$0` trial 的 `invoice.paid` 升成整段付费 — 半锁
+#### 7. PAY-01 `$0` trial 的 `invoice.paid` 升成整段付费 — 服务层已锁，HTTP 仍半锁
 
 - **当时**：试用订阅收到金额为 0 的 `invoice.paid` 时，`convertStripeTrial` 写成整段付费购买，`validTo` 跳到约 6 个月。
 - **现在要求**：`$0` 不得转换。试用仍是 trial，到期落在 3 天窗口内，不能出现 purchase 订阅。
-- **黑盒**：难。要真实 Stripe subscription / invoice 对象。demo trial 完成后看 `source=trial` 和 `validTo` 只是近似。
+- **黑盒**：HTTP 仍难（要真 Stripe trialing invoice）。服务层已锁：`pay-invariants` / `pay-stripe-fake` 对 `$0` `invoice.paid` 不转正。
 
 #### 8. PAY-02 升级只过期本地行，不 cancel Stripe — 半锁
 
@@ -340,11 +341,11 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 - **现在要求**：必须对源 `stripeSubscriptionId` 发出 cancel。本地过期不是证明。
 - **黑盒**：难。HTTP 看不到 `stripeCancelIssued`。可执行的只是「没有源订阅的 upgrade quote → 400」。
 
-#### 9. PAY-03 同一 quote 两张可付 Session — 半锁
+#### 9. PAY-03 同一 quote 两张可付 Session — 服务层已锁，HTTP 仍半锁
 
 - **当时**：同一 quote 再次 checkout 会 `sessions.create` 第二张可付 Stripe Session。只保住本地第一张 session id 不够。
 - **现在要求**：复用第一张 Session，不得再 create。
-- **黑盒**：难。demo 两次 checkout 得到同一 `order.id`，证明不了 Stripe 没建第二张。
+- **黑盒**：HTTP 仍难。服务层已锁：假 Stripe 第二次 checkout 不再 `sessions.create`。
 
 #### 10. PAY-04 退款后 `invoice.paid` 复活 — 半锁
 
@@ -358,23 +359,23 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 - **现在要求**：`stripe_events` 要有 UNIQUE。第二次是 duplicate，active entitlement 仍只有一行。
 - **黑盒**：难。HTTP 没有 entitlement 行列表。demo 对同一 order 两次 complete、同一 signed `ping` 两次 `ignored`，都不是 UNIQUE 证明。
 
-#### 12. PAY-06 grace 锚在 now+3 天 — 半锁
+#### 12. PAY-06 grace 锚在 now+3 天 — 服务层已锁，HTTP 仍半锁
 
 - **当时**：`invoice.payment_failed` 把 `validTo` / `graceEndsAt` 写成现在 +3 天，而不是原到期日 +3 天。已付期限会被缩短。
 - **现在要求**：`graceEndsAt = 原 validTo + 3 天`。已付 `validTo` 不得缩短。
-- **黑盒**：难。公开 API 不返回 `graceEndsAt`。未知 subscription 的 `payment_failed` 只证明「不授权」。
+- **黑盒**：公开 API 仍不返回 `graceEndsAt`。服务层已锁：`graceEndsAt = 原 validTo + 3d`，已付期限不缩短。
 
-#### 13. PAY-07 `invoice.paid` 清掉 cancel_at_period_end — 半锁
+#### 13. PAY-07 `invoice.paid` 清掉 cancel_at_period_end — 服务层已锁，HTTP 仍半锁
 
 - **当时**：用户已 cancel-at-period-end 后，续费成功的 `invoice.paid` 把取消标志清掉，resume 又可用。
 - **现在要求**：invoice 之后仍是 `cancel_at_period_end`。付费购买不得 resume。
-- **黑盒**：demo 取消后仍可学、resume → 400，能锁本地路径。invoice 清标志要 Stripe，难。
+- **黑盒**：demo 取消后 resume → 400 仍锁本地路径。服务层已锁：`invoice.paid` 不再清 `cancelAtPeriodEnd`。
 
-#### 14. PAY-08 重叠购买删掉上一行 entitlement — demo 半锁
+#### 14. PAY-08 重叠购买删掉上一行 entitlement — 服务层已锁，HTTP 仍半锁
 
 - **当时**：重叠授权时用 `filter()` 删掉上一行 active entitlement，而不是标 `expired`。审计行消失。
 - **现在要求**：旧行保留且 `state=expired`。当前仍只有一行 active。
-- **黑盒**：中等。`GET /api/entitlements/check` 只说现在允不允许。`GET /api/subscription` 能看到两个 planId，但那是订阅不是 entitlement。`applyStripeOrderState` 里的 filter-delete 仍在，demo 履约走的是标 expired。
+- **黑盒**：HTTP 仍看不到 entitlement 行列表。服务层已锁：`expireOverlappingActiveEntitlements` 标 expired，不删行。
 
 #### 15. PAY-09 PC 授权忽略设备和重复购买 — 已锁
 
@@ -396,14 +397,14 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 1. **AUTH-04 的 Google 建号提权。** 无真 OAuth 时到不了 `getOrCreateSocialUser` 的 Google 分支。本地 Google 画像邮箱是固定的 `google.local@example.test`，和测试用的 operator 邮箱不是同一条路径。
 2. **AUTH-05 跨进程并发。** 同进程两次 POST 会被 `editData` 排队。要证明文件锁，必须两个进程写同一份 `product.json`。那就要 worker，不再是纯 HTTP。
-3. **PAY-01 真 `$0 invoice.paid`。** 要 Stripe subscription 处于 trialing，再投金额 0 的 invoice。demo 的 3 天 `validTo` 替代不了这条。
+3. **PAY-01 真 `$0 invoice.paid`。** 服务层已用假 Stripe 锁住「`$0` 不转正」。真 Stripe trialing invoice 仍无 HTTP 面。
 4. **PAY-02 源订阅 Stripe cancel。** 正确证明是 Stripe 侧 cancel 已发出。本地行 `expired` 正好是当时的假绿。
-5. **PAY-03 第二张 Stripe Session。** 正确证明是 checkout 没有第二次 `sessions.create`。本地 order id 复用不够。
+5. **PAY-03 第二张 Stripe Session。** 服务层假 Stripe 已锁「第二次 checkout 不再 create」。真 Stripe 侧仍无 HTTP 面。
 6. **PAY-04 退款后 invoice 复活。** 要 operator 退款（或 Stripe refund）再投 `invoice.paid`。本仓没有这条稳定 HTTP。
 7. **PAY-05 `stripe_events` 表 UNIQUE。** JSON 数组或进程内 claim 都不是 UNIQUE。没有库表，HTTP 也看不到第二行 entitlement。
-8. **PAY-06 grace 锚点。** 要读 `graceEndsAt` 和原 `validTo`。公开 JSON 没有这两个字段。
-9. **PAY-07 invoice 清 cancel 标志。** demo 的 resume 400 只锁本地规则。清标志发生在 Stripe `invoice.paid` 处理里。
-10. **PAY-08 Stripe resync 删行。** demo 履约会标 expired。`applyStripeOrderState` 仍 `filter()` 删除。要证明这一行，只能读内部 entitlement 列表或加审计 API。
+8. **PAY-06 grace 锚点。** 服务层已锁 `graceEndsAt = 原 validTo + 3d`。公开 JSON 仍没有这两个字段。
+9. **PAY-07 invoice 清 cancel 标志。** 服务层已锁 invoice 不清 `cancelAtPeriodEnd`。demo 的 resume 400 仍是 HTTP 近似面。
+10. **PAY-08 Stripe resync 删行。** 服务层已改为标 expired。公开 HTTP 仍看不到 entitlement 行列表。
 
 为什么锁不住：
 
@@ -413,7 +414,7 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 4. 并发要跨进程，同进程队列会把竞态藏起来。
 5. 黑盒不能 import `productStore` 去读 `passwordHash`、`stripeCancelIssued`、`graceEndsAt`、`stripeEvents[]`。
 
-**不要**为 PAY-01..07 再开一轮白盒 Stripe 内部战役。半锁的叶子写在 cases 里等人看，不要假装 HTTP 已经锁死。
+PAY-01 / 03 / 06 / 07 / 08 的服务层锁已经进 `tests/unit/pay-invariants.test.ts`。不要假装 HTTP 已经锁死；不要为同一叶子再开一轮重复白盒。PAY-02（真 Stripe cancel）和 PAY-05（表级 UNIQUE）仍待定。
 
 **Hop** 是链路里的一步，不是 Stripe 术语。支付主链是 `quote → checkout → Stripe → webhook → order.paid → entitlement → 进课`。当前 I/O 多半停在 quote / checkout / demo confirm。断网时用户 / 本站 / Stripe 怎么处理、成功状态怎么写入 store、其他页面怎么拉到新状态，见 [`payment-state-propagation.md`](./payment-state-propagation.md)。
 

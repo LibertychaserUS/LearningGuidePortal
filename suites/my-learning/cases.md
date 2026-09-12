@@ -16,7 +16,7 @@ Signed-out HTTP I/O lives in `tests/io/my-learning.test.ts`. Store unit tests do
 ### Negative
 - Title: Signed-out user is rejected
 - Steps: GET /api/my-learning/overview, GET /api/entitlements/check, and POST /api/study/events with no session (`tests/io/my-learning.test.ts`)
-- Expected: HTTP 401 on each; no other user's data. After register/quote/checkout/demo confirm, GET overview is 200. Expired `validTo` (unit helper `readProductData`/`writeProductData`) makes check `allowed: false` and locked study/events 403 INV-expired-no-learn Current unit product_command does not prove these HTTP statuses.
+- Expected: HTTP 401 `{ ok: false, error: "Sign in is required." }` on each; no other user's data. After register/quote/checkout/demo confirm, GET overview is 200. Expired `validTo` (unit helper `readProductData`/`writeProductData`) makes check `allowed: false` and locked study/events 403. INV-expired-no-learn GET overview stays 200.
 
 
 ### Edge

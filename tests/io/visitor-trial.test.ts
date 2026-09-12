@@ -186,3 +186,101 @@ test("PAY-01 edge: resume of trial_canceled restores access without extending va
   assert.equal(restored.validTo, originalValidTo);
   assert.ok(Date.parse(restored.validTo || "") <= Date.parse(originalValidTo) + 1000);
 });
+
+test("TRIAL-01 negative: unauthenticated POST /api/trial is 401 and grants nothing", async () => {
+  clearCookies();
+  const response = await callRoute(trial.POST, jsonRequest("POST", "http://localhost/api/trial", {
+    quoteId: "missing",
+    locale: "en-GB",
+    consents: CONSENTS
+  }));
+  const body = await response.json();
+  assert.equal(response.status, 401);
+  assert.equal(body.ok, false);
+  assert.match(String(body.error || ""), /sign in is required/i);
+  assert.equal(body.order, undefined);
+});
+
+test("TRIAL-01 edge: a second trial start reuses the paid order and does not extend validTo", async () => {
+  await signIn("vt-second-start");
+  const started = await startTrial();
+  await completeTrial(started.orderId as string);
+  const before = await entitlementAllowed();
+  assert.equal(before.allowed, true);
+  const originalValidTo = before.validTo;
+  assert.ok(originalValidTo);
+
+  const again = await startTrial();
+  assert.equal(again.pending.status, 200);
+  assert.equal(again.orderId, started.orderId);
+  const paidAgain = await completeTrial(again.orderId as string);
+  assert.ok([200, 400].includes(paidAgain.status));
+  const after = await entitlementAllowed();
+  assert.equal(after.allowed, true);
+  assert.equal(after.source, "trial");
+  assert.equal(after.validTo, originalValidTo);
+});
+
+test("TRIAL-02 negative: trial after a paid purchase does not grant a second entitlement", async () => {
+  await signIn("vt-after-purchase");
+  const quoted = await callRoute(quote.POST, jsonRequest("POST", "http://localhost/api/purchase/quote", {
+    planId: COURSE_PLAN
+  }));
+  assert.equal(quoted.status, 200);
+  const quoteId = (await quoted.json()).quote.id as string;
+  const checkout = await import("../../app/api/purchase/checkout/route");
+  const pending = await callRoute(checkout.POST, jsonRequest("POST", "http://localhost/api/purchase/checkout", {
+    quoteId,
+    locale: "en-GB",
+    consents: CONSENTS
+  }));
+  const pendingBody = await pending.json();
+  assert.equal(pending.status, 200);
+  const paid = await completeTrial(pendingBody.order.id as string);
+  assert.equal(paid.status, 200);
+  assert.equal((await entitlementAllowed()).source, "purchase");
+
+  const trialled = await startTrial();
+  assert.equal(trialled.pending.status, 400);
+  assert.match(String(trialled.body.error || trialled.body.message || ""), /already has active access|already been used/i);
+  const access = await entitlementAllowed();
+  assert.equal(access.allowed, true);
+  assert.equal(access.source, "purchase");
+});
+
+test("TRIAL-01 edge: trial expiry at validTo denies check and locked study writes", async () => {
+  await signIn("vt-expiry");
+  const started = await startTrial();
+  await completeTrial(started.orderId as string);
+  const live = await entitlementAllowed();
+  assert.equal(live.allowed, true);
+  const mine = await callRoute(subscription.GET, jsonRequest("GET", "http://localhost/api/subscription"));
+  const listed = await mine.json();
+  const userFacing = listed.subscriptions as Array<{ source?: string }>;
+  assert.ok(userFacing.some((item) => item.source === "trial"));
+
+  const { readProductData, writeProductData } = await import("../unit/helpers/my-learning");
+  const overview = await import("../../app/api/my-learning/route");
+  const me = await callRoute(overview.GET, jsonRequest("GET", "http://localhost/api/my-learning"));
+  const userId = (await me.json()).user.id as string;
+  const data = await readProductData();
+  const nowIso = new Date().toISOString();
+  for (const entitlement of data.entitlements) {
+    if (entitlement.userId === userId && entitlement.source === "trial") {
+      entitlement.validTo = nowIso;
+      entitlement.state = "active";
+    }
+  }
+  for (const row of data.subscriptions) {
+    if (row.userId === userId && row.source === "trial") {
+      row.validTo = nowIso;
+      row.state = "active";
+    }
+  }
+  await writeProductData(data);
+
+  const expired = await entitlementAllowed();
+  assert.equal(expired.allowed, false);
+  const blocked = await postLockedStudy();
+  assert.equal(blocked.status, 403);
+});

@@ -375,6 +375,14 @@ function entitlementOverlapsPlan(data: ProductData, entitlement: ProductEntitlem
   return data.courses.some((course) => planCoversCourse(plan, course) && entitlementCoversCourse(entitlement, course));
 }
 
+function expireOverlappingActiveEntitlements(data: ProductData, userId: string, plan: ProductPlan) {
+  data.entitlements.forEach((item) => {
+    if (item.userId === userId && item.state === "active" && entitlementOverlapsPlan(data, item, plan)) {
+      item.state = "expired";
+    }
+  });
+}
+
 function scopedValue(item: { courseId: string; scope?: ProductEntitlement["scope"] | ProductSubscription["scope"]; scopeId?: string | null }) {
   if (item.scope === "category") return { scope: "category" as const, scopeId: item.scopeId || null };
   if (item.scope === "everything" || item.courseId === "*") return { scope: "everything" as const, scopeId: "*" };
@@ -1137,10 +1145,7 @@ function fulfilDemoPurchase(data: ProductData, userId: string, order: ProductOrd
     const entitlement = entitlementForPlan(userId, plan, "purchase", subscription.validTo);
     data.subscriptions.unshift(subscription);
     data.subscriptions.forEach((item) => { if (item.userId === userId && item.source === "trial" && item.state === "active" && item.planId === plan.id) item.state = "expired"; });
-    data.entitlements.forEach((item) => {
-      if (item.userId === userId && item.source === "trial" && item.state === "active" && entitlementOverlapsPlan(data, item, plan)) item.state = "expired";
-    });
-    data.entitlements = data.entitlements.filter((item) => !(item.userId === userId && item.state === "active" && entitlementOverlapsPlan(data, item, plan)));
+    expireOverlappingActiveEntitlements(data, userId, plan);
     data.entitlements.unshift(entitlement);
     data.notifications.unshift({ id: id("notification"), userId, title: "Purchase complete", body: "Your course access is now available in My Learning.", readAt: null, createdAt: now() });
     return { order, subscription, entitlement };
@@ -1359,7 +1364,7 @@ export async function activateStripeTrial(input: { eventId?: string; eventType?:
     const subscription = subscriptionForPlan(order.userId, plan, "trial", validFrom, trialEnd.toISOString(), { stripeSubscriptionId: input.subscriptionId, stripeCustomerId: input.customerId || null, graceEndsAt: null });
     const entitlement = entitlementForPlan(order.userId, plan, "trial", subscription.validTo);
     data.subscriptions.unshift(subscription);
-    data.entitlements = data.entitlements.filter((item) => !(item.userId === order.userId && item.state === "active" && entitlementOverlapsPlan(data, item, plan)));
+    expireOverlappingActiveEntitlements(data, order.userId, plan);
     data.entitlements.unshift(entitlement);
     data.notifications.unshift({ id: id("notification"), userId: order.userId, title: "Trial activated", body: `${plan.name} is available for ${TRIAL_DAYS} days.`, readAt: null, createdAt: now() });
     return order;
@@ -1368,6 +1373,7 @@ export async function activateStripeTrial(input: { eventId?: string; eventType?:
 
 export async function convertStripeTrial(input: { subscriptionId: string; invoiceId: string; amountMinor: number; paymentIntentId?: string | null }) {
   return editData((data) => {
+    if (input.amountMinor <= 0) return null;
     const trial = data.subscriptions.find((item) => item.stripeSubscriptionId === input.subscriptionId && item.source === "trial" && item.state !== "expired");
     if (!trial || refundBlocksInvoiceGrant(data, trial)) return null;
     const plan = data.plans.find((item) => item.id === trial.planId);
@@ -1380,7 +1386,7 @@ export async function convertStripeTrial(input: { subscriptionId: string; invoic
     const order: ProductOrder = { id: id("order"), userId: trial.userId, planId: plan.id, quoteId: `invoice_${input.invoiceId}`, amountMinor: input.amountMinor, currency: plan.currency, servicePeriodStart: subscription.validFrom, servicePeriodEnd: subscription.validTo, status: "paid", paymentMode: "stripe", kind: "purchase", stripeCheckoutSessionId: null, stripeSubscriptionId: input.subscriptionId, stripePaymentIntentId: input.paymentIntentId || null, stripeInvoiceId: input.invoiceId, lastStripeStatus: "paid", lastSyncedAt: now(), createdAt: now() };
     const entitlement = entitlementForPlan(trial.userId, plan, "purchase", subscription.validTo);
     data.subscriptions.unshift(subscription);
-    data.entitlements = data.entitlements.filter((item) => !(item.userId === trial.userId && item.state === "active" && entitlementOverlapsPlan(data, item, plan)));
+    expireOverlappingActiveEntitlements(data, trial.userId, plan);
     data.entitlements.unshift(entitlement);
     data.orders.unshift(order);
     data.notifications.unshift({ id: id("notification"), userId: trial.userId, title: "Subscription active", body: "Your trial has converted and course access continues.", readAt: null, createdAt: now() });
@@ -1398,8 +1404,7 @@ export async function applyStripePaidInvoice(input: { subscriptionId: string; in
     if (!plan) throw new Error("Plan not found.");
     const start = input.currentPeriodStart || now();
     const end = input.currentPeriodEnd || addMonths(start, plan.termMonths);
-    subscription.state = "active";
-    subscription.cancelAtPeriodEnd = false;
+    subscription.state = subscription.cancelAtPeriodEnd ? "cancel_at_period_end" : "active";
     subscription.validFrom = start;
     subscription.validTo = end;
     subscription.graceEndsAt = null;
@@ -1427,8 +1432,7 @@ export async function markStripeTrialGrace(subscriptionId: string) {
     const subscription = data.subscriptions.find((item) => item.stripeSubscriptionId === subscriptionId && item.source === "trial" && item.state !== "expired");
     if (!subscription) return null;
     if (subscription.state === "grace") return subscription;
-    const graceEnd = new Date();
-    graceEnd.setUTCDate(graceEnd.getUTCDate() + TRIAL_DAYS);
+    const graceEnd = new Date(new Date(subscription.validTo).getTime() + TRIAL_DAYS * 86400000);
     subscription.state = "grace";
     subscription.graceEndsAt = graceEnd.toISOString();
     subscription.validTo = graceEnd.toISOString();
@@ -1444,8 +1448,7 @@ export async function markStripeSubscriptionGrace(subscriptionId: string) {
     const subscription = data.subscriptions.find((item) => item.stripeSubscriptionId === subscriptionId && item.source === "purchase" && item.state !== "expired");
     if (!subscription) return null;
     if (subscription.state === "grace") return subscription;
-    const graceEnd = new Date();
-    graceEnd.setUTCDate(graceEnd.getUTCDate() + TRIAL_DAYS);
+    const graceEnd = new Date(new Date(subscription.validTo).getTime() + TRIAL_DAYS * 86400000);
     subscription.state = "grace";
     subscription.graceEndsAt = graceEnd.toISOString();
     subscription.validTo = graceEnd.toISOString();
@@ -1496,10 +1499,7 @@ function grantPurchaseAccess(data: ProductData, userId: string, plan: ProductPla
   data.subscriptions.unshift(subscription);
   const trial = data.subscriptions.find((item) => item.userId === userId && item.planId === plan.id && item.source === "trial" && item.state === "active");
   if (trial) trial.state = "expired";
-  data.entitlements.forEach((item) => {
-    if (item.userId === userId && item.source === "trial" && item.state === "active" && entitlementOverlapsPlan(data, item, plan)) item.state = "expired";
-  });
-  data.entitlements = data.entitlements.filter((item) => !(item.userId === userId && item.state === "active" && entitlementOverlapsPlan(data, item, plan)));
+  expireOverlappingActiveEntitlements(data, userId, plan);
   data.entitlements.unshift(entitlement);
   data.notifications.unshift({ id: id("notification"), userId, title: "Purchase complete", body: "Your course access is now available in My Learning.", readAt: null, createdAt: now() });
   return order;
@@ -1779,7 +1779,7 @@ export async function applyStripeOrderState(input: { orderId: string; operatorId
         const subscription = subscriptionForPlan(order.userId, plan, "trial", validFrom, trialEnd.toISOString(), { stripeSubscriptionId: order.stripeSubscriptionId || input.subscriptionId || null, stripeCustomerId: input.customerId || null, graceEndsAt: null });
         const entitlement = entitlementForPlan(order.userId, plan, "trial", subscription.validTo);
         data.subscriptions.unshift(subscription);
-        data.entitlements = data.entitlements.filter((item) => !(item.userId === order.userId && item.state === "active" && entitlementOverlapsPlan(data, item, plan)));
+        expireOverlappingActiveEntitlements(data, order.userId, plan);
         data.entitlements.unshift(entitlement);
         data.notifications.unshift({ id: id("notification"), userId: order.userId, title: "Trial activated", body: `${plan.name} is available for ${TRIAL_DAYS} days.`, readAt: null, createdAt: now() });
         addOrderActivity(data, { orderId: order.id, operatorId: input.operatorId, action: "resynchronise", result: "succeeded", reason: null, providerReference: order.stripeCheckoutSessionId || null });
@@ -1938,6 +1938,7 @@ export async function applyVerifiedStripeEvent(event: VerifiedStripeEvent) {
           order.status = "paid";
           subscription = subscriptionForPlan(order.userId, plan, event.trial ? "trial" : "purchase", event.periodStart, event.periodEnd, { stripeSubscriptionId: event.subscriptionId, stripeCustomerId: event.customerId });
           data.subscriptions.unshift(subscription);
+          expireOverlappingActiveEntitlements(data, order.userId, plan);
           data.entitlements.push(entitlementForPlan(order.userId, plan, subscription.source, event.periodEnd));
           data.notifications.unshift({ id: id("notification"), userId: order.userId, title: event.trial ? "Trial activated" : "Purchase complete", body: "Your course access is now available in My Learning.", readAt: null, createdAt: now() });
         }
@@ -1987,7 +1988,8 @@ export async function applyVerifiedStripeEvent(event: VerifiedStripeEvent) {
         }
       } else if (event.status === "open" && event.periodEnd && new Date(event.periodEnd) > new Date(subscription.validTo)) {
         // Stable grace boundary; retries must never extend access again.
-        const end = new Date(new Date(event.periodStart || subscription.validTo).getTime() + TRIAL_DAYS * 86400000).toISOString();
+        const originalValidTo = subscription.validTo;
+        const end = new Date(new Date(event.periodStart || originalValidTo).getTime() + TRIAL_DAYS * 86400000).toISOString();
         subscription.state = "grace";
         subscription.graceEndsAt = end;
         subscription.validTo = end;
@@ -1996,13 +1998,17 @@ export async function applyVerifiedStripeEvent(event: VerifiedStripeEvent) {
     }
     if ((event.action === "subscription" || event.subscriptionStatus) && subscription && !refundBlocksInvoiceGrant(data, subscription)) {
       const remoteStatus = event.subscriptionStatus || event.status;
-      subscription.cancelAtPeriodEnd = Boolean(event.cancelAtPeriodEnd);
+      if (event.action === "invoice") {
+        if (event.cancelAtPeriodEnd) subscription.cancelAtPeriodEnd = true;
+      } else {
+        subscription.cancelAtPeriodEnd = Boolean(event.cancelAtPeriodEnd);
+      }
       if (["canceled", "unpaid", "incomplete_expired", "paused"].includes(remoteStatus || "")) {
         subscription.state = "expired";
         data.entitlements.filter(item => entitlementMatchesSubscription(item, subscription!)).forEach(item => { if (item.state !== "revoked") item.state = "expired"; });
       } else if (["active", "trialing"].includes(remoteStatus || "") && subscription.state !== "trial_canceled" && subscription.state !== "grace") {
-        // An update alone never grants or extends paid access.
-        subscription.state = event.cancelAtPeriodEnd ? "cancel_at_period_end" : subscription.state === "expired" ? "expired" : "active";
+        // An update alone never grants or extends paid access. invoice.paid must not clear cancel_at_period_end.
+        subscription.state = subscription.cancelAtPeriodEnd ? "cancel_at_period_end" : subscription.state === "expired" ? "expired" : "active";
       }
     }
     data.stripeEvents.push({ id: event.id, type: event.type, processedAt: now() });
