@@ -4,7 +4,7 @@
 
 编号 `OF-nn`。状态：**待定意图**（要 Oliver 拍板）/ **待修** / **已修** / **不修**（写原因）。
 
-基线：Learning Guide fork `main` `7ec6240`（#7）；AIOps `main` `075341a`；发布针 `overlay-v1.0.1` / `forge-v1.0.1` = `b4afc10`；`1.0.0` = `235e514e`。
+基线（2026-09-14）：Learning Guide `origin/dev` `e5f2576`（#14）；`origin/main` `8799562`（#10）。升级 PR [#15](https://github.com/LibertychaserUS/LearningGuidePortal/pull/15) `dev` → `main` 已开，未合。官方针 `overlay-v2.0.0` / `forge-v1.1.2`。GitHub Release 页面只有 1.0.0 两条。两仓 Ruleset 均为 0。密钥本轮不管。
 
 ---
 
@@ -163,7 +163,7 @@
 
 - 问法：每次提交是不是都要同时交文档、代码、CI workflow？
 - 缺口：一开始只实现了 `docs_sync` / `deny_paths` / workflow，没有先定义一单内容包是什么。锁先于设计。
-- 设计（提议）：**否，不是三件套。** 包是进保护枝的 squash PR。碰哪一层，同单带那一层的配对物。权威表在 brief §5。工具仓 [ADR 0007](https://github.com/LibertychaserUS/AIOps/blob/cursor/forge-content-package-9bdf/docs/adr/0007-content-package-layers.md) 状态是**提议**，不是已接受。
+- 设计（提议）：**否，不是三件套。** 包是进保护枝的 squash PR。碰哪一层，同单带那一层的配对物。权威表在 brief §5。工具仓 [ADR 0007](https://github.com/LibertychaserUS/AIOps/blob/dev/docs/adr/0007-content-package-layers.md) 已进 AIOps `origin/dev`（`5354959`），状态仍是**提议**，不是已接受。未 promote 到 AIOps `main`。
 - 顺序：先设计 → 人把 0007 / 本条改成已接受 → 再决定要不要加新锁。未接受之前不改 `forge.yaml`、不加 `docs_sync` 行、不改 `.github/workflows/`。
 - 已经在跑、先于本设计的锁：`docs_sync`（套件 / 配置 → brief）；`deny_paths`；`status --check-state`。不当成本条已实现。
 - 不是修法：把「每个 agent PR 必须改 workflow」写成规则；把升针塞进功能切片（#12 / OF-22）；先加锁再补说明。
@@ -172,25 +172,36 @@
 
 ---
 
-## D. 需要 Oliver 决定的（汇总）
+## D. 现在还开着的（2026-09-14；密钥本轮不管）
+
+已定或已修、不再列在这里：OF-02 / OF-05 / OF-06 / OF-09 / OF-10 / OF-11 / OF-12 / OF-13 / OF-15 / OF-16 / OF-18 / OF-19 / OF-20。见 §E / §F。
+
+本轮先放下（要密钥或 Ops 点按钮）：
+
+| 编号 | 一句话 | 何时再做 |
+|---|---|---|
+| OF-01 | `FORGE_SUBMIT_TOKEN` | 密钥轮 |
+| OF-03 | deploy key 持久化 / Path B | 密钥轮 |
+| OF-08 | `forge apply`（LG `dev`+`main` 与 AIOps；现在 Ruleset = 0） | 密钥轮 |
+| OF-14 余 | 已发布 tag 的 GitHub Release 页面（现在只有 1.0.0） | 人点 Release |
+| OF-22 | 发 `forge-v1.1.3` 并升本仓 pin | 人点 `release`；升针后才改 `forge-check.yml` |
+
+本轮可做 / 已开：
+
+| 项 | 状态 |
+|---|---|
+| [#15](https://github.com/LibertychaserUS/LearningGuidePortal/pull/15) promote `dev` → `main`（`e5f2576`） | 已开；人批 + CODEOWNERS 后 merge commit。agent 不合 |
+| AIOps ADR 0007 进 `origin/dev` | 已快进到 `5354959`。未 promote 到 AIOps `main`。`cursor[bot]` 开不了 AIOps PR |
+| 本表与基线对齐 | 本 PR |
+
+仍待拍板（不要密钥也能定）：
 
 | 编号 | 一句话 | 选项 |
 |---|---|---|
-| OF-01 | Cloud Agent 要不要持 `FORGE_SUBMIT_TOKEN` | 加环境密钥 / Forge 定位改 check-only |
-| OF-02 | CI 针 1.0.0 → 1.0.1 | 你改 workflow / 等 1.0.2 一起 |
-| OF-03 | 私钥持久化 | 环境密钥 `AIOPS_DEPLOY_SSH_KEY` / Path B 挂仓 |
-| OF-04 | lander 退役 | 有 write 后只留历史 |
-| OF-07 | fork ↔ 源仓 回灌 | 谁开 PR、多久一次 |
-| OF-08 | AIOps 上 `forge apply` | 你以 Ops 跑一次 |
-| OF-10 | 要不要 Dev 分支 | 不做 / Dev 进 protect |
-| OF-12 | agent arm 拦截放哪 | Forge check 规则 / deny suite.yaml |
-| OF-13 | 发 1.0.2 | `release` workflow |
-| OF-15 | reusable 要不要装依赖 | 加输入 / 改口 |
-| OF-16 | fork 进 `FORBIDDEN_REPOS` | 是 / 否 |
-| OF-22 | 发 `forge-v1.1.3` 并升本仓 pin | `release` workflow；升针后才改 `forge-check.yml` |
-| OF-23 | 接受内容包补设计；是否再给升针加 `docs_sync` | 接受 / 改设计；接受之后再决定加不加锁 |
-
-2026-09-11：§F + 本 PR 已覆盖上表多项。仍待 Oliver：OF-01（环境密钥 `FORGE_SUBMIT_TOKEN`）、OF-03（`AIOPS_DEPLOY_SSH_KEY`）、OF-08（`FORGE_GITHUB_TOKEN` + `forge apply` 于 fork 的 `dev`+`main` 以及 AIOps；各 tag 的 GitHub Release 页面各点一次）。
+| OF-04 | lander 退役 | 有 write 后只留 APPLY.md |
+| OF-07 | fork ↔ 源仓 回灌 | 谁开 PR、多久一次（§F 暂缓） |
+| OF-21 | `pr-body` 路径机检 | 做 / 先靠审查 |
+| OF-23 | 接受内容包补设计 | 接受 / 改设计；接受之后再决定加不加升针 `docs_sync` |
 
 ---
 
@@ -214,3 +225,5 @@
 - 2026-09-11 本 PR：OF-06 列出的四处；新增本文件；AGENTS.md 与 brief 链到这里。
 - 2026-09-11 本 PR（v2 采纳）：OF-02 / OF-05 / OF-10 / OF-13 / OF-14 / OF-15 / OF-16 / OF-18 / OF-19 / OF-20 已修；OF-11 / OF-12 关闭；入口文档改 pin `overlay-v2.0.0` / `forge-v1.1.2`，路线 A `dev`→`main`。
 - 2026-09-12 #12 合入 `dev`。OF-22 不是工作流绕过：工具仓 `efbc74e` 已按事件 × 来源锁 PR 规格；本仓仍 pin `forge-v1.1.2`，等 `forge-v1.1.3`。
+- 2026-09-12 #13 / #14 合入 `dev`。OF-23 是补设计、提议，未接受、未加新锁。
+- 2026-09-14：#15 开 `dev` → `main` 升级 PR。密钥本轮不管。D 表改成现在还开着的。
