@@ -4,7 +4,7 @@
 
 编号 `OF-nn`。状态：**待定意图**（要 Oliver 拍板）/ **待修** / **已修** / **不修**（写原因）。
 
-基线（2026-09-14）：Learning Guide `origin/dev` `535778a`（#17）；`origin/main` `a25ca70`（#18）。官方针 `overlay-v2.0.0` / `forge-v1.1.2`。GitHub Release 页面只有 1.0.0 两条。两仓 Ruleset 均为 0。#15 squash 后曾把 `merge-base` 留在 `8799562`（#10）；#18 merge commit 接回 `dev` 祖先，合完后树一致。Oliver：leftover **应该一起**——先打 `dev`，合完再一条 promote，不要并行开 `main`。#17+#18 并行是反例。
+基线（2026-09-14）：Learning Guide `origin/dev` `bf276d8`（#19）；`origin/main` `7dd9b3d`（#20）。官方针 `overlay-v2.0.0` / `forge-v1.1.2`。GitHub Release 页面只有 1.0.0 两条。两仓 Ruleset 均为 0。#15 squash 后曾把 `merge-base` 留在 `8799562`（#10）；#20 是 #19 合完后的一条 promote，树与 `dev` 一致。Oliver：leftover **应该一起**——先打 `dev`，合完再一条 promote，不要并行开 `main`。#17+#18 并行是反例。
 
 ---
 
@@ -172,6 +172,17 @@
 - 和 OF-21 分工：OF-21 = 正文 ↔ diff；本条 = 这一单该装哪一层。
 - 2026-09-14 Oliver：leftover **应该一起**。正确链是先打 `dev`，合完再一条 `dev` → `main` promote。#17 打 `dev`、#18 同时打 `main` 是权宜，不是设计。本 PR 把这条写进 brief §0 / §5 和 `$dev-pr`。未接受前仍不加新锁。
 
+### OF-24 别人冷启动：错针 / 空根假绿 / Release 仍是 1.0.0 — 待修（工具仓 stranger 枝已推；发针与 Release 页是 Ops）
+
+- 现象：把 Forge 当标准工具、按已发布针冷启动，会踩三处假红 / 假绿 / 错针。
+  1. **错针。** 已发布 `use-forge`（`overlay-v2.0.0` / `forge-v1.1.2` / `main`）仍写 `git checkout overlay-v1.0.1`、目标 `forge-v1.1.0`。`overlay-v2.0.0` 自带的 Forge 是 1.1.0，在本仓 `forge check` 会红（`docs_sync` 扫 `node_modules` / 站点根链接）。工作 CLI 是 **`forge-v1.1.2`**。AIOps `origin/dev` 已改双 checkout；未 promote、未发新针，陌生人 `gh skill install --pin overlay-v2.0.0` 仍装到错的 skill。
+  2. **空根假绿。** `python3 -m forge check` 在既无 `forge.yaml` 又无 `overlay.yaml` 的目录逐步 skip 再打印 `forge check: ok`。AIOps 枝 `cursor/forge-stranger-check-9bdf` @ `4f8077d` 已改成退出 2（「不是产品根；先 cd」）。未合 `dev`、未发 `forge-v1.1.3`。
+  3. **Release「Latest」仍是 1.0.0。** `overlay-v2.0.0` / `forge-v1.1.2` 只有 git tag；GitHub Release 页只有 Overlay 1.0.0 / Forge 1.0.0。
+- 另：`pip install -r requirements.txt` **不会** 装出 `forge` 命令，必须 `PYTHONPATH` + `python3 -m`。两针：Overlay 用 `overlay-v2.0.0`，Forge CLI 用 `forge-v1.1.2`（发 1.1.3 后改成 1.1.3）。不要只用 Overlay 针当 Forge。
+- 不是修法：pin `main`；force-move `1.1.2`；agent 改本仓 `.github/workflows/`；接受 OF-23 / ADR 0007；加新 `docs_sync`；把升针和 cases 塞进同一单。
+- **OF-22 保持「针未升」。** 本仓继续 pin `forge-v1.1.2`；`25a3a3c` 拆变量是权宜。发 `forge-v1.1.3` 并升 pin 仍是 Oliver（见 D 表）。
+- 本仓本 PR：`suites/*/cases.md` 首段去掉 `armed` / `draft` / 「human arms」，写成 `active`（不改 `suite.yaml` `status`）；brief §6 补 `order` / `visitor-trial` 与 `INV-expired-no-learn`；APPLY.md 文首加粗「不要抄下面历史块」，历史 `checkout overlay-v1.0.1` 不再是第一条可复制命令；`docs/STATE.md` 用 `forge-v1.1.2` `--write`。
+
 ---
 
 ## D. 现在还开着的（2026-09-14；源仓 PAT 不能当 fork 钥匙）
@@ -186,16 +197,18 @@
 | OF-03 | deploy key 持久化 / Path B | 密钥轮 |
 | OF-08 | `forge apply`（LG `dev`+`main` 与 AIOps；现在 Ruleset = 0） | Oliver 持 `FORGE_GITHUB_TOKEN`；agent 不做 |
 | OF-14 余 | 已发布 tag 的 GitHub Release 页面（现在只有 1.0.0） | 人点 Release |
-| OF-22 | 发 `forge-v1.1.3` 并升本仓 pin | 人点 `release`；升针后才改 `forge-check.yml` |
+| OF-22 | 本仓针未升：仍 `forge-v1.1.2`；发 `forge-v1.1.3` 并升 pin | 人点 `release`；升针后才改 `forge-check.yml` |
+| OF-24 | 别人冷启动：错针 / 假绿 / Release 1.0.0 | AIOps 合 stranger 枝 + promote + 发 1.1.3 + Release 页；本仓升针仍是 Ops |
 
 本轮可做 / 已开：
 
 | 项 | 状态 |
 |---|---|
-| [#15](https://github.com/LibertychaserUS/LearningGuidePortal/pull/15) | 已 squash 合入 `main`（`a31fe5b`） |
-| [#16](https://github.com/LibertychaserUS/LearningGuidePortal/pull/16) | 已 squash 合入 `dev`（`b4c4661`） |
-| [#17](https://github.com/LibertychaserUS/LearningGuidePortal/pull/17) / [#18](https://github.com/LibertychaserUS/LearningGuidePortal/pull/18) | 已合（`dev` `535778a` / `main` `a25ca70`）。并行是反例；本 PR 只打 `dev`，合完再一条 promote |
-| AIOps ADR 0007 + 1.1.3 规格 | 已在 AIOps `origin/dev`（`5354959`，相对 `main` `ef840a4` 是快进）。未 promote。开 AIOps PR 仍 403 |
+| [#19](https://github.com/LibertychaserUS/LearningGuidePortal/pull/19) | 已合 `dev`（`bf276d8`） |
+| [#20](https://github.com/LibertychaserUS/LearningGuidePortal/pull/20) | 已合 `main`（`7dd9b3d`）；#19 合完后一条 promote，不是并行 |
+| [#17](https://github.com/LibertychaserUS/LearningGuidePortal/pull/17) / [#18](https://github.com/LibertychaserUS/LearningGuidePortal/pull/18) | 已合。并行是反例 |
+| AIOps `cursor/forge-stranger-check-9bdf` | 已推 `@ 4f8077d`（空根 `forge check` 退出 2 + `python3 -m` 说明）。开 PR 仍 403 |
+| AIOps ADR 0007 + 1.1.3 规格 | 已在 AIOps `origin/dev`（`5354959`，相对 `main` `ef840a4` 是快进）。未 promote |
 
 仍待拍板（不要密钥也能定）：
 
@@ -231,4 +244,5 @@
 - 2026-09-12 #13 / #14 合入 `dev`。OF-23 是补设计、提议，未接受、未加新锁。
 - 2026-09-14：#15 开 `dev` → `main` 升级 PR。密钥本轮不管。D 表改成现在还开着的。
 - 2026-09-14：#15 已 squash 合入 `main`（`a31fe5b`）。#16 已 squash 合入 `dev`（`b4c4661`）。对话里的 PAT 是源仓 `First-Light-TechHK` admin，对 fork 无 write；已登记 OF-01，应轮换。D 表改成现在还开着的。
-- 2026-09-14：#17 squash 合入 `dev`（`535778a`）；#18 merge 合入 `main`（`a25ca70`）。Oliver 指出 leftover 应该一起（先 `dev` 再一条 promote）。本 PR 改登记 / brief / `$dev-pr`，只打 `dev`。
+- 2026-09-14：#17 squash 合入 `dev`（`535778a`）；#18 merge 合入 `main`（`a25ca70`）。Oliver 指出 leftover 应该一起（先 `dev` 再一条 promote）。#19 合入 `dev`（`bf276d8`）；#20 是随后一条 promote 合入 `main`（`7dd9b3d`）。
+- 2026-09-14 本 PR：OF-24 登记别人冷启动（错针 / 空根假绿 / Release 1.0.0）。cases 首段改 `active`；brief §6 补 `order` / `visitor-trial` 与 `INV-expired-no-learn`；APPLY 历史块加粗勿抄；STATE 用 `forge-v1.1.2` `--write`。只打 `dev`，合完再一条 promote。OF-22 保持针未升。

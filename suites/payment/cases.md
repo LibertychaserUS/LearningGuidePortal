@@ -1,7 +1,7 @@
 # Payment Management
 
 Black-box I/O against quote, checkout, demo confirm, trial, subscription, entitlement check, and `/api/payment/webhook`.
-Suite is armed. Overlay select runs this product_command. PAY-01..07 Stripe internals stay specified.
+Suite is active. Overlay select runs this product_command. PAY-01..07 Stripe internals stay specified.
 
 PAY-01..07 Stripe internals stay specified. Executable I/O covers the HTTP-visible subset in demo and webhook authenticity.
 
