@@ -21,7 +21,7 @@
 6. 人审是 GitHub PR 审批 + CODEOWNERS，不是 yaml 签名。Agent **不得** 把套件改成 `blocked`（`suite_guard`），**不得** 改 `.github/workflows/`（`deny_paths`）。`docs_sync` 在本地 `forge check` 和 CI `forge-check` 都会跑。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → PR 到 `dev` → `promote` 到 `main`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check`，持有 `FORGE_SUBMIT_TOKEN` 再 `submit` 到 `dev`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply。`FORGE_SUBMIT_TOKEN` 与 `FORGE_GITHUB_TOKEN` 是 Oliver 提供的环境密钥，agent 永不粘贴 token。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
-9. **内容包按层配对（补设计，OF-23）。** 封顶是 squash PR。碰哪一层，同单带那一层的配对物。不是每个 PR 都交文档 + 代码 + workflow。agent 包不得改 `.github/workflows/`。升针是单独的 Ops 包。一开始没写这层规格，锁先于设计；人接受前不加新锁。
+9. **内容包按层配对（补设计，OF-23）。** 封顶是 squash PR。碰哪一层，同单带那一层的配对物。不是每个 PR 都交文档 + 代码 + workflow。agent 包不得改 `.github/workflows/`。升针是单独的 Ops 包。一开始没写这层规格，锁先于设计；人接受前不加新锁。squash 后若还有 leftover：**先打 `dev`，合完再一条 promote**。不要并行往 `main` 开第二份（#17+#18 是反例）。
 
 ---
 
@@ -273,7 +273,7 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 | 工具包 | AIOps `forge/**` 或 `overlay/**` + CHANGELOG + 契约文档 | `forge` / `overlay` | 产品仓 workflow；force-move tag |
 | 文档包 | 只改 docs | `docs` | 顺手改代码或 workflow |
 | 工作流 / 升针包 | 人改 `overlay-check.yml` / `forge-check.yml`；同单 brief；必要时 STATE | `ci` | 夹产品功能（OF-22 的教训） |
-| 升级包 | `forge promote`，没有新内容 | — | agent 自合 |
+| 升级包 | `forge promote`，没有新内容；squash 后 leftover 也走这一条，不另开并行 `main` PR | — | agent 自合；#17+#18 那种并行 |
 
 非法：功能切片 + 升 pin。非法：agent PR 改 workflow。非法：改 suites / 配置不改 brief。
 

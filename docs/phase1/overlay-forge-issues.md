@@ -4,7 +4,7 @@
 
 编号 `OF-nn`。状态：**待定意图**（要 Oliver 拍板）/ **待修** / **已修** / **不修**（写原因）。
 
-基线（2026-09-14）：Learning Guide `origin/dev` `b4c4661`（#16）；`origin/main` `a31fe5b`（#15 squash of `e5f2576`）。官方针 `overlay-v2.0.0` / `forge-v1.1.2`。GitHub Release 页面只有 1.0.0 两条。两仓 Ruleset 均为 0。#15 squash 后 `merge-base(origin/main, origin/dev)` 仍是 `8799562`（#10）；直接再开 `dev` → `main` 会把 #12–#14 再演一遍。`main` 相对 `dev` 的树差只剩本文件。
+基线（2026-09-14）：Learning Guide `origin/dev` `535778a`（#17）；`origin/main` `a25ca70`（#18）。官方针 `overlay-v2.0.0` / `forge-v1.1.2`。GitHub Release 页面只有 1.0.0 两条。两仓 Ruleset 均为 0。#15 squash 后曾把 `merge-base` 留在 `8799562`（#10）；#18 merge commit 接回 `dev` 祖先，合完后树一致。Oliver：leftover **应该一起**——先打 `dev`，合完再一条 promote，不要并行开 `main`。#17+#18 并行是反例。
 
 ---
 
@@ -17,7 +17,7 @@
 - 选项：(a) Oliver 在 Cloud Agent 环境加 fine-grained PAT（只对 fork：contents:write + pull_requests:write）作 `FORGE_SUBMIT_TOKEN`，`submit` 成真；(b) 承认 host PR 路径就是落地，Forge 定位改成「`check` 门禁」，文档改口。
 - 已做：brief §11 已注明当前只有 `check`。
 - 2026-09-11 仍待 Oliver：把 `FORGE_SUBMIT_TOKEN` 配成环境密钥（agent 永不粘贴）。`forge promote` 同一把钥匙。
-- 2026-09-14：对话里给过一把 PAT，要求直接用来开 fork PR。核过：身份是 `First-Light-TechHK`，对源仓 `First-Light-TechHK/LearningGuidePortal` 是 admin，对 fork `LibertychaserUS/LearningGuidePortal` 和 `LibertychaserUS/AIOps` 只有 pull、没有 push。不能当 `FORGE_SUBMIT_TOKEN`（那把钥匙必须是 **fork** 的 `contents:write` + `pull_requests:write`，配成环境密钥，不要贴进对话）。agent 不用这把钥匙打源仓、不合入、不 `apply`。这把钥匙已出现在对话里，应立刻作废轮换。
+- 2026-09-14：对话里给过一把 PAT，要求直接用来开 fork PR。核过：身份是 `First-Light-TechHK`，对源仓 `First-Light-TechHK/LearningGuidePortal` 是 admin，对 fork `LibertychaserUS/LearningGuidePortal` 和 `LibertychaserUS/AIOps` 只有 pull、没有 push。不能当 `FORGE_SUBMIT_TOKEN`（那把钥匙必须是 **fork** 的 `contents:write` + `pull_requests:write`，配成环境密钥，不要贴进对话）。agent 不用这把钥匙打源仓、不 `apply`。这把钥匙已出现在对话里，应立刻作废轮换。同日 Oliver 明示「你来直接合入」后，#17 / #18 由 host `cursor[bot]` 合入，不是这把 PAT。
 
 ### OF-02 CI 钉 `overlay-v1.0.0`，本地钉 `overlay-v1.0.1` — 已修（本 PR：CI pin overlay-v2.0.0 / forge-v1.1.2）
 
@@ -170,6 +170,7 @@
 - 不是修法：把「每个 agent PR 必须改 workflow」写成规则；把升针塞进功能切片（#12 / OF-22）；先加锁再补说明。
 - 接受之后才点头的实现：要不要给 `overlay-check.yml` / `forge-check.yml` 加一条 `docs_sync` → brief。STATE 不走这条（`check-state` 已锁一致性）。
 - 和 OF-21 分工：OF-21 = 正文 ↔ diff；本条 = 这一单该装哪一层。
+- 2026-09-14 Oliver：leftover **应该一起**。正确链是先打 `dev`，合完再一条 `dev` → `main` promote。#17 打 `dev`、#18 同时打 `main` 是权宜，不是设计。本 PR 把这条写进 brief §0 / §5 和 `$dev-pr`。未接受前仍不加新锁。
 
 ---
 
@@ -192,9 +193,9 @@
 | 项 | 状态 |
 |---|---|
 | [#15](https://github.com/LibertychaserUS/LearningGuidePortal/pull/15) | 已 squash 合入 `main`（`a31fe5b`） |
-| [#16](https://github.com/LibertychaserUS/LearningGuidePortal/pull/16) | 已 squash 合入 `dev`（`b4c4661`）；树差未上 `main` |
-| 本表对齐 + `main` 单文件 leftover | 本 PR（打 `dev`）+ 另开从 `main` 长出的单文件 PR（不要再开整枝 `dev` → `main`） |
-| AIOps ADR 0007 + 1.1.3 规格 | 已在 AIOps `origin/dev`（`5354959`，相对 `main` `ef840a4` 是快进）。未 promote。`cursor[bot]` 开不了 AIOps PR |
+| [#16](https://github.com/LibertychaserUS/LearningGuidePortal/pull/16) | 已 squash 合入 `dev`（`b4c4661`） |
+| [#17](https://github.com/LibertychaserUS/LearningGuidePortal/pull/17) / [#18](https://github.com/LibertychaserUS/LearningGuidePortal/pull/18) | 已合（`dev` `535778a` / `main` `a25ca70`）。并行是反例；本 PR 只打 `dev`，合完再一条 promote |
+| AIOps ADR 0007 + 1.1.3 规格 | 已在 AIOps `origin/dev`（`5354959`，相对 `main` `ef840a4` 是快进）。未 promote。开 AIOps PR 仍 403 |
 
 仍待拍板（不要密钥也能定）：
 
@@ -230,3 +231,4 @@
 - 2026-09-12 #13 / #14 合入 `dev`。OF-23 是补设计、提议，未接受、未加新锁。
 - 2026-09-14：#15 开 `dev` → `main` 升级 PR。密钥本轮不管。D 表改成现在还开着的。
 - 2026-09-14：#15 已 squash 合入 `main`（`a31fe5b`）。#16 已 squash 合入 `dev`（`b4c4661`）。对话里的 PAT 是源仓 `First-Light-TechHK` admin，对 fork 无 write；已登记 OF-01，应轮换。D 表改成现在还开着的。
+- 2026-09-14：#17 squash 合入 `dev`（`535778a`）；#18 merge 合入 `main`（`a25ca70`）。Oliver 指出 leftover 应该一起（先 `dev` 再一条 promote）。本 PR 改登记 / brief / `$dev-pr`，只打 `dev`。
