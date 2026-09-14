@@ -1,7 +1,7 @@
 # Registration and Authentication
 
 Black-box I/O against `/api/auth/*` and one protected purchase gate. Not a mirror of the Registration PRD.
-Suite is armed. Overlay select runs this product_command.
+Suite is active. Overlay select runs this product_command.
 
 Shallow to deep: public JSON shape → production leak → role → password takeover → session kick.
 

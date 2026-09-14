@@ -1,7 +1,7 @@
 # Visitor / Trial
 
 Black-box I/O against trial quote, `/api/trial`, demo confirm, entitlement check, study/events, and `/api/subscription` resume.
-Suite is draft. Overlay select does not run this product_command until a human arms it.
+Suite is active. Overlay select runs this product_command.
 
 Visitor-facing checks are TRIAL-01 / TRIAL-02 (unique ids; payment suite keeps PAY-01 / PAY-10). Trial Canceled → Trial Active before the original `trial_end` must not extend `validTo` (`domain-model.md`).
 

@@ -1,7 +1,7 @@
 # My Learning — overview and progress
 
 Compiled from existing unit tests. These Learning Guide ids are not Overlay kernel law.
-Suite is armed. Overlay select runs this product_command (store unit tests).
+Suite is active. Overlay select runs this product_command (store unit tests).
 Signed-out HTTP I/O lives in `tests/io/my-learning.test.ts`. Store unit tests do not prove signed-out HTTP.
 
 ## ML-FR-004 Course cards

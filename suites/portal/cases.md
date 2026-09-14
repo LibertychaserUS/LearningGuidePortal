@@ -1,6 +1,6 @@
 # Portal — published course page
 
-Compiled from existing unit tests. Suite is armed. Overlay select runs this product_command.
+Compiled from existing unit tests. Suite is active. Overlay select runs this product_command.
 
 ## UC-PORTAL-1 Course page primitives
 

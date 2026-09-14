@@ -1,14 +1,25 @@
 # Apply the AIOps docs/skills pin
 
-## 2026-09-11 Overlay 2.0.0 / Forge 1.1.2
+## 现在请抄这一块（官方针）
 
-**官方针（现在）：** `overlay-v2.0.0`（Overlay）与 `forge-v1.1.2`（Forge）。同一工具仓、两件产品，不要手抄 SHA；现状看产品仓 [`docs/STATE.md`](../../STATE.md)。
+**官方针（现在）：** `overlay-v2.0.0`（Overlay）与 `forge-v1.1.2`（Forge）。同一工具仓、两件产品，不要手抄 SHA；现状看产品仓 [`docs/STATE.md`](../../STATE.md)。不要只用 Overlay 针当 Forge。
+
+```text
+git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
+git -C /tmp/AIOps checkout overlay-v2.0.0
+# Forge CLI 用已发布针：git -C /tmp/AIOps checkout forge-v1.1.2
+python3 -m pip install -r /tmp/AIOps/requirements.txt
+export PYTHONPATH=/tmp/AIOps
+# pip 不会装出 forge 命令；必须 PYTHONPATH + python3 -m overlay / python3 -m forge
+```
 
 本目录的 lander（`000*.patch`、`land-docs-pin.sh`）是 **历史**：当时 agent 推不了 AIOps。新的 AIOps 改动走 `dev` → `forge promote` → `main`。`1.0.x` 与 `2.0.0` / `1.1.2` 的 GitHub Release 页面仍需 Oliver 每个 tag 点一次。
 
-下面原文保留作历史记录，针脚与「Humans arm」叙述已过期。
+**不要抄下面历史块。** 针脚与「Humans arm」叙述已过期。第一条可复制命令是上面的 `overlay-v2.0.0`，不是 `checkout overlay-v1.0.1`。
 
 ---
+
+## 2026-09-11 Overlay 2.0.0 / Forge 1.1.2（lander 当时的记录）
 
 **历史针：** `overlay-v1.0.1` / `forge-v1.0.1` @ `b4afc10ae0be4725e5109030f14a05bb2291fe4a`。
 
