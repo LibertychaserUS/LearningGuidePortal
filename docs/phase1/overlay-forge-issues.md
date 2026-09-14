@@ -163,7 +163,7 @@
 
 - 问法：每次提交是不是都要同时交文档、代码、CI workflow？
 - 缺口：一开始只实现了 `docs_sync` / `deny_paths` / workflow，没有先定义一单内容包是什么。锁先于设计。
-- 设计（提议）：**否，不是三件套。** 包是进保护枝的 squash PR。碰哪一层，同单带那一层的配对物。权威表在 brief §5。工具仓 [ADR 0007](https://github.com/LibertychaserUS/AIOps/blob/cursor/forge-content-package-9bdf/docs/adr/0007-content-package-layers.md) 状态是**提议**，不是已接受。
+- 设计（提议）：**否，不是三件套。** 包是进保护枝的 squash PR。碰哪一层，同单带那一层的配对物。权威表在 brief §5。工具仓 [ADR 0007](https://github.com/LibertychaserUS/AIOps/blob/dev/docs/adr/0007-content-package-layers.md) 已进 AIOps `origin/dev`（`5354959`），状态仍是**提议**，不是已接受。未 promote 到 AIOps `main`。
 - 顺序：先设计 → 人把 0007 / 本条改成已接受 → 再决定要不要加新锁。未接受之前不改 `forge.yaml`、不加 `docs_sync` 行、不改 `.github/workflows/`。
 - 已经在跑、先于本设计的锁：`docs_sync`（套件 / 配置 → brief）；`deny_paths`；`status --check-state`。不当成本条已实现。
 - 不是修法：把「每个 agent PR 必须改 workflow」写成规则；把升针塞进功能切片（#12 / OF-22）；先加锁再补说明。
@@ -191,7 +191,7 @@
 | 项 | 状态 |
 |---|---|
 | [#15](https://github.com/LibertychaserUS/LearningGuidePortal/pull/15) promote `dev` → `main`（`e5f2576`） | 已开；人批 + CODEOWNERS 后 merge commit。agent 不合 |
-| AIOps ADR 0007 进 `origin/dev` | 枝 `cursor/forge-content-package-9bdf`；`cursor[bot]` 开不了 AIOps PR |
+| AIOps ADR 0007 进 `origin/dev` | 已快进到 `5354959`。未 promote 到 AIOps `main`。`cursor[bot]` 开不了 AIOps PR |
 | 本表与基线对齐 | 本 PR |
 
 仍待拍板（不要密钥也能定）：
