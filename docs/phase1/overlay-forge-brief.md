@@ -7,7 +7,7 @@
 **现状：** [`docs/STATE.md`](../STATE.md)（`forge status` 生成，不要手改）  
 **登记：** [`overlay-forge-issues.md`](./overlay-forge-issues.md)
 
-这不是 KS。产品仓是 `LibertychaserUS/LearningGuidePortal`。工具仓是 `LibertychaserUS/AIOps`。发布针只认已发布 tag：`overlay-v2.0.0`（Overlay）/ `forge-v1.1.2`（Forge）；同一仓、两件产品。不要 pin `main`。不要手抄 SHA。
+这不是 KS。产品仓是 `LibertychaserUS/LearningGuidePortal`。工具仓是 `LibertychaserUS/AIOps`。发布针只认已发布 tag：`overlay-v2.0.0`（Overlay）/ `forge-v1.1.3`（Forge）；同一仓、两件产品。不要 pin `main`。不要手抄 SHA。
 
 ---
 
@@ -72,7 +72,7 @@ Overlay
 - `invariants.yaml`
 - `.github/CODEOWNERS`
 - `.github/workflows/overlay-check.yml`（job 名必须叫 `overlay-check`；checkout `AIOps@overlay-v2.0.0` 到 `_aiops`，不 vendor `overlay/`）
-- `.github/workflows/forge-check.yml`（job 名必须叫 `forge-check`；checkout `AIOps@forge-v1.1.2` 到 `_aiops`）
+- `.github/workflows/forge-check.yml`（job 名必须叫 `forge-check`；checkout `AIOps@forge-v1.1.3` 到 `_aiops`）
 - `docs/STATE.md`（生成；不要手改）
 
 ---
@@ -114,7 +114,7 @@ ASCII：
 
 ## 4. 产品仓 CI DAG
 
-push / PR 同时走三条线：左边 Verify 不改用途；中间 overlay-check 拉 `overlay-v2.0.0`；右边 forge-check 拉 `forge-v1.1.2`。都不把工具仓拷进产品树。deploy 不自动。A 路线：功能 PR 打 `dev`（CI required，无人批）；`dev → main` 的 promote PR 要 1 人批 + CODEOWNERS。
+push / PR 同时走三条线：左边 Verify 不改用途；中间 overlay-check 拉 `overlay-v2.0.0`；右边 forge-check 拉 `forge-v1.1.3`。都不把工具仓拷进产品树。deploy 不自动。A 路线：功能 PR 打 `dev`（CI required，无人批）；`dev → main` 的 promote PR 要 1 人批 + CODEOWNERS。
 
 ```mermaid
 flowchart TD
@@ -137,7 +137,7 @@ flowchart TD
     end
 
     subgraph forgeJobs["forge-check 不 vendor Forge"]
-        forgeJob --> checkoutForge["checkout AIOps@forge-v1.1.2 → _aiops"]
+        forgeJob --> checkoutForge["checkout AIOps@forge-v1.1.3 → _aiops"]
         checkoutForge --> fcheck["forge check"]
         fcheck --> fstate["forge status --check-state"]
     end
@@ -166,7 +166,7 @@ ASCII：
    test:ci = tsc+unit          job 名 overlay-check
    + Playwright auth                 │
                     \                │
-                     \               │         checkout AIOps@forge-v1.1.2 → _aiops
+                     \               │         checkout AIOps@forge-v1.1.3 → _aiops
                       \              │            forge check
                        \             │            forge status --check-state
                         \            │                 │
@@ -300,11 +300,11 @@ OF-21 是「正文是否描述了 diff」。本条是「这一单该装哪一层
 | `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10）；`INV-expired-no-learn`（ML-FR-004, PAY-09） |
 | `.github/CODEOWNERS` | `suites/**`、`inbox/**`、`.github/workflows/**`、入口文档归 `@LibertychaserUS` |
 | `.github/workflows/overlay-check.yml` | 单 job `overlay-check`：checkout `AIOps@overlay-v2.0.0` → `_aiops`、`npm ci`、`overlay validate` + `cover` + `run` |
-| `.github/workflows/forge-check.yml` | 单 job `forge-check`：checkout `AIOps@forge-v1.1.2` → `_aiops`、`forge check` + `forge status --check-state`。`1.1.2` 把 push 上的空 `PR_TITLE` 当成已提供标题。规格在未发布的 `forge-1.1.3`（事件 × 来源，push 锁提交 subject），不是把变量从 push 拿掉（OF-22）。本仓针未升前 workflow 仍拆了该变量；agent 不改 `deny_paths` 里的工作流 |
+| `.github/workflows/forge-check.yml` | 单 job `forge-check`：checkout `AIOps@forge-v1.1.3` → `_aiops`、`forge check` + `forge status --check-state`。`1.1.3` 按事件 × 来源取值：push 上空 `PR_TITLE` 锁 HEAD 提交 subject。此单是 Ops 升针包（非 agent 前缀）。agent 仍不改 `deny_paths` 里的工作流 |
 | `docs/STATE.md` | 生成；不要手改 |
 | `tests/io/*` | 黑盒，本地 `npm run test:io`。**不在** `test:ci` 里 |
 
-官方针：`overlay-v2.0.0` / `forge-v1.1.2`。不要 pin `AIOps` 的 `main`。不要 force-move 旧针。两份 workflow 都在 `deny_paths` 里，agent 不改。历史 lander 见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。
+官方针：`overlay-v2.0.0` / `forge-v1.1.3`。不要 pin `AIOps` 的 `main`。不要 force-move 旧针。两份 workflow 都在 `deny_paths` 里，agent 不改。历史 lander 见 [`aiops-release/APPLY.md`](./aiops-release/APPLY.md)。
 
 ---
 
@@ -489,7 +489,7 @@ PAY-01 / 03 / 06 / 07 / 08 的服务层锁已经进 `tests/unit/pay-invariants.t
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
 cd /tmp/AIOps
 git checkout overlay-v2.0.0
-# Forge CLI：git checkout forge-v1.1.2（同一仓、另一件产品）
+# Forge CLI：git checkout forge-v1.1.3（同一仓、另一件产品）
 python3 -m pip install -r requirements.txt
 export PYTHONPATH=/tmp/AIOps
 ```
@@ -504,12 +504,12 @@ export PYTHONPATH=/tmp/AIOps
 | `.cursor/skills/<name>` | 同上（symlink） |
 | `.claude/skills/<name>` | 同上（symlink） |
 
-权威 skill 在工具仓：`https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/skills/<name>/SKILL.md`。本仓那五份是 Learning Guide 薄操作说明。`name` = `use-forge` / `use-overlay` / `design-cases` / `dev-pr` / `manage-repo`。`use-forge` 是开发冷启动（`check` → PR 到 `dev`）；live `apply` 只在 `manage-repo`，且只有 Oliver 做。本仓已有 `forge.yaml`：问一次，同意后默认跑 `check` / `submit` 到 `dev`。不要每次存盘再讲宪法。初始化同意 ≠ live-apply。
+权威 skill 在工具仓：`https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.3/skills/<name>/SKILL.md`。本仓那五份是 Learning Guide 薄操作说明。`name` = `use-forge` / `use-overlay` / `design-cases` / `dev-pr` / `manage-repo`。`use-forge` 是开发冷启动（`check` → PR 到 `dev`）；live `apply` 只在 `manage-repo`，且只有 Oliver 做。本仓已有 `forge.yaml`：问一次，同意后默认跑 `check` / `submit` 到 `dev`。不要每次存盘再讲宪法。初始化同意 ≠ live-apply。
 
 或从已发布 tag 装工作本（host id：`codex` / `cursor` / `claude-code` / `github-copilot`）：
 
 ```text
-# overlay-v2.0.0 / forge-v1.1.2 — 官方针，见 docs/STATE.md
+# overlay-v2.0.0 / forge-v1.1.3 — 官方针，见 docs/STATE.md
 gh skill install LibertychaserUS/AIOps --agent cursor --pin overlay-v2.0.0 --all
 gh skill install LibertychaserUS/AIOps use-forge --agent cursor --pin overlay-v2.0.0
 gh skill install LibertychaserUS/AIOps use-overlay --agent cursor --pin overlay-v2.0.0
@@ -535,8 +535,8 @@ PYTHONPATH=/tmp/AIOps python3 -m forge status --root . --repo LibertychaserUS/Le
 
 **历史：** 从 Overlay 1.0.x 升上来时曾用 `python -m overlay migrate --root .` 把 `draft`/`armed` 改成 `active` 并删掉 `reviewed_by`。现在套件已是 `overlay-suite/v2`，不要再迁一遍。
 
-`python -m forge` 子命令以工具仓 [`docs/cli.md`](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.2/docs/cli.md) 为准。开发侧用 `check` / `submit` / `promote`；Ops 才 `apply` / `release`。没有 `brief`、`credential`、`ops-chain`、`revoke`。缺 `FORGE_SUBMIT_TOKEN` 时 `submit` / `promote`（含 `--dry-run`）fail-closed，改走 host 的 PR 路径（见 `dev-pr`）。`required_checks` 是 job 名：`Typecheck` / `Lint` / `Build and test` / `overlay-check` / `forge-check`，不要抄 workflow 名 `Verify`。
+`python -m forge` 子命令以工具仓 [`docs/cli.md`](https://github.com/LibertychaserUS/AIOps/blob/forge-v1.1.3/docs/cli.md) 为准。开发侧用 `check` / `submit` / `promote`；Ops 才 `apply` / `release`。没有 `brief`、`credential`、`ops-chain`、`revoke`。缺 `FORGE_SUBMIT_TOKEN` 时 `submit` / `promote`（含 `--dry-run`）fail-closed，改走 host 的 PR 路径（见 `dev-pr`）。`required_checks` 是 job 名：`Typecheck` / `Lint` / `Build and test` / `overlay-check` / `forge-check`，不要抄 workflow 名 `Verify`。
 
-叶子必须是 `### Functional` / `### Negative` / `### Edge`。不要 `### Depth`。不要 `## Specified / not tested now`。已有的 `overlay-check.yml` 是单 job `overlay-check`（checkout `AIOps@overlay-v2.0.0` 到 `_aiops`、`npm ci`、`overlay validate` + `cover` + `run`）；另有 `forge-check.yml`（checkout `AIOps@forge-v1.1.2`、`forge check` + `status --check-state`）。两者都在 `deny_paths` 里，agent 不改。Agent 不 live-apply、不把套件改成 `blocked`、不打 `ilovelearningguide.com`、不改 Verify、不把 `test:io` 塞进 `test:ci`。
+叶子必须是 `### Functional` / `### Negative` / `### Edge`。不要 `### Depth`。不要 `## Specified / not tested now`。已有的 `overlay-check.yml` 是单 job `overlay-check`（checkout `AIOps@overlay-v2.0.0` 到 `_aiops`、`npm ci`、`overlay validate` + `cover` + `run`）；另有 `forge-check.yml`（checkout `AIOps@forge-v1.1.3`、`forge check` + `status --check-state`）。两者都在 `deny_paths` 里，agent 不改。Agent 不 live-apply、不把套件改成 `blocked`、不打 `ilovelearningguide.com`、不改 Verify、不把 `test:io` 塞进 `test:ci`。
 
 `--branch` 只选 `overlay.yaml` 里 `branches.<name>` 那条策略；套件 `status` 读的是**当前 checkout**。已知问题与待 Oliver 的操作，集中记在 [`overlay-forge-issues.md`](./overlay-forge-issues.md)。

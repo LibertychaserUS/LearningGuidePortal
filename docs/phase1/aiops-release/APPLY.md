@@ -2,12 +2,12 @@
 
 ## 现在请抄这一块（官方针）
 
-**官方针（现在）：** `overlay-v2.0.0`（Overlay）与 `forge-v1.1.2`（Forge）。同一工具仓、两件产品，不要手抄 SHA；现状看产品仓 [`docs/STATE.md`](../../STATE.md)。不要只用 Overlay 针当 Forge。
+**官方针（现在）：** `overlay-v2.0.0`（Overlay）与 `forge-v1.1.3`（Forge）。同一工具仓、两件产品，不要手抄 SHA；现状看产品仓 [`docs/STATE.md`](../../STATE.md)。不要只用 Overlay 针当 Forge。
 
 ```text
 git clone https://github.com/LibertychaserUS/AIOps.git /tmp/AIOps
 git -C /tmp/AIOps checkout overlay-v2.0.0
-# Forge CLI 用已发布针：git -C /tmp/AIOps checkout forge-v1.1.2
+# Forge CLI 用已发布针：git -C /tmp/AIOps checkout forge-v1.1.3
 python3 -m pip install -r /tmp/AIOps/requirements.txt
 export PYTHONPATH=/tmp/AIOps
 # pip 不会装出 forge 命令；必须 PYTHONPATH + python3 -m overlay / python3 -m forge

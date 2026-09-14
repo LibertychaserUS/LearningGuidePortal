@@ -4,7 +4,7 @@
 
 编号 `OF-nn`。状态：**待定意图**（要 Oliver 拍板）/ **待修** / **已修** / **不修**（写原因）。
 
-基线（2026-09-14）：Learning Guide `origin/dev` `bf276d8`（#19）；`origin/main` `7dd9b3d`（#20）。官方针 `overlay-v2.0.0` / `forge-v1.1.2`。GitHub Release 页面只有 1.0.0 两条。两仓 Ruleset 均为 0。#15 squash 后曾把 `merge-base` 留在 `8799562`（#10）；#20 是 #19 合完后的一条 promote，树与 `dev` 一致。Oliver：leftover **应该一起**——先打 `dev`，合完再一条 promote，不要并行开 `main`。#17+#18 并行是反例。
+基线（2026-09-14）：Learning Guide `origin/dev` `e53c382`（#21）；`origin/main` `1d7867d`（#22）。官方针 `overlay-v2.0.0` / `forge-v1.1.3`（git tag @ `9071fa1`）。GitHub Release 页面仍只有 1.0.0 两条。两仓 Ruleset 均为 0。#22 是 #21 合完后的一条 promote。Oliver：leftover **应该一起**——先打 `dev`，合完再一条 promote。#17+#18 并行是反例。
 
 ---
 
@@ -151,14 +151,14 @@
 - 待做（Forge 候选，记在工具仓）：`pr-body` 步骤增加「正文提到的文件路径必须在 diff 或树里存在」「diff 触碰 `deny_paths` / `suites/*/suite.yaml` / `forge.yaml` / `overlay.yaml` 时正文必须出现对应路径」两条可判定规则；其余靠审查 agent。
 - 和 OF-23 分工：本条锁「正文是否描述了 diff」；OF-23 锁「这一单该装哪一层」。
 
-### OF-22 PR 规格夹具没锁到 push × 空 `PR_TITLE` — 工具仓已迭代（AIOps `dev` `efbc74e`）；本仓针仍 `forge-v1.1.2`
+### OF-22 PR 规格夹具没锁到 push × 空 `PR_TITLE` — 已修（本 PR：pin `forge-v1.1.3`）
 
 - 现象：#12 的 `push` job `forge-check`（run `34669346160`）红：`pr-title FAIL empty PR title`。同 SHA 的 `pull_request` `forge-check`、Verify、overlay-check 全绿。
 - 根因：旧夹具只锁「好 `--title` / `--title ""` / 缺 actor」。没锁 `GITHUB_EVENT_NAME`、Actions 把 `github.event.pull_request.title` 写成的空串、以及 `forge check` 在 push 上嵌 pr-title。`forge-v1.1.2` 见空串 `is not None` 就 lint，得到 `empty PR title`。
 - 不是修法：空白环境变量当省略（skip）；本仓 `25a3a3c` 在 push 上不设 `PR_TITLE`；把 `deny_paths` 改成 advisory；agent 分支改 `.github/workflows/`；force-move `forge-v1.1.2`。
 - 规格（未发布 `forge-1.1.3`）：按事件 × 来源取值。`--title` / `--body`（含显式空串）按参数 lint；非空环境变量按环境 lint；`pull_request` + 空白或未设 → 空规格红；`push` 或 Actions 空串 → lint HEAD 提交第一行；本地无事件且环境未设才 skip。叶子 `FN-forge-pr-title`，invariant `INV-pr-spec-event-states`。
 - 工具仓：`LibertychaserUS/AIOps` `dev` 与 `cursor/forge-empty-pr-title-9bdf` 均 `efbc74e`。CHANGELOG 已登记 `## [forge-1.1.3]`。`cursor[bot]` 开不了 AIOps PR（403）。发针走 `release` workflow，不要 force-move `forge-v1.1.2`。
-- 本仓：继续 pin `forge-v1.1.2`。`25a3a3c` 拆变量只是针未升前的权宜。升针后，push 即使 `PR_TITLE` 空或未设也锁提交 subject。agent 不改 `deny_paths` 里的工作流。
+- 本仓本 PR：`forge-check.yml` pin `forge-v1.1.3`。push 上空 `PR_TITLE` 锁提交 subject。升针包走非 agent 前缀（`deny_paths` 只拦 agent 分支）。不 force-move `1.1.2`。
 
 ### OF-23 提交内容包按层配对 — 补设计（一开始没写）；待接受；未实现新锁
 
@@ -180,14 +180,14 @@
   3. **Release「Latest」仍是 1.0.0。** `overlay-v2.0.0` / `forge-v1.1.2` 只有 git tag；GitHub Release 页只有 Overlay 1.0.0 / Forge 1.0.0。
 - 另：`pip install -r requirements.txt` **不会** 装出 `forge` 命令，必须 `PYTHONPATH` + `python3 -m`。两针：Overlay 用 `overlay-v2.0.0`，Forge CLI 用 `forge-v1.1.2`（发 1.1.3 后改成 1.1.3）。不要只用 Overlay 针当 Forge。
 - 不是修法：pin `main`；force-move `1.1.2`；agent 改本仓 `.github/workflows/`；接受 OF-23 / ADR 0007；加新 `docs_sync`；把升针和 cases 塞进同一单。
-- **OF-22 保持「针未升」。** 本仓继续 pin `forge-v1.1.2`；`25a3a3c` 拆变量是权宜。发 `forge-v1.1.3` 并升 pin 仍是 Oliver（见 D 表）。
+- **OF-22 本 PR 升针。** git tag `forge-v1.1.3` @ `9071fa1` 已推。GitHub Release 页仍缺（cursor token 403）。`apply` 仍缺 `FORGE_GITHUB_TOKEN`。
 - 本仓本 PR：`suites/*/cases.md` 首段去掉 `armed` / `draft` / 「human arms」，写成 `active`（不改 `suite.yaml` `status`）；brief §6 补 `order` / `visitor-trial` 与 `INV-expired-no-learn`；APPLY.md 文首加粗「不要抄下面历史块」，历史 `checkout overlay-v1.0.1` 不再是第一条可复制命令；`docs/STATE.md` 用 `forge-v1.1.2` `--write`。
 
 ---
 
 ## D. 现在还开着的（2026-09-14；源仓 PAT 不能当 fork 钥匙）
 
-已定或已修、不再列在这里：OF-02 / OF-05 / OF-06 / OF-09 / OF-10 / OF-11 / OF-12 / OF-13 / OF-15 / OF-16 / OF-18 / OF-19 / OF-20。见 §E / §F。
+已定或已修、不再列在这里：OF-02 / OF-05 / OF-06 / OF-09 / OF-10 / OF-11 / OF-12 / OF-13 / OF-15 / OF-16 / OF-18 / OF-19 / OF-20 / OF-22。见 §E / §F。
 
 本轮先放下（要 **fork** 写钥匙或 Ops 点按钮）：
 
@@ -195,20 +195,17 @@
 |---|---|---|
 | OF-01 | `FORGE_SUBMIT_TOKEN`（fork `contents:write` + `pull_requests:write`） | 配环境密钥；源仓 admin PAT 不算 |
 | OF-03 | deploy key 持久化 / Path B | 密钥轮 |
-| OF-08 | `forge apply`（LG `dev`+`main` 与 AIOps；现在 Ruleset = 0） | Oliver 持 `FORGE_GITHUB_TOKEN`；agent 不做 |
-| OF-14 余 | 已发布 tag 的 GitHub Release 页面（现在只有 1.0.0） | 人点 Release |
-| OF-22 | 本仓针未升：仍 `forge-v1.1.2`；发 `forge-v1.1.3` 并升 pin | 人点 `release`；升针后才改 `forge-check.yml` |
-| OF-24 | 别人冷启动：错针 / 假绿 / Release 1.0.0 | AIOps 合 stranger 枝 + promote + 发 1.1.3 + Release 页；本仓升针仍是 Ops |
+| OF-08 | `forge apply`（LG `dev`+`main` 与 AIOps；现在 Ruleset = 0） | 要 `FORGE_GITHUB_TOKEN`；cursor token 403 |
+| OF-14 余 / OF-24 余 | GitHub Release 页面（Latest 仍是 1.0.0；`forge-v1.1.3` 只有 git tag @ `9071fa1`） | 人点 Release；cursor token 403 |
 
 本轮可做 / 已开：
 
 | 项 | 状态 |
 |---|---|
-| [#19](https://github.com/LibertychaserUS/LearningGuidePortal/pull/19) | 已合 `dev`（`bf276d8`） |
-| [#20](https://github.com/LibertychaserUS/LearningGuidePortal/pull/20) | 已合 `main`（`7dd9b3d`）；#19 合完后一条 promote，不是并行 |
-| [#17](https://github.com/LibertychaserUS/LearningGuidePortal/pull/17) / [#18](https://github.com/LibertychaserUS/LearningGuidePortal/pull/18) | 已合。并行是反例 |
-| AIOps `cursor/forge-stranger-check-9bdf` | 已推 `@ 4f8077d`（空根 `forge check` 退出 2 + `python3 -m` 说明）。开 PR 仍 403 |
-| AIOps ADR 0007 + 1.1.3 规格 | 已在 AIOps `origin/dev`（`5354959`，相对 `main` `ef840a4` 是快进）。未 promote |
+| [#21](https://github.com/LibertychaserUS/LearningGuidePortal/pull/21) | 已合 `dev`（`e53c382`） |
+| [#22](https://github.com/LibertychaserUS/LearningGuidePortal/pull/22) | 已合 `main`（`1d7867d`）；#21 合完后一条 promote |
+| AIOps `dev`/`main` | 已快进到 `9071fa1`（开 PR 403，deploy key FF） |
+| `forge-v1.1.3` | annotated tag @ `9071fa1`。Release 页未建 |
 
 仍待拍板（不要密钥也能定）：
 
@@ -245,4 +242,5 @@
 - 2026-09-14：#15 开 `dev` → `main` 升级 PR。密钥本轮不管。D 表改成现在还开着的。
 - 2026-09-14：#15 已 squash 合入 `main`（`a31fe5b`）。#16 已 squash 合入 `dev`（`b4c4661`）。对话里的 PAT 是源仓 `First-Light-TechHK` admin，对 fork 无 write；已登记 OF-01，应轮换。D 表改成现在还开着的。
 - 2026-09-14：#17 squash 合入 `dev`（`535778a`）；#18 merge 合入 `main`（`a25ca70`）。Oliver 指出 leftover 应该一起（先 `dev` 再一条 promote）。#19 合入 `dev`（`bf276d8`）；#20 是随后一条 promote 合入 `main`（`7dd9b3d`）。
-- 2026-09-14 本 PR：OF-24 登记别人冷启动（错针 / 空根假绿 / Release 1.0.0）。cases 首段改 `active`；brief §6 补 `order` / `visitor-trial` 与 `INV-expired-no-learn`；APPLY 历史块加粗勿抄；STATE 用 `forge-v1.1.2` `--write`。只打 `dev`，合完再一条 promote。OF-22 保持针未升。
+- 2026-09-14 #21 合入 `dev`（`e53c382`）；#22 promote 合入 `main`（`1d7867d`）。
+- 2026-09-14 本 PR：OF-22 升针 `forge-check.yml` → `forge-v1.1.3`。AIOps `dev`/`main`/`forge-v1.1.3` @ `9071fa1`。Release 页与 `apply` 仍 403。
