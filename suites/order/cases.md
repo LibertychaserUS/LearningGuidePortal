@@ -25,14 +25,17 @@ Register always creates a student. `BACKOFFICE_OPERATOR_EMAIL` is unused for rol
 ### Edge
 - Title: Unauthenticated orders list
 - Steps: GET /api/backoffice/orders with no cookie
+- Expected: HTTP 403 `{ ok: false }` and Course Manager/Operator error
+- Title: Unauthenticated refund is not an operator hop
+- Steps: POST /api/backoffice/orders `{ action: "refund" }` with no cookie
 - Expected: HTTP 403
 ## ORDER-02 Refund revive
 
 
 ### Functional
 - Title: Operator refund then later invoice.paid must not revive
-- Steps: Specified. Requires Course Manager/Operator refund HTTP, then a later signed `invoice.paid` for the same subscription
-- Expected: Entitlement stays false after the invoice. Not executable here: no operator seed; register stays student; `BACKOFFICE_OPERATOR_EMAIL` does not grant `role=operator`
+- Steps: Specified HTTP. Service lock: `tests/unit/refund-then-invoice.test.ts` and `tests/unit/pay-invariants.test.ts` refund then `applyVerifiedStripeEvent` invoice.paid
+- Expected: Entitlement stays false after the invoice. HTTP still not executable: no operator seed; register stays student; `BACKOFFICE_OPERATOR_EMAIL` does not grant `role=operator`
 
 
 ### Negative

@@ -115,6 +115,12 @@ test("suites follow the v2 contract: active or blocked with a linked reason, no 
   }
 });
 
+test("brief forbids stuffing workflow into every agent package", () => {
+  assert.match(BRIEF, /按层配对/);
+  assert.match(BRIEF, /不是每个 PR 都交文档 \+ 代码 \+ workflow/);
+  assert.match(BRIEF, /agent 包不得改 `\.github\/workflows\/`/);
+});
+
 test("overlay.yaml default_ref is a full SHA that the brief documents", () => {
   const ref = OVERLAY_YAML.match(/^  default_ref: ([0-9a-f]{40})$/m)?.[1];
   assert.ok(ref, "overlay.yaml default_ref must be a 40-hex SHA, not a branch");

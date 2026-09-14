@@ -87,4 +87,19 @@ test("AUTH-04 edge: unauthenticated GET /api/backoffice/orders is 403", async ()
   clearCookies();
   const response = await callRoute(orders.GET, jsonRequest("GET", "http://localhost/api/backoffice/orders"));
   assert.equal(response.status, 403);
+  const body = await response.json();
+  assert.equal(body.ok, false);
+  assert.match(String(body.error || ""), /Course Manager\/Operator access is required/i);
+});
+
+test("ORDER-01 extra: unauthenticated POST refund is 403 and does not grant operator power", async () => {
+  clearCookies();
+  const response = await callRoute(orders.POST, jsonRequest("POST", "http://localhost/api/backoffice/orders", {
+    orderId: "order-missing",
+    action: "refund",
+    reason: "unauthenticated"
+  }));
+  assert.equal(response.status, 403);
+  const body = await response.json();
+  assert.equal(body.ok, false);
 });

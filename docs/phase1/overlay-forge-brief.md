@@ -21,6 +21,7 @@
 6. 人审是 GitHub PR 审批 + CODEOWNERS，不是 yaml 签名。Agent **不得** 把套件改成 `blocked`（`suite_guard`），**不得** 改 `.github/workflows/`（`deny_paths`）。`docs_sync` 在本地 `forge check` 和 CI `forge-check` 都会跑。任何人 **不得** 打 `ilovelearningguide.com`。
 7. 支付 hop / 断网 / 页面如何追上 `paid`：[`payment-state-propagation.md`](./payment-state-propagation.md)。
 8. **Agent 交互：** Forge 是开发后 GitHub 落地（`check` → PR 到 `dev` → `promote` 到 `main`），不是测试工具。本仓已有 `forge.yaml` 时问一次；同意后默认跑 `check`，持有 `FORGE_SUBMIT_TOKEN` 再 `submit` 到 `dev`，不要每次存盘再讲宪法。初始化同意 ≠ live-apply。`FORGE_SUBMIT_TOKEN` 与 `FORGE_GITHUB_TOKEN` 是 Oliver 提供的环境密钥，agent 永不粘贴 token。接入方若还没有 Forge、且已有自己的落地方式，先对照新旧并等人明确同意，不能默默替换。
+9. **内容包按层配对（补设计，OF-23）。** 封顶是 squash PR。碰哪一层，同单带那一层的配对物。不是每个 PR 都交文档 + 代码 + workflow。agent 包不得改 `.github/workflows/`。升针是单独的 Ops 包。一开始没写这层规格，锁先于设计；人接受前不加新锁。
 
 ---
 
@@ -250,6 +251,38 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 | CI forge-check | `forge check` + `status --check-state` | live-apply；merge |
 | CI Verify | Typecheck / Lint / `test:ci` | 跑 `test:io`、e2e、k6、生产冒烟 |
 
+### 提交内容包（按层配对）
+
+内容包是**进保护枝的那单 squash PR**，不是功能枝上每一颗 WIP。登记：[OF-23](./overlay-forge-issues.md)。这是**补设计**：`docs_sync` / `deny_paths` / workflow 先实现，包规格一开始没写。顺序是先设计、人接受、再加新锁。未接受之前不改 `forge.yaml`、不加新的 `docs_sync` 行、不改 `.github/workflows/`。
+
+**不是**「每次都必须同时交文档 + 代码 + workflow」。  
+**是**「碰哪一层，同单带上那一层的配对物；没碰的层不要塞进来」。
+
+| 层 | 谁改 | 同单必须带 | 机器锁 | 不要塞进 |
+|---|---|---|---|---|
+| 产品代码 / Overlay 叶子 | agent | 改了 `suites/**` / `inbox/**` / `invariants.yaml` / `overlay.yaml` / `forge.yaml` → 同改 brief | `docs_sync`；overlay validate / cover | `.github/workflows/` |
+| 工具 `forge/**` / `overlay/**`（AIOps） | agent / 开发 | `CHANGELOG.md`；Forge 配置面还要 `docs/forge-config.md` | 工具仓 `docs_sync` | 产品仓 workflow；force-move tag |
+| 解说（标题 + 六标题正文） | 开 PR 的人 | 正文从 diff 写；触碰 deny_paths / `suite.yaml` / `forge.yaml` / `overlay.yaml` 时正文点名路径 | `pr-title` / `pr-body`；其余 [OF-21](./overlay-forge-issues.md) | 模板空话 |
+| CI workflow | 人 / Ops | 已发布针存在之后才升 pin；同改 brief 针表；job 名或 protect 变了就 `forge status --write` | `deny_paths`（agent 红）；CODEOWNERS；`status --check-state` | 功能 PR、auth / 支付切片 |
+
+五种包：
+
+| 包 | 装什么 | 标题主产品 | 禁止 |
+|---|---|---|---|
+| 产品包 | 代码 + 测试；行为变了才带 Overlay 叶子；`docs_sync` 命中才带 brief | 不是 `ci` | `.github/workflows/` |
+| 工具包 | AIOps `forge/**` 或 `overlay/**` + CHANGELOG + 契约文档 | `forge` / `overlay` | 产品仓 workflow；force-move tag |
+| 文档包 | 只改 docs | `docs` | 顺手改代码或 workflow |
+| 工作流 / 升针包 | 人改 `overlay-check.yml` / `forge-check.yml`；同单 brief；必要时 STATE | `ci` | 夹产品功能（OF-22 的教训） |
+| 升级包 | `forge promote`，没有新内容 | — | agent 自合 |
+
+非法：功能切片 + 升 pin。非法：agent PR 改 workflow。非法：改 suites / 配置不改 brief。
+
+为什么不「每次三件套」：agent 碰 `.github/workflows/` 会被 `deny_paths` 红；把 workflow 塞进功能 PR 会把合入锁和产品切片绑死（#12 / OF-22）。workflow 是**独立的 Ops 包**，不是每个功能 PR 的第三份必交文件。
+
+已经在跑、但是先于本设计的锁：`forge.yaml` `docs_sync`（套件 / 配置 → brief）；`deny_paths`（agent 不得改 workflow）；`status --check-state`。它们不是本条的实现完成。升针文件要不要再加一条 `docs_sync` → brief，等本设计被接受后再做（OF-23）。
+
+OF-21 是「正文是否描述了 diff」。本条是「这一单该装哪一层」。先设计后实现，不要先加锁。
+
 ---
 
 ## 6. 本仓当前针脚
@@ -258,7 +291,7 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 | 文件 | 现在是什么 |
 |---|---|
-| `forge.yaml` | `protect: [dev, main]`；`deny_paths: .github/workflows/`；`branches.dev` approvals=0；`branches.main` approvals=1、CODEOWNERS、`promote_from: dev`；required_checks = Typecheck、Lint、Build and test、overlay-check、forge-check；`docs_sync`；`title.scopes: any` |
+| `forge.yaml` | `protect: [dev, main]`；`deny_paths: .github/workflows/`；`branches.dev` approvals=0；`branches.main` approvals=1、CODEOWNERS、`promote_from: dev`；required_checks = Typecheck、Lint、Build and test、overlay-check、forge-check；`docs_sync`（套件 / 配置 → brief，不是每个 PR 必须改 workflow）；`title.scopes: any` |
 | `overlay.yaml` | `product.repo: LibertychaserUS/LearningGuidePortal`；`default_ref` 钉在 `d06d15abaaefd001141dbe6a739362f2aefca3b4`；`branches` 含 `dev` / `main` / `default`；`never_red_statuses: [blocked]`；`forbid_hosts: ilovelearningguide.com` |
 | `inbox/login.md` | AUTH-01..06 |
 | `inbox/payment.md` | PAY-01..10 |
@@ -267,7 +300,7 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 | `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10） |
 | `.github/CODEOWNERS` | `suites/**`、`inbox/**`、`.github/workflows/**`、入口文档归 `@LibertychaserUS` |
 | `.github/workflows/overlay-check.yml` | 单 job `overlay-check`：checkout `AIOps@overlay-v2.0.0` → `_aiops`、`npm ci`、`overlay validate` + `cover` + `run` |
-| `.github/workflows/forge-check.yml` | 单 job `forge-check`：checkout `AIOps@forge-v1.1.2` → `_aiops`、`forge check` + `forge status --check-state` |
+| `.github/workflows/forge-check.yml` | 单 job `forge-check`：checkout `AIOps@forge-v1.1.2` → `_aiops`、`forge check` + `forge status --check-state`。`1.1.2` 把 push 上的空 `PR_TITLE` 当成已提供标题。规格在未发布的 `forge-1.1.3`（事件 × 来源，push 锁提交 subject），不是把变量从 push 拿掉（OF-22）。本仓针未升前 workflow 仍拆了该变量；agent 不改 `deny_paths` 里的工作流 |
 | `docs/STATE.md` | 生成；不要手改 |
 | `tests/io/*` | 黑盒，本地 `npm run test:io`。**不在** `test:ci` 里 |
 
@@ -285,8 +318,9 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 对照：
 
-- 可执行黑盒：`tests/io/login.test.ts`、`tests/io/payment.test.ts`
-- Overlay 规格：`suites/login/cases.md`、`suites/payment/cases.md`（`active` on fork）
+- 可执行黑盒：`tests/io/login.test.ts`、`tests/io/payment.test.ts`、`tests/io/portal.test.ts`、`tests/io/visitor-trial.test.ts`
+- 服务层：`tests/unit/pay-invariants.test.ts`、`tests/unit/pay-stripe-fake.test.ts`（假 Stripe，不打真网）
+- Overlay 规格：`suites/login/cases.md`、`suites/payment/cases.md`（`active`）
 
 ### AUTH
 
@@ -328,11 +362,11 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 ### PAY
 
-#### 7. PAY-01 `$0` trial 的 `invoice.paid` 升成整段付费 — 半锁
+#### 7. PAY-01 `$0` trial 的 `invoice.paid` 升成整段付费 — 服务层已锁，HTTP 仍半锁
 
 - **当时**：试用订阅收到金额为 0 的 `invoice.paid` 时，`convertStripeTrial` 写成整段付费购买，`validTo` 跳到约 6 个月。
 - **现在要求**：`$0` 不得转换。试用仍是 trial，到期落在 3 天窗口内，不能出现 purchase 订阅。
-- **黑盒**：难。要真实 Stripe subscription / invoice 对象。demo trial 完成后看 `source=trial` 和 `validTo` 只是近似。
+- **黑盒**：HTTP 仍难（要真 Stripe trialing invoice）。服务层已锁：`pay-invariants` / `pay-stripe-fake` 对 `$0` `invoice.paid` 不转正。
 
 #### 8. PAY-02 升级只过期本地行，不 cancel Stripe — 半锁
 
@@ -340,11 +374,11 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 - **现在要求**：必须对源 `stripeSubscriptionId` 发出 cancel。本地过期不是证明。
 - **黑盒**：难。HTTP 看不到 `stripeCancelIssued`。可执行的只是「没有源订阅的 upgrade quote → 400」。
 
-#### 9. PAY-03 同一 quote 两张可付 Session — 半锁
+#### 9. PAY-03 同一 quote 两张可付 Session — 服务层已锁，HTTP 仍半锁
 
 - **当时**：同一 quote 再次 checkout 会 `sessions.create` 第二张可付 Stripe Session。只保住本地第一张 session id 不够。
 - **现在要求**：复用第一张 Session，不得再 create。
-- **黑盒**：难。demo 两次 checkout 得到同一 `order.id`，证明不了 Stripe 没建第二张。
+- **黑盒**：HTTP 仍难。服务层已锁：假 Stripe 第二次 checkout 不再 `sessions.create`。
 
 #### 10. PAY-04 退款后 `invoice.paid` 复活 — 半锁
 
@@ -358,23 +392,23 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 - **现在要求**：`stripe_events` 要有 UNIQUE。第二次是 duplicate，active entitlement 仍只有一行。
 - **黑盒**：难。HTTP 没有 entitlement 行列表。demo 对同一 order 两次 complete、同一 signed `ping` 两次 `ignored`，都不是 UNIQUE 证明。
 
-#### 12. PAY-06 grace 锚在 now+3 天 — 半锁
+#### 12. PAY-06 grace 锚在 now+3 天 — 服务层已锁，HTTP 仍半锁
 
 - **当时**：`invoice.payment_failed` 把 `validTo` / `graceEndsAt` 写成现在 +3 天，而不是原到期日 +3 天。已付期限会被缩短。
 - **现在要求**：`graceEndsAt = 原 validTo + 3 天`。已付 `validTo` 不得缩短。
-- **黑盒**：难。公开 API 不返回 `graceEndsAt`。未知 subscription 的 `payment_failed` 只证明「不授权」。
+- **黑盒**：公开 API 仍不返回 `graceEndsAt`。服务层已锁：`graceEndsAt = 原 validTo + 3d`，已付期限不缩短。
 
-#### 13. PAY-07 `invoice.paid` 清掉 cancel_at_period_end — 半锁
+#### 13. PAY-07 `invoice.paid` 清掉 cancel_at_period_end — 服务层已锁，HTTP 仍半锁
 
 - **当时**：用户已 cancel-at-period-end 后，续费成功的 `invoice.paid` 把取消标志清掉，resume 又可用。
 - **现在要求**：invoice 之后仍是 `cancel_at_period_end`。付费购买不得 resume。
-- **黑盒**：demo 取消后仍可学、resume → 400，能锁本地路径。invoice 清标志要 Stripe，难。
+- **黑盒**：demo 取消后 resume → 400 仍锁本地路径。服务层已锁：`invoice.paid` 不再清 `cancelAtPeriodEnd`。
 
-#### 14. PAY-08 重叠购买删掉上一行 entitlement — demo 半锁
+#### 14. PAY-08 重叠购买删掉上一行 entitlement — 服务层已锁，HTTP 仍半锁
 
 - **当时**：重叠授权时用 `filter()` 删掉上一行 active entitlement，而不是标 `expired`。审计行消失。
 - **现在要求**：旧行保留且 `state=expired`。当前仍只有一行 active。
-- **黑盒**：中等。`GET /api/entitlements/check` 只说现在允不允许。`GET /api/subscription` 能看到两个 planId，但那是订阅不是 entitlement。`applyStripeOrderState` 里的 filter-delete 仍在，demo 履约走的是标 expired。
+- **黑盒**：HTTP 仍看不到 entitlement 行列表。服务层已锁：`expireOverlappingActiveEntitlements` 标 expired，不删行。
 
 #### 15. PAY-09 PC 授权忽略设备和重复购买 — 已锁
 
@@ -396,14 +430,14 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 
 1. **AUTH-04 的 Google 建号提权。** 无真 OAuth 时到不了 `getOrCreateSocialUser` 的 Google 分支。本地 Google 画像邮箱是固定的 `google.local@example.test`，和测试用的 operator 邮箱不是同一条路径。
 2. **AUTH-05 跨进程并发。** 同进程两次 POST 会被 `editData` 排队。要证明文件锁，必须两个进程写同一份 `product.json`。那就要 worker，不再是纯 HTTP。
-3. **PAY-01 真 `$0 invoice.paid`。** 要 Stripe subscription 处于 trialing，再投金额 0 的 invoice。demo 的 3 天 `validTo` 替代不了这条。
+3. **PAY-01 真 `$0 invoice.paid`。** 服务层已用假 Stripe 锁住「`$0` 不转正」。真 Stripe trialing invoice 仍无 HTTP 面。
 4. **PAY-02 源订阅 Stripe cancel。** 正确证明是 Stripe 侧 cancel 已发出。本地行 `expired` 正好是当时的假绿。
-5. **PAY-03 第二张 Stripe Session。** 正确证明是 checkout 没有第二次 `sessions.create`。本地 order id 复用不够。
+5. **PAY-03 第二张 Stripe Session。** 服务层假 Stripe 已锁「第二次 checkout 不再 create」。真 Stripe 侧仍无 HTTP 面。
 6. **PAY-04 退款后 invoice 复活。** 要 operator 退款（或 Stripe refund）再投 `invoice.paid`。本仓没有这条稳定 HTTP。
 7. **PAY-05 `stripe_events` 表 UNIQUE。** JSON 数组或进程内 claim 都不是 UNIQUE。没有库表，HTTP 也看不到第二行 entitlement。
-8. **PAY-06 grace 锚点。** 要读 `graceEndsAt` 和原 `validTo`。公开 JSON 没有这两个字段。
-9. **PAY-07 invoice 清 cancel 标志。** demo 的 resume 400 只锁本地规则。清标志发生在 Stripe `invoice.paid` 处理里。
-10. **PAY-08 Stripe resync 删行。** demo 履约会标 expired。`applyStripeOrderState` 仍 `filter()` 删除。要证明这一行，只能读内部 entitlement 列表或加审计 API。
+8. **PAY-06 grace 锚点。** 服务层已锁 `graceEndsAt = 原 validTo + 3d`。公开 JSON 仍没有这两个字段。
+9. **PAY-07 invoice 清 cancel 标志。** 服务层已锁 invoice 不清 `cancelAtPeriodEnd`。demo 的 resume 400 仍是 HTTP 近似面。
+10. **PAY-08 Stripe resync 删行。** 服务层已改为标 expired。公开 HTTP 仍看不到 entitlement 行列表。
 
 为什么锁不住：
 
@@ -413,7 +447,7 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 4. 并发要跨进程，同进程队列会把竞态藏起来。
 5. 黑盒不能 import `productStore` 去读 `passwordHash`、`stripeCancelIssued`、`graceEndsAt`、`stripeEvents[]`。
 
-**不要**为 PAY-01..07 再开一轮白盒 Stripe 内部战役。半锁的叶子写在 cases 里等人看，不要假装 HTTP 已经锁死。
+PAY-01 / 03 / 06 / 07 / 08 的服务层锁已经进 `tests/unit/pay-invariants.test.ts`。不要假装 HTTP 已经锁死；不要为同一叶子再开一轮重复白盒。PAY-02（真 Stripe cancel）和 PAY-05（表级 UNIQUE）仍待定。
 
 **Hop** 是链路里的一步，不是 Stripe 术语。支付主链是 `quote → checkout → Stripe → webhook → order.paid → entitlement → 进课`。当前 I/O 多半停在 quote / checkout / demo confirm。断网时用户 / 本站 / Stripe 怎么处理、成功状态怎么写入 store、其他页面怎么拉到新状态，见 [`payment-state-propagation.md`](./payment-state-propagation.md)。
 
@@ -429,6 +463,8 @@ Ops（Oliver）──forge apply（FORGE_GITHUB_TOKEN；agent 永不做）──
 6. 不 vendor `overlay/` 或 `forge/`。
 7. 不把上游 First-Light 的超前提交混进这支 Overlay PR。fork `main` 仍是 `6d8934e`。
 8. 不为半锁叶子再发明第二套 ID。
+9. 不要求每个提交都带文档 + 代码 + workflow。按层配对（§5）。agent 包不改 `.github/workflows/`。
+10. 不在内容包设计被接受之前加新的 `docs_sync` 行或改 workflow。先设计后实现。
 
 ---
 
