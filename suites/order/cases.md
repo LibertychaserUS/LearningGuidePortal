@@ -1,7 +1,7 @@
 # Order Management
 
 Black-box I/O against `/api/backoffice/orders`.
-Suite is draft. Overlay select does not run this product_command until a human arms it.
+Suite is active. Overlay select runs this product_command.
 
 Student and unauthenticated callers cannot list or refund orders. Operator refund + later `invoice.paid` must not revive access; that hop is specified until an operator seed exists.
 

@@ -296,8 +296,8 @@ OF-21 是「正文是否描述了 diff」。本条是「这一单该装哪一层
 | `inbox/login.md` | AUTH-01..06 |
 | `inbox/payment.md` | PAY-01..10 |
 | `inbox/portal.md` `inbox/my-learning.md` | 已有叶子；套件 `active` |
-| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` | `schema: overlay-suite/v2`，`status: active`。login/payment → `tests/io/*.test.ts` |
-| `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10） |
+| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` `suites/order` `suites/visitor-trial` | `schema: overlay-suite/v2`，`status: active`。login/payment/order/visitor-trial → `tests/io/*.test.ts` |
+| `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10）；`INV-expired-no-learn`（ML-FR-004, PAY-09） |
 | `.github/CODEOWNERS` | `suites/**`、`inbox/**`、`.github/workflows/**`、入口文档归 `@LibertychaserUS` |
 | `.github/workflows/overlay-check.yml` | 单 job `overlay-check`：checkout `AIOps@overlay-v2.0.0` → `_aiops`、`npm ci`、`overlay validate` + `cover` + `run` |
 | `.github/workflows/forge-check.yml` | 单 job `forge-check`：checkout `AIOps@forge-v1.1.2` → `_aiops`、`forge check` + `forge status --check-state`。`1.1.2` 把 push 上的空 `PR_TITLE` 当成已提供标题。规格在未发布的 `forge-1.1.3`（事件 × 来源，push 锁提交 subject），不是把变量从 push 拿掉（OF-22）。本仓针未升前 workflow 仍拆了该变量；agent 不改 `deny_paths` 里的工作流 |
