@@ -61,8 +61,9 @@
 - 对象是 **LG 源仓** `First-Light-TechHK/LearningGuidePortal`（remote `upstream`），不是 AIOps。
 - 事实（2026-09-15 复查）：`git rev-list --left-right --count origin/main...upstream/main` = **36 领先 / 13 落后**，merge-base 仍是 `006536f`。源仓尖 `ec9e129`。回灌谁开、多久一次仍按 §F 暂缓。
 - **Overlay 层：源仓比 fork 旧，没有可搬叶子。** 他们只有 login / payment / portal / my-learning 四套，仍是 `status: armed` + `reviewed_by` / `armed_reason`，`overlay.yaml` 仍 `never_red_statuses: [draft, blocked]`，CI pin `overlay-v1.0.0`。fork 已有这四套的超集（另加 `order` / `visitor-trial`）、`overlay-suite/v2` + `active`、更厚的 `cases.md` / `tests/io`、`INV-expired-no-learn`。9-14 两个产品提交（`7f42330` / `ec9e129`）**没改** `inbox/` `suites/` `overlay.yaml`。把源仓 Overlay 合进来会删叶子、退回 v1 词汇。**不要 merge / cherry-pick 那 11 个 CI 提交，不要抄他们的 `overlay-check.yml`。**
-- **产品层（另议，不是 Overlay）：** `7f42330` 密码重置收尾 + 订阅展示；`ec9e129` 微信强制绑已验证邮箱（与本仓现行「无邮箱 WeChat Session」相反）。要搬就按文件移植到 `dev`，先改契约再写页面。
-- 选项仍是：fork → 源仓 PR（Oliver 开）；或源仓只在发布时同步。不是 `git merge upstream/main`。
+- **2026-09-15 Oliver：合进源仓 Overlay 会减弱本仓开发，不收。** 本仓已经是更新后的 Overlay（v2 / 六套 / 厚 I/O）。「准备更新」指保持并继续用这棵树，不是把源仓那棵合进来。回灌源仓仍要 Oliver 开 PR，且他们 CI 还 pin `overlay-v1.0.0`，直接灌 v2 会红。
+- **产品层不是本 fork 的开发范围。** 密码重置收尾、订阅展示、微信强制绑邮箱（`7f42330` / `ec9e129`）由源仓做。本仓不移植、不代写。不是 Overlay 包。
+- 回灌谁开、多久一次仍按 §F 暂缓。不是 `git merge upstream/main`。
 
 ### OF-08 AIOps `main` 没有 Ruleset，agent 三次直推 — 待修（Oliver）
 
@@ -211,7 +212,7 @@
 | 编号 | 一句话 | 选项 |
 |---|---|---|
 | OF-04 | lander 退役 | 有 write 后只留 APPLY.md |
-| OF-07 | fork ↔ 源仓 回灌；Overlay CI 11 个不收 | 谁开 PR、多久一次（§F 暂缓）；产品 2 个另议 |
+| OF-07 | fork ↔ 源仓；源仓 Overlay 不收（会减弱）；源仓产品不代做 | 回灌谁开仍 §F 暂缓 |
 | OF-21 | `pr-body` 路径机检 | 做 / 先靠审查 |
 | OF-23 | 接受内容包补设计 | 接受 / 改设计；接受之后再决定加不加升针 `docs_sync` |
 
@@ -245,4 +246,4 @@
 - 2026-09-14 本 PR：OF-22 升针 `forge-check.yml` → `forge-v1.1.3`。AIOps `dev`/`main`/`forge-v1.1.3` @ `9071fa1`。Release 页与 `apply` 仍 403。
 - 2026-09-14 随后：Release 页已补齐。本 PR：薄 skill / APPLY / OF-24 / STATE 改口；`apply` 仍未 live（OF-08）。
 - 2026-09-14 #23 squash 合入 `dev`（`e4da21b`）；尚未 promote 到 `main`（Oliver：先只更新 Overlay，不 promote）。
-- 2026-09-15 本 PR：OF-07 写明对象是 LG 源仓 First-Light（不是 AIOps）。36/13；源仓 Overlay 是 fork 真子集且仍 v1/`armed`，9-14 产品提交没碰 inbox/suites，没有可搬 Overlay 叶子。brief §9.7 同步。
+- 2026-09-15 本 PR：OF-07 写明对象是 LG 源仓 First-Light（不是 AIOps）。36/13；源仓 Overlay 是 fork 真子集且仍 v1/`armed`，没有可搬 Overlay 叶子。Oliver：合进会减弱，不收；密码重置等源仓产品本 fork 不开发。brief §9.7 / §9.11 同步。
