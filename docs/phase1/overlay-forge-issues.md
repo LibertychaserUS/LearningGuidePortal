@@ -64,7 +64,7 @@
 - **2026-09-15 Oliver：合进源仓 Overlay 会减弱本仓开发，不收。** 本仓已经是更新后的 Overlay（v2 / 六套 / 厚 I/O）。
 - **产品层不是本 fork 的开发范围。** 密码重置、订阅展示、微信绑邮箱由源仓做。本仓不移植、不代写。
 - **回灌方向（2026-09-15）：** 只把 **Forge + Overlay + 更多测试** 推到 LG 源仓。不 `git merge` 产品树。源仓没有 `dev`，第一次 `forge.yaml` 只保护 `main`。他们的 `overlay-check.yml` 必须升到 `overlay-v2.0.0` 才能吃 v2 套件。agent 不直推 `First-Light-TechHK`；在 fork 上从 `upstream/main` 开回灌枝，PR 由 Oliver 打源仓。
-- **回灌枝：** `cursor/lg-upstream-of-9bdf`（基 `upstream/main` @ `ec9e129`）已推 fork，材料齐。比较：https://github.com/First-Light-TechHK/LearningGuidePortal/compare/main...LibertychaserUS:LearningGuidePortal:cursor/lg-upstream-of-9bdf 。标题与六节正文在回灌枝 `docs/phase1/overlay-forge-brief.md`「提交到 First-Light main」。Oliver 打源仓 draft PR：`LibertychaserUS:cursor/lg-upstream-of-9bdf` → `First-Light-TechHK:main`。合入后再对本仓 `forge.yaml` `apply` 保护 `main`。agent 不推 `upstream`，不 live-apply，不发新针。
+- **回灌枝：** `cursor/lg-upstream-of-9bdf` @ `1890b8f`（基 `upstream/main` @ `ec9e129`，可快进）。**2026-09-15 Oliver：源仓还没 apply，不开 PR，授权快进 `First-Light` `main`。** 已推 fork。`cursor[bot]` 对源仓 403；`FORGE_GITHUB_TOKEN`（LibertychaserUS）对源仓 `push: false`。要有 First-Light `contents:write` 的身份才能 `git push upstream 1890b8f:main`。agent 不 live-apply、不发新针、不开源仓 PR。
 - **黑盒 I/O 是规格，一般来说肯定是对的。** 规格叶子是权威。产品对不上是产品红，不改测试、不改 cases。AUTH-01 / AUTH-02 叶子两边相同。本仓测试绿。源仓 `ec9e129` 上同一条测试红：`check-email` 回 `{ exists: true|false }`；无邮件时 reset 回 **503** `email_unavailable`。这是产品漏枚举 / 把邮件未配置暴露给客户端，不是测试写错。PAY-10 / TRIAL-02 同类：取消后再 complete、已购后再 trial 必须 400。回灌不改这些规格，不改他们的产品代码。他们要绿，自己改产品。
 - **回灌包：** 升针 + 迁 `armed`→`active` + 规格叶子 / 已有 I/O + 能在他们路由签名下编译的额外测试。不整棵替换成 fork 的 `login.test.ts`（他们 `GET()` 无 request 参数；回灌只给 0 参 `GET` 套 `callRoute`，断言不动）。第一次 `forge.yaml` 不设 `deny_paths`。
 
