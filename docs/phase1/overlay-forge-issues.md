@@ -58,9 +58,10 @@
 
 ### OF-07 fork `main` 与源仓 First-Light `main` 分叉 — 待定意图
 
-- 事实（2026-09-15 复查）：`git rev-list --left-right --count origin/main...upstream/main` = **36 领先 / 13 落后**，merge-base 仍是 `006536f`（thin Overlay check）。源仓尖 `ec9e129`。回灌谁开、多久一次仍按 §F 暂缓。
-- **Overlay 层（本轮只记这个，不收）：** 落后的 13 个里有 **11 个**（`1247df9`…`2bb93ef`，2026-09-11）是源仓 Overlay CI。他们仍 pin **`overlay-v1.0.0`**，`overlay.yaml` 仍写 `never_red_statuses: [draft, blocked]`，四套件 `status: armed`，`overlay run --branch main`。fork 已经是 `overlay-v2.0.0` + `active`/`blocked` + `overlay cover` + `forge-check` + `deny_paths`。**不要 merge / cherry-pick 这 11 个，不要把他们的 `overlay-check.yml` 或 `armed`/`draft` 抄回来。**
-- **产品层（本轮不搬）：** 另外 2 个是 2026-09-14 `runke_java`：`7f42330` 密码重置收尾 + 订阅展示；`ec9e129` 微信强制绑已验证邮箱（与本仓现行「无邮箱 WeChat Session」相反）。要搬就按文件移植到 `dev`，先改契约再写页面；不是 Overlay 包。
+- 对象是 **LG 源仓** `First-Light-TechHK/LearningGuidePortal`（remote `upstream`），不是 AIOps。
+- 事实（2026-09-15 复查）：`git rev-list --left-right --count origin/main...upstream/main` = **36 领先 / 13 落后**，merge-base 仍是 `006536f`。源仓尖 `ec9e129`。回灌谁开、多久一次仍按 §F 暂缓。
+- **Overlay 层：源仓比 fork 旧，没有可搬叶子。** 他们只有 login / payment / portal / my-learning 四套，仍是 `status: armed` + `reviewed_by` / `armed_reason`，`overlay.yaml` 仍 `never_red_statuses: [draft, blocked]`，CI pin `overlay-v1.0.0`。fork 已有这四套的超集（另加 `order` / `visitor-trial`）、`overlay-suite/v2` + `active`、更厚的 `cases.md` / `tests/io`、`INV-expired-no-learn`。9-14 两个产品提交（`7f42330` / `ec9e129`）**没改** `inbox/` `suites/` `overlay.yaml`。把源仓 Overlay 合进来会删叶子、退回 v1 词汇。**不要 merge / cherry-pick 那 11 个 CI 提交，不要抄他们的 `overlay-check.yml`。**
+- **产品层（另议，不是 Overlay）：** `7f42330` 密码重置收尾 + 订阅展示；`ec9e129` 微信强制绑已验证邮箱（与本仓现行「无邮箱 WeChat Session」相反）。要搬就按文件移植到 `dev`，先改契约再写页面。
 - 选项仍是：fork → 源仓 PR（Oliver 开）；或源仓只在发布时同步。不是 `git merge upstream/main`。
 
 ### OF-08 AIOps `main` 没有 Ruleset，agent 三次直推 — 待修（Oliver）
@@ -244,4 +245,4 @@
 - 2026-09-14 本 PR：OF-22 升针 `forge-check.yml` → `forge-v1.1.3`。AIOps `dev`/`main`/`forge-v1.1.3` @ `9071fa1`。Release 页与 `apply` 仍 403。
 - 2026-09-14 随后：Release 页已补齐。本 PR：薄 skill / APPLY / OF-24 / STATE 改口；`apply` 仍未 live（OF-08）。
 - 2026-09-14 #23 squash 合入 `dev`（`e4da21b`）；尚未 promote 到 `main`（Oliver：先只更新 Overlay，不 promote）。
-- 2026-09-15 本 PR：OF-07 复查源仓 Overlay——36/13；11 个 v1/`armed` CI 不收；2 个产品提交不搬。brief §9.7 去掉过期的 `6d8934e`。
+- 2026-09-15 本 PR：OF-07 写明对象是 LG 源仓 First-Light（不是 AIOps）。36/13；源仓 Overlay 是 fork 真子集且仍 v1/`armed`，9-14 产品提交没碰 inbox/suites，没有可搬 Overlay 叶子。brief §9.7 同步。
