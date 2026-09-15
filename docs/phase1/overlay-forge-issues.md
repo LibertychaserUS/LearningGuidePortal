@@ -63,7 +63,8 @@
 - **Overlay 层：源仓比 fork 旧，没有可搬叶子。** 他们只有 login / payment / portal / my-learning 四套，仍是 `status: armed` + `reviewed_by` / `armed_reason`，`overlay.yaml` 仍 `never_red_statuses: [draft, blocked]`，CI pin `overlay-v1.0.0`。fork 已有这四套的超集（另加 `order` / `visitor-trial`）、`overlay-suite/v2` + `active`、更厚的 `cases.md` / `tests/io`、`INV-expired-no-learn`。9-14 两个产品提交（`7f42330` / `ec9e129`）**没改** `inbox/` `suites/` `overlay.yaml`。把源仓 Overlay 合进来会删叶子、退回 v1 词汇。**不要 merge / cherry-pick 那 11 个 CI 提交，不要抄他们的 `overlay-check.yml`。**
 - **2026-09-15 Oliver：合进源仓 Overlay 会减弱本仓开发，不收。** 本仓已经是更新后的 Overlay（v2 / 六套 / 厚 I/O）。
 - **产品层不是本 fork 的开发范围。** 密码重置、订阅展示、微信绑邮箱由源仓做。本仓不移植、不代写。
-- **回灌方向（2026-09-15）：** 只把 **Forge + Overlay + 更多测试** 推到 LG 源仓。不 `git merge` 产品树。源仓没有 `dev`，第一次 `forge.yaml` 只保护 `main`。他们的 `overlay-check.yml` 必须升到 `overlay-v2.0.0` 才能吃 v2 套件。agent 不直推 `First-Light-TechHK`；在 fork 上从 `upstream/main` 开回灌枝，PR 由 Oliver 打源仓。不是 `git merge upstream/main`。
+- **回灌方向（2026-09-15）：** 只把 **Forge + Overlay + 更多测试** 推到 LG 源仓。不 `git merge` 产品树。源仓没有 `dev`，第一次 `forge.yaml` 只保护 `main`。他们的 `overlay-check.yml` 必须升到 `overlay-v2.0.0` 才能吃 v2 套件。agent 不直推 `First-Light-TechHK`；在 fork 上从 `upstream/main` 开回灌枝，PR 由 Oliver 打源仓。
+- **回灌不能整棵拷贝本仓 `tests/io`。** 源仓 9-14 产品已经让 AUTH-01（`exists`）/ AUTH-02（`resetUrl`）和本仓叶子对不上。把本仓厚 I/O 贴上去 overlay-check 会红（试跑 49 个失败）。下一步：升针 + 迁 `armed`→`active`；只加在源仓产品上能绿的测试；冲突叶子按源仓行为写，不改他们的产品代码。
 
 ### OF-08 AIOps `main` 没有 Ruleset，agent 三次直推 — 待修（Oliver）
 
@@ -246,4 +247,4 @@
 - 2026-09-14 本 PR：OF-22 升针 `forge-check.yml` → `forge-v1.1.3`。AIOps `dev`/`main`/`forge-v1.1.3` @ `9071fa1`。Release 页与 `apply` 仍 403。
 - 2026-09-14 随后：Release 页已补齐。本 PR：薄 skill / APPLY / OF-24 / STATE 改口；`apply` 仍未 live（OF-08）。
 - 2026-09-14 #23 squash 合入 `dev`（`e4da21b`）；尚未 promote 到 `main`（Oliver：先只更新 Overlay，不 promote）。
-- 2026-09-15 本 PR：OF-07 写明对象是 LG 源仓 First-Light（不是 AIOps）。36/13；源仓 Overlay 不收进 fork。Oliver：只回灌 Forge + Overlay + 更多测试；密码重置等产品本 fork 不开发。brief §9.7 / §9.11 同步。
+- 2026-09-15 本 PR：OF-07 写明对象是 LG 源仓 First-Light（不是 AIOps）。36/13；源仓 Overlay 不收进 fork。Oliver：只回灌 Forge + Overlay + 更多测试；密码重置等产品本 fork 不开发。整棵拷贝本仓 I/O 会红（AUTH-01/02 已分叉）。brief §9.7 / §9.11 同步。
