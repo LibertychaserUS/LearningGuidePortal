@@ -466,6 +466,7 @@ PAY-01 / 03 / 06 / 07 / 08 的服务层锁已经进 `tests/unit/pay-invariants.t
 9. 不要求每个提交都带文档 + 代码 + workflow。按层配对（§5）。agent 包不改 `.github/workflows/`。
 10. 不在内容包设计被接受之前加新的 `docs_sync` 行或改 workflow。先设计后实现。
 11. 密码重置、订阅展示、微信绑邮箱是源仓产品，不是本 fork 的开发范围。不移植、不代写。
+12. Overlay I/O 是规格黑盒。源仓 AUTH-01 / AUTH-02 红时改产品，不改测试去迁就 `exists` / `resetUrl` / 503。
 
 ---
 

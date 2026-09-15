@@ -64,7 +64,8 @@
 - **2026-09-15 Oliver：合进源仓 Overlay 会减弱本仓开发，不收。** 本仓已经是更新后的 Overlay（v2 / 六套 / 厚 I/O）。
 - **产品层不是本 fork 的开发范围。** 密码重置、订阅展示、微信绑邮箱由源仓做。本仓不移植、不代写。
 - **回灌方向（2026-09-15）：** 只把 **Forge + Overlay + 更多测试** 推到 LG 源仓。不 `git merge` 产品树。源仓没有 `dev`，第一次 `forge.yaml` 只保护 `main`。他们的 `overlay-check.yml` 必须升到 `overlay-v2.0.0` 才能吃 v2 套件。agent 不直推 `First-Light-TechHK`；在 fork 上从 `upstream/main` 开回灌枝，PR 由 Oliver 打源仓。
-- **回灌不能整棵拷贝本仓 `tests/io`。** 源仓 9-14 产品已经让 AUTH-01（`exists`）/ AUTH-02（`resetUrl`）和本仓叶子对不上。把本仓厚 I/O 贴上去 overlay-check 会红（试跑 49 个失败）。下一步：升针 + 迁 `armed`→`active`；只加在源仓产品上能绿的测试；冲突叶子按源仓行为写，不改他们的产品代码。
+- **黑盒 I/O 是规格，一般是对的。** AUTH-01 / AUTH-02 叶子两边相同。本仓测试绿。源仓 `ec9e129` 上同一条测试红：`check-email` 回 `{ exists: true|false }`；无邮件时 reset 回 **503** `email_unavailable`。这是产品漏枚举 / 把邮件未配置暴露给客户端，不是测试写错。回灌不改这两条规格，不改他们的产品代码。他们要绿，自己改 `check-email` 和 reset。
+- **回灌包：** 升针 + 迁 `armed`→`active` + 规格叶子 / 已有 I/O + 能在他们路由签名下编译的额外测试。不整棵替换成 fork 的 `login.test.ts`（他们 `GET()` 无 request 参数）。第一次 `forge.yaml` 不设 `deny_paths`。
 
 ### OF-08 AIOps `main` 没有 Ruleset，agent 三次直推 — 待修（Oliver）
 
@@ -247,4 +248,4 @@
 - 2026-09-14 本 PR：OF-22 升针 `forge-check.yml` → `forge-v1.1.3`。AIOps `dev`/`main`/`forge-v1.1.3` @ `9071fa1`。Release 页与 `apply` 仍 403。
 - 2026-09-14 随后：Release 页已补齐。本 PR：薄 skill / APPLY / OF-24 / STATE 改口；`apply` 仍未 live（OF-08）。
 - 2026-09-14 #23 squash 合入 `dev`（`e4da21b`）；尚未 promote 到 `main`（Oliver：先只更新 Overlay，不 promote）。
-- 2026-09-15 本 PR：OF-07 写明对象是 LG 源仓 First-Light（不是 AIOps）。36/13；源仓 Overlay 不收进 fork。Oliver：只回灌 Forge + Overlay + 更多测试；密码重置等产品本 fork 不开发。整棵拷贝本仓 I/O 会红（AUTH-01/02 已分叉）。brief §9.7 / §9.11 同步。
+- 2026-09-15 本 PR：OF-07 写明对象是 LG 源仓 First-Light。Oliver：黑盒 I/O 是规格；AUTH-01/02 红是源仓产品漏字段。回灌 Forge + Overlay + 规格测试，不改产品。brief §9.7 / §9.11 / §9.12 同步。
