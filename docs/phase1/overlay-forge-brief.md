@@ -461,7 +461,7 @@ PAY-01 / 03 / 06 / 07 / 08 的服务层锁已经进 `tests/unit/pay-invariants.t
 4. 不把 workshop 的 `pr-title` / `sop-lock` 抄进 Learning Guide CI。
 5. Agent 不 live-apply Forge Rulesets；apply 只由 Oliver 持 `FORGE_GITHUB_TOKEN` 做。
 6. 不 vendor `overlay/` 或 `forge/`。
-7. 不把上游 First-Light 的超前提交混进这支 Overlay PR。fork `main` 仍是 `6d8934e`。
+7. 不把上游 First-Light 的 Overlay CI 混进本仓。源仓仍 pin `overlay-v1.0.0`、套件 `armed` / `draft`；本仓保持 `overlay-v2.0.0` 与 `active`/`blocked`。计数与不收清单见 [OF-07](./overlay-forge-issues.md)。
 8. 不为半锁叶子再发明第二套 ID。
 9. 不要求每个提交都带文档 + 代码 + workflow。按层配对（§5）。agent 包不改 `.github/workflows/`。
 10. 不在内容包设计被接受之前加新的 `docs_sync` 行或改 workflow。先设计后实现。

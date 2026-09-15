@@ -58,9 +58,10 @@
 
 ### OF-07 fork `main` 与源仓 First-Light `main` 分叉 — 待定意图
 
-- 事实：`git rev-list --left-right --count origin/main...First-Light/main` = **14 领先 / 11 落后**，merge-base `006536f`。#4 / #6 / #7 只在 fork。
-- 问题：谁、什么时候、以什么形状回灌源仓；源仓那 11 个提交要不要进 fork。
-- 选项：fork → 源仓 PR（Oliver 开）；或源仓只在发布时同步。
+- 事实（2026-09-15 复查）：`git rev-list --left-right --count origin/main...upstream/main` = **36 领先 / 13 落后**，merge-base 仍是 `006536f`（thin Overlay check）。源仓尖 `ec9e129`。回灌谁开、多久一次仍按 §F 暂缓。
+- **Overlay 层（本轮只记这个，不收）：** 落后的 13 个里有 **11 个**（`1247df9`…`2bb93ef`，2026-09-11）是源仓 Overlay CI。他们仍 pin **`overlay-v1.0.0`**，`overlay.yaml` 仍写 `never_red_statuses: [draft, blocked]`，四套件 `status: armed`，`overlay run --branch main`。fork 已经是 `overlay-v2.0.0` + `active`/`blocked` + `overlay cover` + `forge-check` + `deny_paths`。**不要 merge / cherry-pick 这 11 个，不要把他们的 `overlay-check.yml` 或 `armed`/`draft` 抄回来。**
+- **产品层（本轮不搬）：** 另外 2 个是 2026-09-14 `runke_java`：`7f42330` 密码重置收尾 + 订阅展示；`ec9e129` 微信强制绑已验证邮箱（与本仓现行「无邮箱 WeChat Session」相反）。要搬就按文件移植到 `dev`，先改契约再写页面；不是 Overlay 包。
+- 选项仍是：fork → 源仓 PR（Oliver 开）；或源仓只在发布时同步。不是 `git merge upstream/main`。
 
 ### OF-08 AIOps `main` 没有 Ruleset，agent 三次直推 — 待修（Oliver）
 
@@ -209,7 +210,7 @@
 | 编号 | 一句话 | 选项 |
 |---|---|---|
 | OF-04 | lander 退役 | 有 write 后只留 APPLY.md |
-| OF-07 | fork ↔ 源仓 回灌 | 谁开 PR、多久一次（§F 暂缓） |
+| OF-07 | fork ↔ 源仓 回灌；Overlay CI 11 个不收 | 谁开 PR、多久一次（§F 暂缓）；产品 2 个另议 |
 | OF-21 | `pr-body` 路径机检 | 做 / 先靠审查 |
 | OF-23 | 接受内容包补设计 | 接受 / 改设计；接受之后再决定加不加升针 `docs_sync` |
 
@@ -242,3 +243,5 @@
 - 2026-09-14 #21 合入 `dev`（`e53c382`）；#22 promote 合入 `main`（`1d7867d`）。
 - 2026-09-14 本 PR：OF-22 升针 `forge-check.yml` → `forge-v1.1.3`。AIOps `dev`/`main`/`forge-v1.1.3` @ `9071fa1`。Release 页与 `apply` 仍 403。
 - 2026-09-14 随后：Release 页已补齐。本 PR：薄 skill / APPLY / OF-24 / STATE 改口；`apply` 仍未 live（OF-08）。
+- 2026-09-14 #23 squash 合入 `dev`（`e4da21b`）；尚未 promote 到 `main`（Oliver：先只更新 Overlay，不 promote）。
+- 2026-09-15 本 PR：OF-07 复查源仓 Overlay——36/13；11 个 v1/`armed` CI 不收；2 个产品提交不搬。brief §9.7 去掉过期的 `6d8934e`。
