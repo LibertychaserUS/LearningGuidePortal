@@ -133,7 +133,7 @@ DEV 且 `EMAIL_VERIFICATION_REQUIRED=0` 时走旧路径：Anonymous 直接进入
 | 任意 | 申请重置 | 邮箱格式不合法 | 不变 | 400 `invalid_request` |
 | 任意 | 申请重置 | 托管环境且投递未配置 | 不变 | 503 `email_unavailable`（在查账号之前判断） |
 | 任意 | 申请重置 | 托管环境且公开源站（`NEXT_PUBLIC_APP_URL`）不可用 | 不变 | 503 `email_unavailable`（在查账号之前判断） |
-| 任意 | 申请重置 | 请求的 Origin 头既不是公开源站也不是请求源站 | 不变 | 400 `invalid_request`（在查账号之前判断） |
+| 任意 | 申请重置 | 投递已配置、公开源站可用，且请求的 Origin 头既不是公开源站也不是请求源站 | 不变 | 400 `invalid_request`（在查账号之前判断） |
 | Anonymous / Pending / WeChatUnbound | 申请重置 | 没有该邮箱的 Active 已验证账号 | 不变，不发信 | 200 `{ ok: true, accepted: true, retryAfter: 60 }` |
 | Active / SignedIn | 申请重置 | 距最新已存重置链接不足 60 秒 | 不变，不发信 | 同上 200 |
 | Active / SignedIn | 申请重置 · rejected | 冷却已过 | 不变，旧活链接仍有效，冷却不重新计时 | 同上 200 |
@@ -144,7 +144,19 @@ DEV 且 `EMAIL_VERIFICATION_REQUIRED=0` 时走旧路径：Anonymous 直接进入
 
 发送被拒时，已知账号和未知地址的响应完全相同。只有"投递未配置"和"托管环境源站不可用"会返回 503，这两者都在查账号之前判断，对所有地址一样。
 
-DEV 且没有配置任何邮件传输时（非托管环境），代码保持 `8a77712` 的行为：调用 `requestPasswordReset(email, true)` 存一条重置链接并返回 200，链接不会被发出，也不会出现在响应里。`api-contracts.md` 写的"`LOCAL_PASSWORD_RESET_PREVIEW=1` 时返回预览链接"在 `8a77712` 上并未实现（路由从不返回 `resetUrl`，`tests/io/login.test.ts` 的 AUTH-02 / AUTH-03 断言它不存在）。这条 DEV 本地路径不在本文的合法性保证之内，本 PR 不改它。
+#### 5.3.1 DEV 无传输路径与预览链接：合同与代码对账
+
+DEV 且没有配置任何邮件传输时（非托管环境；`EMAIL_DELIVERY=discard|fail` 算已配置），代码保持 `8a77712` 的行为：调用 `requestPasswordReset(email, true)` 为合格账号存一条重置链接，返回同一个 200 `{ ok: true, accepted: true, retryAfter: 60 }`；链接不会被发出，也不会出现在响应里。这条路径是先写、不发，不在本文的合法性保证之内，本 PR 不改它。
+
+- 合同原来写：accepted 响应是 `{ ok: true, accepted: true, retryAfter: 60, resetUrl: null }`；`APP_ENV=DEV`、`LOCAL_PASSWORD_RESET_PREVIEW=1` 且无传输时返回预览链接。
+- 代码实际：路由只返回 `{ ok, accepted, retryAfter }`，没有 `resetUrl` 键（既不是 `null`，也不是链接）。产品代码不读 `LOCAL_PASSWORD_RESET_PREVIEW`；`services/runtimeConfig.ts` 的 `localResetPreviewAllowed` 只有 `tests/unit/sit-runtime.test.ts` 在调用。
+- 改了哪一边：合同。`api-contracts.md` 改为 accepted 响应恰为 `{ ok: true, accepted: true, retryAfter: 60 }`、没有预览链接；`release-runbook.md` 同步。代码不改。
+- 为什么不实现预览：
+  1. 预览是有意删掉的，不是漏接。`7f42330` 加入预览（`passwordResetService.ts` 在 DEV + flag + 无传输时返回 `resetUrl`，路由把服务结果整体展开返回），合同段落也是这次写的。`f44301f`（"fix: close Overlay AUTH/PAY leaks and lock them in tests"，提交说明 "Reset JSON never includes resetUrl"，与 Oliver 共同署名）删掉了 `localResetPreviewAllowed` 与 flag 判断，路由改为只取 `accepted` / `retryAfter`，但没有同步合同，才留下矛盾。两个提交都在 upstream main 上。
+  2. 规格黑盒不允许。`inbox/login.md` 用户用例 2："Password-reset JSON never includes resetUrl or a raw token"；Notes："Do not rewrite AUTH-01 / AUTH-02 to accept `exists`, `resetUrl`, or 503"。`overlay-forge-brief.md` 的规格红表把"DEV preview 会漏 `resetUrl`"列为产品缺陷。login 套件是 `active`，实现预览就要让 AUTH-02 在某个配置下接受 `resetUrl`，等于改锁。
+  3. 预览只给合格账号带链接，公开响应因此暴露地址是否对应 Active 账号，违反第 6 节不变量 7。
+  4. 现有锁：`tests/integration/password-reset.spec.ts` 用 `toEqual({ ok: true, accepted: true, retryAfter: 60 })` 锁住 DEV 无传输响应；`tests/io/login.test.ts` 的 AUTH-02 / AUTH-03 断言 `body.resetUrl === undefined`。
+- 残留（本 PR 不动，清理是单独的改动）：`contracts/passwordReset.ts` 的 `PasswordResetResult.resetUrl` 是服务内部类型，服务恒返回 `null`，路由不透出；`components/portal/PasswordResetRequestForm.tsx` 在响应带 `resetUrl` 时仍会渲染 `messages/*.json` 的 `resetPreview` 链接，这条分支现在不可达；`localResetPreviewAllowed` 没有产品调用方。
 
 ### 5.4 微信绑定邮箱
 
@@ -204,7 +216,7 @@ DEV 且没有配置任何邮件传输时（非托管环境），代码保持 `8a
 | 找回密码 | `planPasswordReset` | `replaceLivePasswordResetToken`（提交时再查仍是 Active 已验证） |
 | 绑定邮箱 | `planEmailBinding` | `commitEmailBinding`（提交时再查资格与邮箱唯一性） |
 
-旧的一步式函数 `requestPasswordReset`、`issueEmailBinding`、`issueEmailVerificationToken` 仍然导出，语义不变，供现有测试和 DEV 路径直接调用；服务层的申请流程不再使用它们（DEV 无传输的重置路径除外，见 5.3）。
+旧的一步式函数 `requestPasswordReset`、`issueEmailBinding`、`issueEmailVerificationToken` 仍然导出，语义不变，供现有测试和 DEV 路径直接调用；服务层的申请流程不再使用它们（DEV 无传输的重置路径除外，见 5.3.1）。
 
 输出规则：
 
@@ -247,7 +259,7 @@ DEV 且没有配置任何邮件传输时（非托管环境），代码保持 `8a
 **不在本文保证范围内：**
 
 - 邮件被传输层接受之后是否真正进入用户收件箱。
-- DEV 无传输时的找回密码路径（见 5.3）。
+- DEV 无传输时的找回密码路径（见 5.3.1）。
 - 文件存储在多实例下的并发语义（`requirements-map.md` 已注明当前文件存储只适用于单实例 DEV）；第 7 节第 5 步的再检查依赖 `editData` 的串行化。
 
 ## 11. 测试对照
