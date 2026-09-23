@@ -4,7 +4,7 @@ Course-authoring extension: `PUT /api/backoffice/courses/:courseId/draft`, contr
 
 所有 JSON API 使用：
 
-Email registration uses `POST /api/auth/sign-up`, activation uses `POST /api/auth/verify-email`, and resend uses `POST /api/auth/resend-verification`. Resend always returns an accepted result; only a pending account receives a new link, and issuing that link invalidates the previous one.
+Email registration uses `POST /api/auth/sign-up`, activation uses `POST /api/auth/verify-email`, and resend uses `POST /api/auth/resend-verification`. When verification is required, register sends first and commits the user and token only after the send is accepted; a duplicate register returns `verificationRequired: true` and no user. Resend returns accepted for an unknown address, a cooldown, and a send failure, and replaces the live token only after the send succeeds.
 
 Google authentication uses `GET /api/auth/google` and `GET /api/auth/google/callback`. The first route creates a signed state/nonce/PKCE transaction and redirects to Google. The callback verifies the transaction and Google ID Token before calling the User Authentication service and creating the application Session cookie. Existing email accounts are not automatically linked.
 
@@ -26,7 +26,7 @@ Password reset uses `POST /api/auth/password-reset/request` with `{ email, local
 |---|---|---|---|
 | GET | `/api/portal/courses` | locale、category、page | 只返回 published Course |
 | GET | `/api/portal/courses/:slug` | slug | 返回公开 Course Detail 和 Public First Lesson 配置 |
-| POST | `/api/auth/sign-up` | email、password、locale、returnTo | 校验 origin 和 returnTo；创建未验证 User；发送 SES email |
+| POST | `/api/auth/sign-up` | email、password、locale、returnTo | 需要验证时先发信，发送被接受后才提交 User 与 token；重复注册返回 verificationRequired true 且无 user |
 | POST | `/api/auth/sign-in` | email、password、returnTo | 创建 session；只允许安全 returnTo |
 | POST | `/api/auth/verify-email` | token | 验证 token；token 单次使用、过期失效 |
 | POST | `/api/auth/reset-password` | email | 发送不泄露账号是否存在的 reset email |

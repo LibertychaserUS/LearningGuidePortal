@@ -620,6 +620,35 @@ export async function registerUserAttempt(input: { email: string; password: stri
   });
 }
 
+export async function commitPendingUserWithToken(input: { email: string; password: string; locale?: Locale; nickname?: string; role?: ProductUser["role"]; rawToken: string }) {
+  const email = input.email.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Enter a valid email address.");
+  if (input.password.length < 8) throw new Error("Password must contain at least 8 characters.");
+  if (!input.rawToken) throw new Error("Verification token is missing.");
+  const nickname = validateNickname(input.nickname?.trim() || "Learner");
+  const role = input.role === "operator" || input.role === "teacher" ? input.role : "student";
+  const tokenHash = hashToken(input.rawToken);
+  return editData(async (data) => {
+    const existing = data.users.find((user) => user.email === email);
+    if (existing) return { user: { ...existing, email: existing.email || email }, created: false as const };
+    const createdAt = now();
+    const user: ProductUser = {
+      id: id("user"),
+      email,
+      passwordHash: await passwordHash(input.password),
+      nickname,
+      locale: input.locale === "zh-CN" ? "zh-CN" : "en-GB",
+      role,
+      status: "pending",
+      emailVerifiedAt: null,
+      createdAt,
+    };
+    data.users.push(user);
+    data.verificationTokens.unshift({ id: id("verify"), userId: user.id, tokenHash, expiresAt: tokenExpiry(24), usedAt: null, createdAt });
+    return { user: { ...user, email }, created: true as const };
+  });
+}
+
 export async function registerUser(input: { email: string; password: string; locale?: Locale; nickname?: string; role?: ProductUser["role"] }) {
   return (await registerUserAttempt(input)).user;
 }
@@ -743,6 +772,16 @@ export async function requestEmailVerification(emailValue: string) {
     }
     throw error;
   }
+}
+
+export async function replaceLiveVerificationToken(userId: string, rawToken: string) {
+  await editData((data) => {
+    const issuedAt = now();
+    for (const item of data.verificationTokens) {
+      if (item.userId === userId && !item.usedAt) item.usedAt = issuedAt;
+    }
+    data.verificationTokens.unshift({ id: id("verify"), userId, tokenHash: hashToken(rawToken), expiresAt: tokenExpiry(24), usedAt: null, createdAt: issuedAt });
+  });
 }
 
 export async function verifyEmailToken(rawToken: string) {
