@@ -251,6 +251,19 @@ describe("registration legal transition", { concurrency: false }, () => {
     assert.deepEqual(afterTokens.filter((item) => !item.usedAt).map((item) => item.tokenHash), unusedHash);
   });
 
+  test("a verification link is not stored for an account that became active before the commit", async () => {
+    useDelivery("discard", "1");
+    const email = uniqueEmail("resend-activated");
+    const user = await store.registerUser({ email, password: FIRST_PASSWORD, locale: "en-GB" });
+    await store.verifyEmailToken(await store.issueEmailVerificationToken(user.id));
+    const beforeCommit = tokensFor((await findUser(email)).data, user.id);
+    assert.equal(await store.replaceLiveVerificationToken(user.id, "raw-token-after-activation"), false);
+    const afterCommit = await findUser(email);
+    assert.equal(afterCommit.user?.status, "active");
+    assert.deepEqual(tokensFor(afterCommit.data, user.id), beforeCommit);
+    assert.equal(tokensFor(afterCommit.data, user.id).some((item) => !item.usedAt), false);
+  });
+
   test("resend of an unknown email matches the pending resend shape", async () => {
     useDelivery("discard", "1");
     const email = uniqueEmail("resend-known");

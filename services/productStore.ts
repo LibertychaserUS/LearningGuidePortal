@@ -775,12 +775,14 @@ export async function requestEmailVerification(emailValue: string) {
 }
 
 export async function replaceLiveVerificationToken(userId: string, rawToken: string) {
-  await editData((data) => {
+  return editData((data) => {
+    if (!data.users.some((item) => item.id === userId && item.status === "pending")) return false;
     const issuedAt = now();
     for (const item of data.verificationTokens) {
       if (item.userId === userId && !item.usedAt) item.usedAt = issuedAt;
     }
     data.verificationTokens.unshift({ id: id("verify"), userId, tokenHash: hashToken(rawToken), expiresAt: tokenExpiry(24), usedAt: null, createdAt: issuedAt });
+    return true;
   });
 }
 
