@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import type { LessonContent, LessonNode } from '@/contracts/lesson-content';
 import { lessonMessages, type LessonLocale } from '@/messages/lesson-authoring';
 import { CourseMediaPreview, LessonModal, SafeLessonHtml, safeMediaUrl } from './CourseMediaPreview';
@@ -59,7 +60,7 @@ function TrialLimitModal({ gate, locale, onClose }: { gate: TrialGate; locale: L
         <strong>{copy.categoryTitle}</strong>
         <p>{copy.categoryBody}</p>
         {gate.recommendations.length ? gate.recommendations.slice(0, 2).map((course, index) => <a className="la-trial-course" href={course.href} target="_blank" rel="noopener noreferrer" key={course.href}>
-          {course.image ? <img src={course.image} alt=""/> : <span className={`la-trial-course-placeholder la-trial-course-placeholder-${index + 1}`} aria-hidden="true">IMAGE</span>}
+          {course.image ? <Image src={course.image} alt="" width={84} height={84} unoptimized/> : <span className={`la-trial-course-placeholder la-trial-course-placeholder-${index + 1}`} aria-hidden="true">IMAGE</span>}
           <span><b>{course.title}</b><small>{copy.relatedBody}</small><em>{copy.viewCourse} -&gt;</em></span>
         </a>) : <p>{copy.empty}</p>}
       </aside>
@@ -192,7 +193,8 @@ function TextContentPlayer({ html, nodes, locale, fallbackImageUrl, trialGate, o
       <span className="la-exhibit-kind">{active.type === 'image' ? 'Image' : active.type === 'article' || active.type === 'exercise' ? 'Text' : active.type}</span>
       <strong>{active.title}</strong>
       {active.missing && <p className="la-exhibit-empty">No exhibit content is linked yet.</p>}
-      {!active.missing && active.type === 'image' && <img src={active.url} alt={active.title}/>}
+      {/* Exhibit images have no known dimensions; .la-exhibit-float img sizes them to width:100% and height:auto. */}
+      {!active.missing && active.type === 'image' && <Image src={active.url} alt={active.title} width={0} height={0} unoptimized/>}
       {!active.missing && (active.type === 'article' || active.type === 'exercise') && <SafeLessonHtml html={active.html} />}
       {!active.missing && active.type !== 'image' && active.type !== 'article' && active.type !== 'exercise' && <CourseMediaPreview type={active.type === 'model3d' ? 'model3d' : active.type === 'audio' ? 'audio' : 'video'} url={active.url} title={active.title} locale={locale}/>}
       <button type="button" className="la-exhibit-detail" onClick={() => setModal(active)}>Open preview</button>
