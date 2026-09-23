@@ -937,21 +937,55 @@ export async function getUserBySessionToken(token: string | undefined, allowEmai
   return data.users.find((user) => user.id === session.userId && user.status === "active" && ((Boolean(user.email) && Boolean(user.emailVerifiedAt)) || (allowEmailBinding && data.accounts.some((account) => account.userId === user.id && account.provider === "wechat")))) || null;
 }
 
-export async function issueEmailBinding(userId: string, emailValue: string) {
+function bindingEmail(emailValue: string) {
   const email = emailValue.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new Error("invalid_email");
+  return email;
+}
+
+function assertEmailBindingAllowed(data: ProductData, userId: string, email: string) {
+  const user = data.users.find(user => user.id === userId && user.status === "active");
+  if (!user || !data.accounts.some(account => account.userId === userId && account.provider === "wechat")) throw new Error("unauthorised");
+  if (user.email && user.emailVerifiedAt) throw new Error("already_bound");
+  if (data.users.some(user => user.id !== userId && user.email?.toLowerCase() === email)) throw new Error("email_in_use");
+}
+
+function assertEmailBindingCooldown(data: ProductData, userId: string) {
+  const latest = data.emailBindingTokens.find(token => token.userId === userId);
+  if (latest && Date.now() - new Date(latest.createdAt).getTime() < 60_000) throw new Error("cooldown");
+}
+
+function storeEmailBindingToken(data: ProductData, userId: string, email: string, rawToken: string) {
+  // Remove superseded links so they cannot be mistaken for successful replays.
+  data.emailBindingTokens = data.emailBindingTokens.filter(token => token.userId !== userId);
+  data.emailBindingTokens.unshift({ id: id("binding"), userId, email, tokenHash: hashToken(rawToken), expiresAt: tokenExpiry(24), createdAt: now(), usedAt: null });
+}
+
+export async function issueEmailBinding(userId: string, emailValue: string) {
+  const email = bindingEmail(emailValue);
   return editData(data => {
-    const user = data.users.find(user => user.id === userId && user.status === "active");
-    if (!user || !data.accounts.some(account => account.userId === userId && account.provider === "wechat")) throw new Error("unauthorised");
-    if (user.email && user.emailVerifiedAt) throw new Error("already_bound");
-    if (data.users.some(user => user.id !== userId && user.email?.toLowerCase() === email)) throw new Error("email_in_use");
-    const latest = data.emailBindingTokens.find(token => token.userId === userId);
-    if (latest && Date.now() - new Date(latest.createdAt).getTime() < 60_000) throw new Error("cooldown");
+    assertEmailBindingAllowed(data, userId, email);
+    assertEmailBindingCooldown(data, userId);
     const rawToken = randomBytes(32).toString("base64url");
-    // Remove superseded links so they cannot be mistaken for successful replays.
-    data.emailBindingTokens = data.emailBindingTokens.filter(token => token.userId !== userId);
-    data.emailBindingTokens.unshift({ id: id("binding"), userId, email, tokenHash: hashToken(rawToken), expiresAt: tokenExpiry(24), createdAt: now(), usedAt: null });
+    storeEmailBindingToken(data, userId, email, rawToken);
     return { token: rawToken, email };
+  });
+}
+
+export async function planEmailBinding(userId: string, emailValue: string) {
+  const email = bindingEmail(emailValue);
+  const data = await ensureProductData();
+  assertEmailBindingAllowed(data, userId, email);
+  assertEmailBindingCooldown(data, userId);
+  return { email };
+}
+
+export async function commitEmailBinding(userId: string, emailValue: string, rawToken: string) {
+  const email = bindingEmail(emailValue);
+  return editData(data => {
+    assertEmailBindingAllowed(data, userId, email);
+    storeEmailBindingToken(data, userId, email, rawToken);
+    return { email };
   });
 }
 
