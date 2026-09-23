@@ -818,6 +818,29 @@ export async function requestPasswordReset(emailValue: string, enforceCooldown =
   }
 }
 
+export async function planPasswordReset(emailValue: string) {
+  const email = emailValue.trim().toLowerCase();
+  const data = await ensureProductData();
+  const user = data.users.find((item) => item.email === email && item.status === "active" && item.emailVerifiedAt);
+  if (!user?.email) return null;
+  const latest = data.passwordResetTokens.find((item) => item.userId === user.id);
+  if (latest && Date.now() - new Date(latest.createdAt).getTime() < 60_000) return null;
+  return { userId: user.id, email: user.email };
+}
+
+export async function replaceLivePasswordResetToken(userId: string, rawToken: string) {
+  return editData((data) => {
+    const user = data.users.find((item) => item.id === userId && item.status === "active" && item.emailVerifiedAt);
+    if (!user) return false;
+    const issuedAt = now();
+    for (const item of data.passwordResetTokens) {
+      if (item.userId === userId && !item.usedAt) item.usedAt = issuedAt;
+    }
+    data.passwordResetTokens.unshift({ id: id("reset"), userId, tokenHash: hashToken(rawToken), expiresAt: tokenExpiry(1), usedAt: null, createdAt: issuedAt });
+    return true;
+  });
+}
+
 export async function resetPassword(rawToken: string, newPassword: string) {
   if (newPassword.length < 8) throw new Error("Password must contain at least 8 characters.");
   return editData(async (data) => {
