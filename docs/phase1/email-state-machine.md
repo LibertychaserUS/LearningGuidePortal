@@ -283,7 +283,29 @@ DEV 且没有配置任何邮件传输时（非托管环境；`EMAIL_DELIVERY=dis
 | Origin 头不匹配 → 所有地址 400 | 同上 | a foreign Origin header is rejected for known and unknown addresses alike |
 | 重置发信、冷却、一次性确认、撤销会话 | `tests/integration/password-reset.spec.ts`；`tests/unit/sit-password-reset.test.ts` | DEV reset sends mail, preserves destination, throttles and consumes tokens once；SIT emails reset links on its trusted origin and never returns a token |
 | 重置响应不含 token、不区分地址 | `tests/io/login.test.ts` | AUTH-02 functional / negative；AUTH-03 edge |
+| DEV 无传输 → 200，响应恰为 `{ ok, accepted, retryAfter }`，没有 `resetUrl` 键（5.3.1） | `tests/integration/password-reset.spec.ts`；`tests/io/login.test.ts` | DEV reset sends mail, preserves destination, throttles and consumes tokens once（`unconfigured` 断言）；AUTH-03 edge: APP_ENV=DEV still allows a local password-reset request without a token leak |
 | 绑定 · rejected → 503，不存链接，立刻重试成功（非 429） | `tests/unit/email-binding-legal-transition.test.ts` | a rejected binding mail stores no link and does not start the cooldown |
 | 绑定 · rejected → 旧链接仍可用 | 同上 | a rejected binding mail keeps the previously delivered link usable |
 | 绑定提交时再查唯一性 | 同上 | the commit re-checks uniqueness and stores nothing when the email was taken meanwhile |
 | 绑定确认、冷却 429、替换旧链接、冲突、重放 | `tests/integration/email-binding.spec.ts` | WeChat binding requires verified email, keeps identity, blocks conflicts and replays safely |
+
+## 12. 门禁现状
+
+本 PR 的 `forge-check` 红在两项：`deny_paths` 和 `docs_sync`。两项都不是本 PR 引入的，本 PR 也不修。Overlay / Forge 登记处 `docs/phase1/overlay-forge-issues.md` 只在 fork 的 `main` / `dev` 上，本分支基于 upstream main，没有这个文件，所以先按登记处的格式记在这里；搬进登记处时续编号（那里最后一条是 OF-24，拟用 OF-25 / OF-26）。两条状态都是**待修**，处理归 Ops（Oliver）。本 PR 不改 `forge.yaml`、`docs/STATE.md`、`.github/workflows/`。
+
+证据：fork 上本 PR 的 forge-check（[push run 35852854210](https://github.com/LibertychaserUS/LearningGuidePortal/actions/runs/35852854210)、[pull_request run 35852912877](https://github.com/LibertychaserUS/LearningGuidePortal/actions/runs/35852912877)）都是 `forge check: red (2 failed)`，红项只有 `deny_paths`（`diff touches .github/workflows/ci.yml`）和 `docs_sync`（`CI job 名与 .github/workflows 不一致；运行 forge status --write`）。在 fork 里对不含本 PR 的 `8a77712`（upstream main）用 `forge-v1.1.3` 重跑，红项相同；`forge status --check-state` 退出 2。
+
+### G-1 docs_sync：`docs/STATE.md` 的 CI job 名落后于 workflow — 待修（Ops）
+
+- 现象：`docs_sync` 报"CI job 名与 .github/workflows 不一致"；`forge status --check-state` 退出 2。
+- 根因：`docs/STATE.md` 是 `forge status --write` 生成的快照，里面列了 CI job 名；`docs_sync` 拿它和 `.github/workflows/*.yml` 的 job 名比。upstream `522eeab`（2026-09-18，"feat: add catalogue migrations for DEV course sync"）新增 `.github/workflows/catalogue-sync.yml`，job 名 `Run catalogue migrations`；`STATE.md` 最后一次重生成是 `e3276b0`（2026-09-16），没有这个 job。所以 upstream main `8a77712` 本身就不过 `docs_sync`，任何基于它的分支都会红。
+- 为什么进了 main：upstream 上 `522eeab` 自己的 forge-check（[run 35333759868](https://github.com/First-Light-TechHK/LearningGuidePortal/actions/runs/35333759868)，`push` 到 `main`）已经是红的，红项只有 `docs_sync`；GitHub 查不到与该提交关联的 PR。推断：它是直推 `main`，或 upstream 没有把 forge-check 设成 required，所以没被挡住。
+- 修法：单独一个改动，在 upstream main 上跑 `forge status --write` 重生成 `STATE.md`（Ops / Oliver）。不在功能 PR 里手改 `STATE.md`。
+
+### G-2 deny_paths：fork 上按 fork 的 `main` 算 diff，误报 `ci.yml` — 待修（Ops 定）
+
+- 现象：`deny_paths` 报 `diff touches .github/workflows/ci.yml`，而本 PR 没有改任何 workflow。
+- 根因：Forge 1.1.3 用 `git merge-base HEAD <protect 分支>` 作 diff 起点（`forge/check.py` 的 `resolve_protect_ref` 优先取 `refs/remotes/origin/main`，`list_changed_paths` 从 merge-base 算），不看 PR 的 base。fork 的 `origin/main` 是 fork 自己的 `main`（`8bac302`），已和 upstream 分叉：fork `main` 有 36 个 upstream 没有的提交，upstream 有 50 个 fork `main` 没有的提交（fork `dev` 有 34 个 upstream 没有的提交）。merge-base 是 `006536f`，"diff" 有 285 个路径，包括 upstream 改过的 7 个 workflow 文件。
+- 为什么只命中 `ci.yml`：本分支的 `forge.yaml` 来自 upstream，没设 `deny_paths`，Forge 默认值 `DEFAULT_DENY = (".github/workflows/ci.yml",)`（`forge/apply.py`）生效。同一个 PR 在 upstream 仓里算，`origin/main` 是 upstream main，diff 只有本 PR 的文件；upstream `522eeab` 那次 run 就是 `deny_paths ok vs refs/remotes/origin/main`。
+- 配置漂移：upstream 默认只保护 `ci.yml`；fork `main` / `dev` 的 `forge.yaml` 把整个 `.github/workflows/` 列进 `deny_paths`。
+- 修法（Ops 选）：把 fork `main` 同步到 upstream；让 Forge 对 PR base 算 diff（工具改动）；或调整两边的 `forge.yaml`。本 PR 不改 `forge.yaml`。
