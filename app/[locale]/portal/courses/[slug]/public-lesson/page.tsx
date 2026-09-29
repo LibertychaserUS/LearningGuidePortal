@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getMessages } from "@/lib/i18n/messages";
 import { localeFrom } from "@/lib/i18n/config";
-import { checkEntitlement, getLearningOverview, getProductCourse, listPublishedCourses, publicFirstLesson } from "@/services/productStore";
+import { publicLessonRecommendationCategory } from "@/lib/courseDetailPresentation";
+import { checkEntitlement, getLearningOverview, getPortalContent, getProductCourse, listCatalogueEntries, listPublishedCourses, publicFirstLesson } from "@/services/productStore";
 import { currentProductUser } from "@/services/productAuth";
 import { PreviewProgress } from "@/components/portal/PreviewProgress";
 import { PortalFooter } from "@/components/portal/PortalFooter";
@@ -10,6 +11,8 @@ import { PortalHeader } from "@/components/portal/PortalHeader";
 import { LegacyLessonBody, LessonContentPlayer, type TrialGate } from "@/components/portal/LessonContentPlayer";
 import { courseImageFor } from "@/components/portal/CourseThumbnail";
 import { sanitiseLessonContents } from "@/services/lessonContent";
+import { signCourseMediaReferences } from "@/services/courseMediaSigning";
+import { signCourseMediaUrl } from "@/services/persistence/s3";
 
 export default async function PublicLessonPage({ params, searchParams }: { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ lessonId?: string }> }) {
   const { locale: rawLocale, slug } = await params;
@@ -29,14 +32,17 @@ export default async function PublicLessonPage({ params, searchParams }: { param
   const record = overview?.courses.find(item => item.courseId === course.id);
   const next = course.sections.flatMap(section => section.lessons).find(item => item.isPublic && item.id !== lesson.id && !record?.completedLessonIds.includes(item.id));
   const publishedCourses = await listPublishedCourses();
+  const content = await getPortalContent();
+  const catalogue = await listCatalogueEntries();
   const recommendationCourses = publishedCourses.slice(0, 2);
   const recommendations = recommendationCourses
     .map(item => ({
       title: item.title,
       href: `/${locale}/portal/courses/${item.id}`,
       image: item.cover || item.thumbnailPath || courseImageFor(item.slug || item.id),
-      category: item.category
+      category: publicLessonRecommendationCategory(item, content.categories, locale, catalogue)
     }));
+  for (const recommendation of recommendations) recommendation.image = await signCourseMediaUrl(recommendation.image || "");
   const trialGate: TrialGate | undefined = access.allowed ? undefined : {
     pricingHref: `/${locale}/pricing?courseId=${encodeURIComponent(course.id)}`,
     recommendations,
@@ -48,7 +54,7 @@ export default async function PublicLessonPage({ params, searchParams }: { param
     <PortalHeader locale={locale} active="courses" signedIn={Boolean(user)} displayName={user?.nickname} avatarUrl={user?.avatarPath ? "/api/my-learning/avatar" : undefined} />
     <article className="public-lesson">
       <p className="portal-eyebrow">{copy.publicFirstLesson}</p><h1>{lesson.title}</h1><p className="lesson-duration">{lesson.durationMinutes} {messages.learning.minutes}</p>
-      {lesson.contents?.length ? <LessonContentPlayer key={`content-${lesson.id}`} contents={sanitiseLessonContents(lesson.contents, course.id)} locale={locale} fallbackImageUrl="/portal/exh.jpg" trialGate={trialGate}/> : <LegacyLessonBody body={lesson.body} locale={locale} trialGate={trialGate}/>}
+      {lesson.contents?.length ? <LessonContentPlayer key={`content-${lesson.id}`} contents={await signCourseMediaReferences(sanitiseLessonContents(lesson.contents, course.id))} locale={locale} fallbackImageUrl="/portal/exh.jpg" trialGate={trialGate}/> : <LegacyLessonBody body={lesson.body} locale={locale} trialGate={trialGate}/>}
       <PreviewProgress key={`progress-${lesson.id}`} courseId={course.id} lessonId={lesson.id} seconds={lesson.durationMinutes * 60} initialCompleted={Boolean(record?.completedLessonIds.includes(lesson.id))} copy={{ ...messages.learning, saveError: messages.overviewDesign.previewSaveError }} />
       <div className="public-lesson-actions">
         {access.allowed ? <Link className="portal-button portal-button-secondary" href={`/${locale}/account/learn/${course.id}?lessonId=${encodeURIComponent(lesson.id)}`}>{messages.learning.continue}</Link> : next ? <Link className="portal-button portal-button-secondary" href={`/${locale}/portal/courses/${course.id}/public-lesson?lessonId=${encodeURIComponent(next.id)}`}>{messages.overviewDesign.continuePreview}</Link> : <Link className="portal-button portal-button-secondary" href={`/${locale}/pricing?courseId=${encodeURIComponent(course.id)}`}>{messages.learning.viewPlans}</Link>}

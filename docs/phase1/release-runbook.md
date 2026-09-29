@@ -20,7 +20,7 @@ The merge's local browser tests do not verify the live AWS IAM/S3 configuration 
 
 - Configure `NEXT_PUBLIC_APP_URL` as the externally reachable application origin. Mail links use this origin; localhost links must be opened on the machine running the application.
 - Configure SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, optionally `SMTP_FROM`, `SMTP_PORT`, `SMTP_SECURE`) or SES (`SES_FROM_EMAIL`, `AWS_REGION` and AWS credentials/role with send permission). Configured delivery is used in every environment, including DEV. Presence of configuration does not establish successful provider delivery.
-- Keep `LOCAL_PASSWORD_RESET_PREVIEW` unset for mail verification. Without configured delivery, requests fail visibly; only explicit `APP_ENV=DEV` plus `LOCAL_PASSWORD_RESET_PREVIEW=1` enables direct development links. Never enable a preview in a shared environment.
+- Without configured delivery, SIT/UAT/PPE/PROD requests fail visibly with 503 `email_unavailable`; DEV returns 200 and sends nothing. There is no development preview link: `LOCAL_PASSWORD_RESET_PREVIEW` is not read and the API never returns `resetUrl`. To follow a reset link locally, configure SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`) or SES.
 - Run the password-reset project in `playwright.auth.config.ts`, the bilingual `tests/e2e/password-reset.spec.ts`, and `npm run build`. Automated mail tests replace the transport and do not send real messages.
 - Smoke test with an authorised test mailbox: submit from password sign-in, confirm the check-email page and cooldown, receive the message, follow the link, reset, sign in and return to the original URL. Verify reissue invalidates the previous link, expired/used tokens fail, and old sessions are revoked. Check both locales and spam folders. No real mailbox delivery or Figma acceptance is implied by automated tests.
 
@@ -56,12 +56,21 @@ The merge's local browser tests do not verify the live AWS IAM/S3 configuration 
 - The remote sandbox verification records the Science annual lookup key correction; see `stripe-sandbox.md`. Revalidate the current catalogue before each release.
 
 ```text
-GitHub pull request / push to main
-  -> Verify (typecheck / lint / unit / integration / build) — tests only
-  -> Deploy to App Runner on push to main (DEV www + admin)
-  -> smoke: health, auth, course, quote, Stripe test webhook, entitlement
-  -> Deploy SIT is workflow_dispatch only (never on push)
+GitHub pull request / push
+  -> Verify (typecheck / lint / unit / integration / build) — tests only; no App Runner
+  -> Push to `dev` → Deploy DEV runs start-deployment, waits for the build, then live e2e
+  -> npm start applies pending db/data-migrations, then serves the app
+  -> Post-deploy live e2e (catalogue, course media, public lesson, pricing, registration mail, OAuth start, closed purchase/payment/orders/tutor)
+  -> Success: SNS `learning-guide-sit-alerts` + GitHub summary
+  -> Failure: the workflow stays red. Automatic fallback (DEV revert-commit; SIT/UAT/PPE force previous SHA) then notify. Rollback does not make the release pass.
+  -> Deploy SIT / UAT / PPE are workflow_dispatch only (never on push)
 ```
+
+UAT and PPE workflows exist but stay blocked until their App Runner ARNs and origins are set as repository variables (`UAT_APP_RUNNER_SERVICE_ARN`, `PPE_APP_RUNNER_SERVICE_ARN`, `PPE_ORIGIN`). Subscribe an ops mailbox to `learning-guide-sit-alerts` so release notifications arrive.
+
+Post-deploy e2e runs immediately after DEV and SIT are RUNNING. It registers `LIVE_TEST_EMAIL` (DEV and SIT default `yongthelaoma@gmail.com`), requires that send to be accepted, and fails if the response leaks an AWS IAM error. It also requires a published course page whose images return image bytes and are not Tencent COS, a public lesson, pricing, and rejection of anonymous checkout, trial, subscription portal, unsigned Stripe webhook, orders, course management, AI Tutor, and study writes. It does not complete a card payment or an OAuth consent. A failed check exits 1, so Deploy DEV and Deploy SIT cannot pass. Implementation: `scripts/after-deploy.mjs`, `scripts/release/liveSmoke.mjs`, `tests/e2e/live-release.spec.ts`. Unit coverage: `tests/unit/live-smoke.test.ts`.
+
+Product-aggregate data changes use numbered scripts under `db/data-migrations/`. Direction: [data-migrations.md](data-migrations.md). How to write a script: [writing-data-migrations.md](writing-data-migrations.md). Do not replace the live `product.json` aggregate.
 
 每次发布记录：git SHA、Docker image digest、database migration、环境、批准人、回滚 image。禁止在 App Runner 控制台直接改代码或手工执行生产 SQL。
 

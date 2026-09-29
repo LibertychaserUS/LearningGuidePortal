@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
+import path from "node:path";
+import { atomicWriteJson, systemRoot } from "../../services/fileStore";
 import {
   PASSWORD,
   SESSION_COOKIE,
@@ -29,6 +31,7 @@ let profile: typeof import("../../app/api/me/profile/route");
 let backoffice: typeof import("../../app/api/backoffice/courses/route");
 let quote: typeof import("../../app/api/purchase/quote/route");
 let subscriptionPortal: typeof import("../../app/api/subscription/portal/route");
+let store: typeof import("../../services/productStore");
 
 before(async () => {
   restore = (await isolate("lg-io-login-")).restore;
@@ -46,6 +49,7 @@ before(async () => {
   backoffice = await import("../../app/api/backoffice/courses/route");
   quote = await import("../../app/api/purchase/quote/route");
   subscriptionPortal = await import("../../app/api/subscription/portal/route");
+  store = await import("../../services/productStore");
 });
 
 after(async () => {
@@ -70,15 +74,28 @@ async function registerPending(label: string, password = PASSWORD) {
   const previousDelivery = process.env.EMAIL_DELIVERY;
   process.env.EMAIL_VERIFICATION_REQUIRED = "1";
   process.env.EMAIL_DELIVERY = "discard";
+  let registered: Awaited<ReturnType<typeof registerAccount>>;
   try {
-    return await registerAccount(label, password);
+    registered = await registerAccount(label, password);
   } finally {
     process.env.EMAIL_VERIFICATION_REQUIRED = previousVerification;
     process.env.EMAIL_DELIVERY = previousDelivery;
   }
+  const body = await registered.response.clone().json() as { data?: { verificationRequired?: boolean } };
+  assert.equal(registered.response.status, 200, "registerPending precondition: register must return 200");
+  assert.equal(body.data?.verificationRequired, true, "registerPending precondition: register must require verification");
+  assert.equal(getCookie(SESSION_COOKIE), undefined, "registerPending precondition: register must not open a session");
+  const data = await store.ensureProductData();
+  assert.equal(data.users.find((user) => user.email === registered.email)?.status, "pending", "registerPending precondition: a pending user must exist");
+  const signIn = await login.POST(jsonRequest("POST", "http://localhost/api/auth/sign-in", { email: registered.email, password }));
+  takeSetCookie(signIn);
+  assert.equal(signIn.status, 401, "registerPending precondition: a pending sign-in must be 401");
+  assert.equal(getCookie(SESSION_COOKIE), undefined, "registerPending precondition: a pending sign-in must not open a session");
+  clearCookies();
+  return registered;
 }
 
-test("AUTH-01 functional: check-email does not distinguish a known address from an unknown one", async () => {
+test("AUTH-01 functional: check-email identifies known and unknown addresses", async () => {
   const { email } = await registerAccount("auth01-check");
   clearCookies();
   const known = await checkEmail.POST(jsonRequest("POST", "http://localhost/api/auth/check-email", { email }));
@@ -86,9 +103,51 @@ test("AUTH-01 functional: check-email does not distinguish a known address from 
   const knownBody = await known.json() as Record<string, unknown>;
   const unknownBody = await unknown.json() as Record<string, unknown>;
   assert.equal(known.status, unknown.status);
-  assert.equal("exists" in knownBody, false);
-  assert.equal("exists" in unknownBody, false);
-  assert.deepEqual(publicShape(knownBody), publicShape(unknownBody));
+  assert.equal(knownBody.ok, true);
+  assert.equal(unknownBody.ok, true);
+  assert.deepEqual((knownBody.data as Record<string, unknown>).exists, true);
+  assert.deepEqual((unknownBody.data as Record<string, unknown>).exists, false);
+});
+
+test("AUTH-01 negative: registration requires a valid Unicode name", async () => {
+  for (const nickname of ["", "Ada2", "Ada 😊", "Ada_"]) {
+    const response = await register.POST(jsonRequest("POST", "http://localhost/api/auth/register", {
+      email: uniqueEmail("auth01-invalid-name"), password: PASSWORD, nickname, locale: "en-GB"
+    }));
+    const body = await response.json() as { ok?: boolean; message?: string };
+    assert.equal(response.status, 400);
+    assert.equal(body.ok, false);
+  }
+  const response = await register.POST(jsonRequest("POST", "http://localhost/api/auth/register", {
+    email: uniqueEmail("auth01-unicode-name"), password: PASSWORD, nickname: "张·伟", locale: "en-GB"
+  }));
+  assert.equal(response.status, 200);
+});
+
+test("AUTH-01 negative: verification resend rejects the persisted daily limit", async () => {
+  const store = await import("../../services/productStore");
+  const user = await store.registerUser({ email: uniqueEmail("auth01-verification-limit"), password: PASSWORD, nickname: "Limit Learner" });
+  const data = await store.ensureProductData();
+  data.verificationTokens = Array.from({ length: 10 }, (_, index) => ({
+    id: `verify-limit-${index}`, userId: user.id, tokenHash: `hash-${index}`,
+    createdAt: new Date(Date.now() - (index + 2) * 61_000).toISOString(),
+    expiresAt: new Date(Date.now() + 86_400_000).toISOString(), usedAt: null,
+  }));
+  await atomicWriteJson(path.join(systemRoot(), "learning_guide", "product.json"), data);
+  const previousSmtp = { host: process.env.SMTP_HOST, user: process.env.SMTP_USER, pass: process.env.SMTP_PASS };
+  Object.assign(process.env, { SMTP_HOST: "smtp.test", SMTP_USER: "verification@test.invalid", SMTP_PASS: "test-only" });
+  try {
+    const response = await resend.POST(jsonRequest("POST", "http://localhost/api/auth/resend-verification", { email: user.email, locale: "en-GB" }));
+    const body = await response.json() as { ok?: boolean; code?: string };
+    assert.equal(response.status, 429);
+    assert.equal(body.ok, false);
+    assert.equal(body.code, "VERIFICATION_DAILY_LIMIT");
+  } finally {
+    for (const [key, value] of Object.entries(previousSmtp)) {
+      const envKey = `SMTP_${key.toUpperCase()}`;
+      if (value === undefined) delete process.env[envKey]; else process.env[envKey] = value;
+    }
+  }
 });
 
 test("AUTH-01 negative: register copy does not say the address already exists", async () => {
@@ -331,6 +390,10 @@ test("AUTH-05 edge: concurrent same-email register keeps one working password", 
   ]);
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
+  const firstBody = await first.json() as Record<string, unknown>;
+  const secondBody = await second.json() as Record<string, unknown>;
+  assert.equal(JSON.stringify(firstBody).toLowerCase().includes("already exists"), false);
+  assert.equal(JSON.stringify(secondBody).toLowerCase().includes("already exists"), false);
   clearCookies();
   const firstLogin = await login.POST(jsonRequest("POST", "http://localhost/api/auth/sign-in", { email, password: "password1" }));
   const secondLogin = await login.POST(jsonRequest("POST", "http://localhost/api/auth/sign-in", { email, password: "attacker9" }));

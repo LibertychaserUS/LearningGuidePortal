@@ -1,9 +1,12 @@
 import { writeFile } from "node:fs/promises";
-import { applyDataMigrations, assertCloudDataConfirm } from "../services/dataMigrations";
+import { applyDataMigrations, applyOrmMigrationsWithPlan, assertCloudDataConfirm, shouldPersistDataMigrationsOnBoot } from "../services/dataMigrations";
 import { exportCatalogueSlice } from "../services/catalogueMigrations";
 import { persistDataMigrations, readProductAggregate } from "../services/productStore";
-import { persistenceEnabled } from "../services/persistence/config";
+import { dataS3Prefix, persistenceEnabled } from "../services/persistence/config";
 import { getPool } from "../services/persistence/db";
+import { s3Put } from "../services/persistence/s3";
+import { ormFromProductData } from "../services/migrationOrm";
+import { ensureOrmRuntime, executeOrmPlan, hydrateOrmFromSql, persistProductSnapshot } from "../services/ormRuntime";
 
 function wants(flag: string) {
   return process.argv.includes(flag);
@@ -15,20 +18,30 @@ async function applyCloud(persist: boolean) {
   const db = await pool.connect();
   try {
     await db.query("BEGIN");
+    await ensureOrmRuntime(db);
     const result = await db.query("SELECT storage, content FROM app_files WHERE path = $1 FOR UPDATE", ["learning_guide/product.json"]);
     const row = result.rows[0];
     if (!row || row.storage !== "db") throw new Error("Expected an existing database catalogue; no data was changed.");
     const data = JSON.parse(row.content);
     if (!data || !Array.isArray(data.courses) || !Array.isArray(data.users)) throw new Error("Unexpected product aggregate.");
-    const report = applyDataMigrations(data);
+    await hydrateOrmFromSql(data, db);
+    const { report, plan } = await applyOrmMigrationsWithPlan(
+      ormFromProductData(data),
+      undefined,
+      { store: "sql", dryRun: !persist },
+      data,
+      { s3Prefix: dataS3Prefix() },
+    );
     if (!persist) {
       await db.query("ROLLBACK");
-      return { ...report, storage: "postgresql", persisted: false };
+      return { ...report, storage: "postgresql", persisted: false, productTouched: plan.productTouched };
     }
+    await executeOrmPlan(plan, db, s3Put);
+    await persistProductSnapshot(data, db);
     const content = JSON.stringify(data);
     await db.query("UPDATE app_files SET content=$1, byte_size=$2, updated_at=NOW() WHERE path=$3", [content, Buffer.byteLength(content), "learning_guide/product.json"]);
     await db.query("COMMIT");
-    return { ...report, storage: "postgresql", persisted: true };
+    return { ...report, storage: "postgresql", persisted: true, productTouched: plan.productTouched };
   } catch (error) {
     await db.query("ROLLBACK");
     throw error;
@@ -46,13 +59,23 @@ async function main() {
 
   if (exportPath) {
     const data = await readProductAggregate();
-    applyDataMigrations(data);
+    await applyDataMigrations(data);
     await writeFile(exportPath, `${JSON.stringify(exportCatalogueSlice(data), null, 2)}\n`);
     console.log(JSON.stringify({ exported: exportPath, courses: data.courses.map((course) => course.id) }));
     return;
   }
 
   if (cloud) {
+    if (boot && persist && !shouldPersistDataMigrationsOnBoot()) {
+      console.log(
+        JSON.stringify({
+          skipped: true,
+          reason: "boot persist is DEV/SIT only",
+          environment: process.env.APP_ENV || null,
+        }),
+      );
+      return;
+    }
     console.log(JSON.stringify(await applyCloud(persist)));
     return;
   }
@@ -63,7 +86,7 @@ async function main() {
   }
 
   const data = structuredClone(await readProductAggregate());
-  const report = applyDataMigrations(data);
+  const report = await applyDataMigrations(data, undefined, { dryRun: true });
   console.log(JSON.stringify({ ...report, persisted: false, storage: "local" }));
 }
 

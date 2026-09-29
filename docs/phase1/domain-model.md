@@ -1,5 +1,9 @@
 # Phase 1：数据设计
 
+This file is the **standard data model**. Entities are tables with fields and constraints, not a JSON document and not a GitHub `/blob/` page. Cite it as `docs/phase1/domain-model.md`.
+
+Live DEV/SIT persist those entities as PostgreSQL `orm_rows` (one JSONB payload per row) plus `app_files` / S3 for files. `learning_guide/product.json` is a snapshot, not the model. Dedicated column tables remain the `001`–`008` migrations below.
+
 ## 1. 实体关系
 
 ```mermaid
@@ -35,7 +39,7 @@ erDiagram
 | `sessions` | `id`, `user_id`, `expires_at`, `revoked_at` | reset password 后撤销旧 session |
 | `courses` | `id`, `slug`, `category_id`, `status`, `public_first_lesson_id` | `slug` 唯一；只发布完整内容 |
 | `sections` / `lessons` | parent id、`sort_order`、title、content、duration、status | 同一 parent 下 `sort_order` 唯一；发布时锁定版本 |
-| `plans` / `course_prices` | scope、scope id、device、term months、currency、amount、stripe price id | plan 配置由 Course Manager/Operator 管理；金额以最小货币单位保存 |
+| `plans` / `course_prices` | scope、scope id、device、term months、currency、amount、stripe price id | plan 配置由 Course Manager/Operator 管理；金额以最小货币单位保存。一次购买命令是一个 Offer：scope、plan id、方案金额，以及是否为试用（本次应付 0，方案金额不变）。分类方案的范围是该分类里已发布的课程；分类里没有已发布课程时，这条命令不可达 |
 | `orders` | `user_id`, `plan_id`, `amount`, `currency`, `status`, `source` | 金额由服务端 quote 生成；不能由客户端传入最终金额 |
 | `payment_attempts` | `order_id`, `stripe_checkout_session_id`, `stripe_payment_intent_id`, `status` | 外部 id 可唯一；记录每次尝试，不覆盖历史 |
 | `stripe_events` | `event_id`, `event_type`, `payload`, `processed_at`, `result` | `event_id` 唯一；重复 webhook 返回 200 且不重复写入 |
@@ -53,7 +57,7 @@ Stripe lookup-key payment additions: `ProductQuote.price` / `ProductOrder.price`
 
 WeChat Account additions: `wechatAppId`, `wechatOpenId`, optional `wechatUnionId`; `providerSubject` is `${appId}:${openid}`. `User.email` is nullable; absent email means `emailVerifiedAt = null`. An active linked WeChat account is sufficient for application Session validation, while password login continues to require verified email.
 
-The current JSON store migrates a legacy unscoped OpenID/UnionID on the next successful provider authentication, using only IDs returned by WeChat. It retains userId and associated records, clears legacy `wechat-*@local.invalid` email and verification, and rejects multiple matching Accounts. Existing real contact email is preserved. With missing UnionID, a legacy UnionID-only identity cannot be recovered until WeChat returns that ID. Before changing AppID or enabling multi-instance traffic, reconcile legacy Accounts and migrate to relational repositories with unique `(provider, provider_subject)` constraints. No SQL alteration is applied here: this checkout currently stores product records in JSON through `app_files`, not relational users/accounts tables.
+The current JSON store migrates a legacy unscoped OpenID/UnionID on the next successful provider authentication, using only IDs returned by WeChat. It retains userId and associated records, clears legacy `wechat-*@local.invalid` email and verification, and rejects multiple matching Accounts. Existing real contact email is preserved. With missing UnionID, a legacy UnionID-only identity cannot be recovered until WeChat returns that ID. Before changing AppID or enabling multi-instance traffic, reconcile legacy Accounts and migrate to relational repositories with unique `(provider, provider_subject)` constraints. Runtime rows today live in `orm_rows` and a `product.json` snapshot; the `001`–`008` column tables are still outstanding.
 
 ```text
 Trial Active -> Trial Canceled -> Trial Active（原 trial_end_at 之前可恢复）
@@ -64,7 +68,7 @@ Order: created -> checkout_open -> paid / failed / canceled
 PaymentAttempt: created -> pending -> succeeded / failed / refunded
 ```
 
-状态变更必须在一个数据库事务中完成所需的 `Order`、`PaymentAttempt`、`Subscription`、`Entitlement` 写入。外部 webhook 乱序时，以 Stripe 当前对象状态重新读取并安全重算。
+状态变更必须在一个数据库事务中完成所需的 `Order`、`PaymentAttempt`、`Subscription`、`Entitlement` 写入。外部 webhook 乱序时，以 Stripe 当前对象状态重新读取并安全重算。浏览器回成功页不是付款凭证；页面不订阅支付事件，下一次导航或刷新才读到新状态。详见 [`payment-state-propagation.md`](./payment-state-propagation.md)。
 
 ## 4. PostgreSQL 迁移顺序
 

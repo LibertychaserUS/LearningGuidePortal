@@ -17,7 +17,13 @@ function fromAddress() {
   return process.env.SMTP_FROM?.trim() || process.env.SES_FROM_EMAIL?.trim() || process.env.SMTP_USER?.trim() || "";
 }
 
+function emailDeliveryMode() {
+  return (process.env.EMAIL_DELIVERY || "").trim().toLowerCase();
+}
+
 export function emailDeliveryConfigured() {
+  const mode = emailDeliveryMode();
+  if (mode === "discard" || mode === "fail") return true;
   return smtpConfigured() || Boolean(process.env.SES_FROM_EMAIL?.trim());
 }
 
@@ -43,25 +49,39 @@ async function sendViaSmtp(input: { to: string; subject: string; text: string; h
   });
 }
 
+export class EmailDeliveryError extends Error {
+  constructor() {
+    super("Verification email could not be sent. Use a mailbox that this environment is allowed to mail.");
+    this.name = "EmailDeliveryError";
+  }
+}
+
 async function sendViaSes(input: { to: string; subject: string; text: string; html: string }) {
   const from = fromAddress();
   if (!from) throw new Error("SES_FROM_EMAIL is not configured.");
-  await getClient().send(new SendEmailCommand({
-    FromEmailAddress: from,
-    Destination: { ToAddresses: [input.to] },
-    Content: {
-      Simple: {
-        Subject: { Data: input.subject, Charset: "UTF-8" },
-        Body: {
-          Text: { Data: input.text, Charset: "UTF-8" },
-          Html: { Data: input.html, Charset: "UTF-8" }
+  try {
+    await getClient().send(new SendEmailCommand({
+      FromEmailAddress: from,
+      Destination: { ToAddresses: [input.to] },
+      Content: {
+        Simple: {
+          Subject: { Data: input.subject, Charset: "UTF-8" },
+          Body: {
+            Text: { Data: input.text, Charset: "UTF-8" },
+            Html: { Data: input.html, Charset: "UTF-8" }
+          }
         }
       }
-    }
-  }));
+    }));
+  } catch {
+    throw new EmailDeliveryError();
+  }
 }
 
 async function sendEmail(input: { to: string; subject: string; text: string; html: string }) {
+  const mode = emailDeliveryMode();
+  if (mode === "fail") throw new Error("Email delivery failed.");
+  if (mode === "discard") return;
   if (smtpConfigured()) return sendViaSmtp(input);
   return sendViaSes(input);
 }

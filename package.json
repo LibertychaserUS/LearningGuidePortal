@@ -24,13 +24,17 @@
     "seed:science": "npx --yes tsx scripts/seed-science.ts",
     "catalogue:migrate": "node --import tsx --require ./scripts/register-tsconfig-paths.cjs scripts/migrate-data.ts",
     "data:migrate": "node --import tsx --require ./scripts/register-tsconfig-paths.cjs scripts/migrate-data.ts",
+    "data:migration:new": "node scripts/new-data-migration.mjs",
     "verify:science-display": "node scripts/verify-science-display.mjs",
     "update:openrouter-model-limits": "node scripts/update-openrouter-model-limits.mjs",
+    "test:live": "NODE_OPTIONS=\"--require ./scripts/register-tsconfig-paths.cjs\" playwright test --config=playwright.live.config.ts",
+    "after-deploy": "node scripts/after-deploy.mjs",
     "test:payment": "NODE_OPTIONS=\"--require ./scripts/register-tsconfig-paths.cjs\" playwright test --config=playwright.payment.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
     "@aws-sdk/client-sesv2": "^3.1101.0",
+    "@aws-sdk/s3-request-presigner": "^3.1136.0",
     "@fontsource/inter": "^5.3.0",
     "@tiptap/extension-highlight": "^3.31.3",
     "@tiptap/extension-image": "^3.31.3",
@@ -61,7 +65,9 @@
     "sanitize-html": "^2.17.7",
     "sharp": "^0.34.5",
     "stripe": "^22.6.0",
-    "three": "^0.186.0"
+    "three": "^0.186.0",
+    "tsconfig-paths": "^3.15.0",
+    "tsx": "^4.23.13"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -75,8 +81,6 @@
     "eslint": "^9.16.0",
     "eslint-config-next": "^15.0.4",
     "playwright": "^1.61.0",
-    "tsconfig-paths": "^3.15.0",
-    "tsx": "^4.23.13",
     "typescript": "^5.7.2"
   }
 }
