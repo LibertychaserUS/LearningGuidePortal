@@ -1,11 +1,13 @@
+import { Fragment } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMessages } from "@/lib/i18n/messages";
 import { localeFrom } from "@/lib/i18n/config";
-import { courseLessonDuration } from "@/lib/courseDetailPresentation";
+import { courseBreadcrumb, courseLearningOutcomes, courseLessonCardDescription, courseLessonDuration, courseTrackChip } from "@/lib/courseDetailPresentation";
 import { courseSidebarHref, courseSidebarOffer } from "@/lib/offer";
-import { getCoursePage, getProductCourse, listPlans, listPublishedCourses } from "@/services/productStore";
+import { CourseLearningOutcomes } from "@/components/portal/CourseLearningOutcomes";
+import { catalogueEntriesForCourse, getCoursePage, getPortalContent, getProductCourse, listCatalogueEntries, listPlans, listPublishedCourses } from "@/services/productStore";
 import { CourseThumbnail } from "@/components/portal/CourseThumbnail";
 import { PortalFooter } from "@/components/portal/PortalFooter";
 import { PortalHeader } from "@/components/portal/PortalHeader";
@@ -27,6 +29,18 @@ export default async function CourseDetailPage({ params }: {
   const copy = messages.portal;
   const detail = messages.courseDetailDesign;
   const identity = page.identity;
+  const content = await getPortalContent();
+  const catalogue = await listCatalogueEntries();
+  const crumbs = courseBreadcrumb({
+    locale,
+    homeLabel: detail.home,
+    coursesLabel: copy.navigation.courses,
+    courseInfoLabel: detail.courseInfo,
+    course,
+    categories: content.categories,
+    catalogue,
+  });
+  const track = courseTrackChip(course, content.categories, locale, catalogue);
   const catalogHref = `/${locale}/portal/courses`;
   const plans = page.pageState === "available" ? await listPlans() : [];
   const publishedCourses = page.pageState === "available" ? await listPublishedCourses() : [];
@@ -41,8 +55,9 @@ export default async function CourseDetailPage({ params }: {
   const lessonMetadata = new Map(course?.sections.flatMap(section => section.lessons.map(lesson => [lesson.id, {
     duration: courseLessonDuration(lesson),
     // Only public syllabus metadata, never protected lesson body/content.
-    description: section.title,
+    description: courseLessonCardDescription(section, lesson),
   }] as const)) || []);
+  const outcomes = courseLearningOutcomes(course, ...(await catalogueEntriesForCourse(course)));
 
   return (
     <main className={`portal-page ${styles.page}`} data-page-state={page.pageState} data-course-cta={page.cta || "none"} data-access-state={page.accessState}>
@@ -55,15 +70,15 @@ export default async function CourseDetailPage({ params }: {
         </section>
       ) : <>
         <nav className={styles.breadcrumb} aria-label={detail.breadcrumb}>
-          <Link href={`/${locale}/portal`}>{detail.home}</Link><Image src={asset("chevron-right")} alt="" width={12} height={12} />
-          <Link href={catalogHref}>{copy.navigation.courses}</Link><Image src={asset("chevron-right")} alt="" width={12} height={12} />
-          <Link href={`${catalogHref}?category=${encodeURIComponent(identity.track)}`}>{identity.track}</Link><Image src={asset("chevron-right")} alt="" width={12} height={12} />
-          <span aria-current="page">{detail.courseInfo}</span>
+          {crumbs.map((crumb, index) => <Fragment key={`${crumb.label}-${index}`}>
+            {index > 0 ? <Image src={asset("chevron-right")} alt="" width={12} height={12} /> : null}
+            {crumb.href ? <Link href={crumb.href}>{crumb.label}</Link> : <span aria-current="page">{crumb.label}</span>}
+          </Fragment>)}
         </nav>
         <section className={styles.hero}>
           <div className={styles.cover}><CourseThumbnail slug={course?.slug || slug} title={identity.title} src={signedCover} /></div>
           <div className={styles.heroCopy}>
-            <p className={styles.tag} data-course-track={identity.track}>{identity.track}</p>
+            <p className={styles.tag} data-course-track={track?.categoryId || ""}>{track?.label || ""}</p>
             <h1 data-course-title={identity.title}>{identity.title}</h1>
             <p className={styles.summary}>{course?.subtitle || course?.description || ""}</p>
             <div className={styles.stats} data-preview-available={identity.previewAvailable ? "true" : "false"}>
@@ -80,10 +95,7 @@ export default async function CourseDetailPage({ params }: {
               <section className={`${styles.card} ${styles.overview}`}>
                 <h2>{detail.overview}</h2>
                 <p className={styles.description}>{course?.description || ""}</p>
-                <div className={styles.outcomes}>
-                  <h3>{detail.outcomesTitle}</h3>
-                  <ul>{detail.outcomes.map(outcome => <li key={outcome}>{outcome}</li>)}</ul>
-                </div>
+                <CourseLearningOutcomes className={styles.outcomes} title={detail.outcomesTitle} outcomes={outcomes} />
               </section>
               <section className={`${styles.card} ${styles.curriculum}`} data-syllabus="true">
                 <h2>{detail.curriculum}</h2>
