@@ -1,11 +1,13 @@
+import { Fragment } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMessages } from "@/lib/i18n/messages";
 import { localeFrom } from "@/lib/i18n/config";
-import { courseCategoryPlan, courseLearningOutcomes, courseLessonDuration } from "@/lib/courseDetailPresentation";
+import { courseBreadcrumb, courseLearningOutcomes, courseLessonCardDescription, courseLessonDuration, courseTrackChip } from "@/lib/courseDetailPresentation";
+import { courseSidebarHref, courseSidebarOffer } from "@/lib/offer";
 import { CourseLearningOutcomes } from "@/components/portal/CourseLearningOutcomes";
-import { catalogueEntriesForCourse, getCoursePage, getProductCourse, listPlans } from "@/services/productStore";
+import { catalogueEntriesForCourse, getCoursePage, getPortalContent, getProductCourse, listCatalogueEntries, listPlans, listPublishedCourses } from "@/services/productStore";
 import { CourseThumbnail } from "@/components/portal/CourseThumbnail";
 import { PortalFooter } from "@/components/portal/PortalFooter";
 import { PortalHeader } from "@/components/portal/PortalHeader";
@@ -27,20 +29,33 @@ export default async function CourseDetailPage({ params }: {
   const copy = messages.portal;
   const detail = messages.courseDetailDesign;
   const identity = page.identity;
+  const content = await getPortalContent();
+  const catalogue = await listCatalogueEntries();
+  const crumbs = courseBreadcrumb({
+    locale,
+    homeLabel: detail.home,
+    coursesLabel: copy.navigation.courses,
+    courseInfoLabel: detail.courseInfo,
+    course,
+    categories: content.categories,
+    catalogue,
+  });
+  const track = courseTrackChip(course, content.categories, locale, catalogue);
   const catalogHref = `/${locale}/portal/courses`;
   const plans = page.pageState === "available" ? await listPlans() : [];
-  const plan = courseCategoryPlan(plans, identity?.track || "");
-  const pricingHref = `/${locale}/pricing?courseId=${encodeURIComponent(course?.id || slug)}${plan ? `&planId=${encodeURIComponent(plan.id)}` : ""}`;
-  const price = plan ? new Intl.NumberFormat(locale, {
-    style: "currency", currency: plan.currency, currencyDisplay: "narrowSymbol",
-    maximumFractionDigits: plan.amountMinor % 100 ? 2 : 0,
-  }).format(plan.amountMinor / 100) : null;
+  const publishedCourses = page.pageState === "available" ? await listPublishedCourses() : [];
+  const offer = courseSidebarOffer(plans, publishedCourses, identity?.track || "");
+  const pricingHref = offer ? courseSidebarHref(locale, offer) : `/${locale}/pricing`;
+  const price = offer ? new Intl.NumberFormat(locale, {
+    style: "currency", currency: offer.currency, currencyDisplay: "narrowSymbol",
+    maximumFractionDigits: offer.amountMinor % 100 ? 2 : 0,
+  }).format(offer.amountMinor / 100) : null;
   const signedCover = await signCourseMediaUrl(course?.cover || course?.thumbnailPath || "");
   const hours = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format((identity?.totalMinutes || 0) / 60);
   const lessonMetadata = new Map(course?.sections.flatMap(section => section.lessons.map(lesson => [lesson.id, {
     duration: courseLessonDuration(lesson),
     // Only public syllabus metadata, never protected lesson body/content.
-    description: section.title,
+    description: courseLessonCardDescription(section, lesson),
   }] as const)) || []);
   const outcomes = courseLearningOutcomes(course, ...(await catalogueEntriesForCourse(course)));
 
@@ -55,15 +70,15 @@ export default async function CourseDetailPage({ params }: {
         </section>
       ) : <>
         <nav className={styles.breadcrumb} aria-label={detail.breadcrumb}>
-          <Link href={`/${locale}/portal`}>{detail.home}</Link><Image src={asset("chevron-right")} alt="" width={12} height={12} />
-          <Link href={catalogHref}>{copy.navigation.courses}</Link><Image src={asset("chevron-right")} alt="" width={12} height={12} />
-          <Link href={`${catalogHref}?category=${encodeURIComponent(identity.track)}`}>{identity.track}</Link><Image src={asset("chevron-right")} alt="" width={12} height={12} />
-          <span aria-current="page">{detail.courseInfo}</span>
+          {crumbs.map((crumb, index) => <Fragment key={`${crumb.label}-${index}`}>
+            {index > 0 ? <Image src={asset("chevron-right")} alt="" width={12} height={12} /> : null}
+            {crumb.href ? <Link href={crumb.href}>{crumb.label}</Link> : <span aria-current="page">{crumb.label}</span>}
+          </Fragment>)}
         </nav>
         <section className={styles.hero}>
           <div className={styles.cover}><CourseThumbnail slug={course?.slug || slug} title={identity.title} src={signedCover} /></div>
           <div className={styles.heroCopy}>
-            <p className={styles.tag} data-course-track={identity.track}>{identity.track}</p>
+            <p className={styles.tag} data-course-track={track?.categoryId || ""}>{track?.label || ""}</p>
             <h1 data-course-title={identity.title}>{identity.title}</h1>
             <p className={styles.summary}>{course?.subtitle || course?.description || ""}</p>
             <div className={styles.stats} data-preview-available={identity.previewAvailable ? "true" : "false"}>
@@ -115,9 +130,9 @@ export default async function CourseDetailPage({ params }: {
                 <h2>{detail.provides}</h2>
                 <ul>{detail.features.map((feature, index) => <li key={feature}><Image src={asset(["video", "exhibits", "assistant", "comprehension", "readings", "bilingual"][index])} alt="" width={20} height={20} />{feature}</li>)}</ul>
               </section>
-              <section className={styles.subscription}>
+              <section className={styles.subscription} data-offer-scope={offer?.scope} data-offer-plan-id={offer?.planId} data-offer-amount={offer?.amountMinor}>
                 <h2>{detail.included}</h2>
-                <p className={styles.price}>{price && plan ? <><strong>{price} /</strong><span>{plan.termMonths} {detail.months}</span></> : <span>{messages.pricingDesign.unavailable}</span>}</p>
+                <p className={styles.price}>{price && offer ? <><strong>{price} /</strong><span>{offer.termMonths} {detail.months}</span></> : <span>{messages.pricingDesign.unavailable}</span>}</p>
                 <Link className={styles.benefits} href={pricingHref} data-course-cta-link={page.cta === "view_plans" ? "view_plans" : undefined} data-course-secondary-cta={page.secondaryCta || undefined}>{detail.benefits}</Link>
               </section>
             </aside>

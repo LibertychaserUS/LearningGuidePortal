@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -186,7 +187,7 @@ export function AppShell({ children, viewer: viewerProp }: { children: React.Rea
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <img className="logo" src="/knowledge-system-logo.png" alt="Knowledge System" />
+          <Image className="logo" src="/knowledge-system-logo.png" alt="Knowledge System" width={26} height={26} loading="eager" unoptimized />
           <div>
             <div className="brand-title">Knowledge System</div>
           </div>
