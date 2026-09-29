@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import NextImage from "next/image";
 import { getMessages } from "@/lib/i18n/messages";
 
 type Copy = {
@@ -104,7 +105,7 @@ export function SettingsForm({ countries, uiLocale, initialNickname, initialEmai
       <p className="settings-section-intro">{design.profileIntro}</p>
       <div className="settings-profile-grid">
         <div className="avatar-settings">
-          <div className="avatar-preview">{avatar ? <img src={`/api/my-learning/avatar?v=${avatarVersion}`} alt={copy.avatar} /> : <span aria-hidden="true">{initial}</span>}</div>
+          <div className="avatar-preview">{avatar ? <NextImage src={`/api/my-learning/avatar?v=${avatarVersion}`} alt={copy.avatar} width={82} height={82} loading="eager" unoptimized /> : <span aria-hidden="true">{initial}</span>}</div>
           <div><div className="backoffice-row-actions"><label className="portal-button portal-button-secondary avatar-upload">{copy.uploadAvatar}<input type="file" aria-label={copy.uploadAvatar} accept="image/jpeg,image/png" onChange={(event) => void uploadAvatar(event.target.files?.[0])} /></label>{avatar ? <button className="portal-button portal-button-secondary" onClick={() => void removeAvatar()} type="button">{copy.removeAvatar}</button> : null}</div><p className="settings-hint">{design.avatarRules}</p></div>
         </div>
         <div className="settings-profile-fields">
@@ -150,6 +151,6 @@ export function SettingsForm({ countries, uiLocale, initialNickname, initialEmai
       </div>
     </section>
     {error ? <p className="portal-form-error" role="alert">{error}</p> : null}{message ? <p className="portal-success" role="status">{message}</p> : null}
-    <div className="settings-save-row"><button className="portal-button portal-button-primary" disabled={busy}>{busy ? "..." : copy.save}</button></div>
+    <div className="settings-save-row"><button className="portal-button portal-button-primary" disabled={busy}>{copy.save}</button></div>
   </form>;
 }

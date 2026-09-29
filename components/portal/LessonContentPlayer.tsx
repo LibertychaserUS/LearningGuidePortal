@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
+import { ArrowRight, CheckCircle2, X } from 'lucide-react';
 import type { LessonContent, LessonNode } from '@/contracts/lesson-content';
 import { lessonMessages, type LessonLocale } from '@/messages/lesson-authoring';
 import { CourseMediaPreview, LessonModal, SafeLessonHtml, safeMediaUrl } from './CourseMediaPreview';
@@ -48,21 +50,20 @@ function TrialLimitModal({ gate, locale, onClose }: { gate: TrialGate; locale: L
   };
   return <div className="la-trial-backdrop" role="presentation">
     <section className="la-trial-modal" role="dialog" aria-modal="true" aria-labelledby="la-trial-title">
-      <button type="button" className="la-trial-close" aria-label={copy.close} onClick={onClose}>x</button>
+      <button type="button" className="la-trial-close" aria-label={copy.close} onClick={onClose}><X size={24} aria-hidden="true" /></button>
       <div className="la-trial-upgrade">
         <h3 id="la-trial-title">{copy.heroTitle}</h3>
         <p>{copy.heroBody}</p>
-        <ul>{copy.bullets.map(item => <li key={item}>{item}</li>)}</ul>
-        <a className="la-trial-pricing" href={gate.pricingHref}>{copy.cta}</a>
+        <ul>{copy.bullets.map(item => <li key={item}><CheckCircle2 size={16} aria-hidden="true" />{item}</li>)}</ul>
       </div>
-      <aside className="la-trial-related">
-        <strong>{copy.categoryTitle}</strong>
-        <p>{copy.categoryBody}</p>
-        {gate.recommendations.length ? gate.recommendations.slice(0, 2).map((course, index) => <a className="la-trial-course" href={course.href} target="_blank" rel="noopener noreferrer" key={course.href}>
-          {course.image ? <img src={course.image} alt=""/> : <span className={`la-trial-course-placeholder la-trial-course-placeholder-${index + 1}`} aria-hidden="true">IMAGE</span>}
-          <span><b>{course.title}</b><small>{copy.relatedBody}</small><em>{copy.viewCourse} -&gt;</em></span>
-        </a>) : <p>{copy.empty}</p>}
-      </aside>
+      <div className="la-trial-related">
+        <strong>{copy.other}</strong>
+        <div className="la-trial-course-list">{gate.recommendations.length ? gate.recommendations.slice(0, 2).map((course, index) => <a className="la-trial-course" href={course.href} key={course.href}>
+          {course.image ? <Image src={course.image} alt="" width={84} height={84} unoptimized/> : <span className={`la-trial-course-placeholder la-trial-course-placeholder-${index + 1}`} aria-hidden="true">IMAGE</span>}
+          <span><b>{course.title}</b><small>{copy.relatedBody}</small><em>{copy.viewCourse}<ArrowRight size={15} aria-hidden="true" /></em></span>
+        </a>) : <p className="la-trial-empty">{copy.empty}</p>}</div>
+      </div>
+      <a className="la-trial-pricing" href={gate.pricingHref}>{copy.cta}</a>
     </section>
   </div>;
 }
@@ -192,7 +193,8 @@ function TextContentPlayer({ html, nodes, locale, fallbackImageUrl, trialGate, o
       <span className="la-exhibit-kind">{active.type === 'image' ? 'Image' : active.type === 'article' || active.type === 'exercise' ? 'Text' : active.type}</span>
       <strong>{active.title}</strong>
       {active.missing && <p className="la-exhibit-empty">No exhibit content is linked yet.</p>}
-      {!active.missing && active.type === 'image' && <img src={active.url} alt={active.title}/>}
+      {/* Exhibit images have no known dimensions; .la-exhibit-float img sizes them to width:100% and height:auto. */}
+      {!active.missing && active.type === 'image' && <Image src={active.url} alt={active.title} width={0} height={0} unoptimized/>}
       {!active.missing && (active.type === 'article' || active.type === 'exercise') && <SafeLessonHtml html={active.html} />}
       {!active.missing && active.type !== 'image' && active.type !== 'article' && active.type !== 'exercise' && <CourseMediaPreview type={active.type === 'model3d' ? 'model3d' : active.type === 'audio' ? 'audio' : 'video'} url={active.url} title={active.title} locale={locale}/>}
       <button type="button" className="la-exhibit-detail" onClick={() => setModal(active)}>Open preview</button>
@@ -218,14 +220,14 @@ function Exercise({ node, locale }: { node: LessonNode; locale: LessonLocale }) 
 function ContentPlayer({ content, locale, fallbackImageUrl, trialGate }: { content: LessonContent; locale: LessonLocale; fallbackImageUrl?: string | null; trialGate?: TrialGate }) {
   const t = lessonMessages(locale), video = useRef<HTMLVideoElement>(null), seen = useRef(new Set<string>()), lastTime = useRef(-0.01), resume = useRef(false), seeking = useRef(false);
   const [active, setActive] = useState<LessonNode | null>(null), activeRef = useRef<LessonNode | null>(null), [notice, setNotice] = useState('');
-  const [trialOpen, setTrialOpen] = useState(false), trialLocked = useRef(false);
+  const [trialOpen, setTrialOpen] = useState(false);
   const nodes = (content.nodes || []).filter(node => node.active !== false), titles = Object.fromEntries(nodes.map(node => [node.id, node.title || t.newNode]));
-  function showTrial() { trialLocked.current = true; video.current?.pause(); setTrialOpen(true); }
+  function showTrial() { video.current?.pause(); setTrialOpen(true); }
   function enforceVideoTrial() {
     if (!trialGate || content.type !== 'video') return false;
     const media = video.current, limit = trialGate.videoLimitSeconds ?? 60;
     if (!media) return false;
-    if (trialLocked.current || media.currentTime >= limit) {
+    if (media.currentTime >= limit) {
       if (media.currentTime > limit) media.currentTime = limit;
       showTrial();
       return true;

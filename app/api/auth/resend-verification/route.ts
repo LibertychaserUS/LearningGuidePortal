@@ -11,6 +11,9 @@ export async function POST(request: Request) {
   }
   const body = await request.json() as { email?: string; locale?: "en-GB" | "zh-CN" };
   const locale = body.locale === "zh-CN" ? "zh-CN" : "en-GB";
-  await resendVerificationEmail({ email: typeof body.email === "string" ? body.email : "", locale, request });
+  const result = await resendVerificationEmail({ email: typeof body.email === "string" ? body.email : "", locale, request });
+  if ("limited" in result) {
+    return NextResponse.json({ ok: false, code: "VERIFICATION_DAILY_LIMIT", requestId }, { status: 429 });
+  }
   return NextResponse.json({ ok: true, data: { accepted: true }, requestId });
 }

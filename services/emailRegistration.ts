@@ -10,6 +10,7 @@ import {
   verifyEmailToken,
   type ProductUser,
 } from "./productStore";
+import { NAME_INVALID_MESSAGE, validateName } from "@/lib/nameValidation";
 import { appEnvironment, emailVerificationRequired } from "./runtimeConfig";
 
 type Locale = "en-GB" | "zh-CN";
@@ -36,8 +37,9 @@ function registrationFields(input: EmailRegistrationInput) {
   const password = typeof input.password === "string" ? input.password : "";
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Enter a valid email address.");
   if (password.length < 8) throw new Error("Password must contain at least 8 characters.");
-  const nickname = (typeof input.nickname === "string" ? input.nickname.trim() : "") || "Learner";
-  if (!/^[A-Za-z0-9 ]{2,30}$/.test(nickname)) throw new Error("Name must be 2-30 English letters, numbers or spaces.");
+  const rawName = typeof input.nickname === "string" ? input.nickname : "";
+  if (!rawName.trim()) throw new Error(NAME_INVALID_MESSAGE);
+  const nickname = validateName(rawName);
   const locale: Locale = input.locale === "zh-CN" ? "zh-CN" : "en-GB";
   return { email, password, nickname, locale };
 }
@@ -48,6 +50,9 @@ async function emailAlreadyRegistered(email: string) {
 }
 
 export async function registerEmailAccount(input: EmailRegistrationInput): Promise<EmailRegistrationResult> {
+  if (emailVerificationRequired() && !emailDeliveryConfigured()) {
+    return { kind: "not_configured", message: `Email verification is not configured for ${appEnvironment()}.` };
+  }
   let fields: ReturnType<typeof registrationFields>;
   try {
     fields = registrationFields(input);
@@ -56,9 +61,6 @@ export async function registerEmailAccount(input: EmailRegistrationInput): Promi
   }
 
   if (emailVerificationRequired()) {
-    if (!emailDeliveryConfigured()) {
-      return { kind: "not_configured", message: `Email verification is not configured for ${appEnvironment()}.` };
-    }
     if (await emailAlreadyRegistered(fields.email)) return { kind: "verification_required" };
     const rawToken = randomBytes(32).toString("base64url");
     try {

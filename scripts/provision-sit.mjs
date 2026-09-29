@@ -48,6 +48,8 @@ for (const key of ['GOOGLE_CLIENT_SECRET','WECHAT_APP_ID','WECHAT_APP_SECRET','O
   if (!original[key]) throw new Error(`Source credential missing: ${key}`);
   secret(key, original[key]);
 }
+if (!original.SMTP_HOST || !original.SMTP_USER || !original.SMTP_PASS) throw new Error('Source SMTP credential missing');
+secret('SMTP_PASS', original.SMTP_PASS);
 if (!original.STRIPE_SECRET_KEY.startsWith('sk_test_')) throw new Error('SIT refuses live Stripe keys');
 const stripe = new Stripe(original.STRIPE_SECRET_KEY);
 const url = 'https://sit.ilovelearningguide.com/api/payment/webhook';
@@ -73,6 +75,7 @@ if (process.argv.includes('--bootstrap')) {
     cpSync('deploy/sit-bootstrap.cjs', path.join(temp, 'index.cjs'));
     cpSync('deploy/rds-ap-southeast-1.pem', path.join(temp, 'ca.pem'));
     cpSync('db/migrations/009_product_payment_keys.sql', path.join(temp, '009_product_payment_keys.sql'));
+    cpSync('db/migrations/010_orm_runtime.sql', path.join(temp, '010_orm_runtime.sql'));
     const copied = new Set();
     function copyDependency(name) {
       if (copied.has(name)) return;
@@ -83,7 +86,7 @@ if (process.argv.includes('--bootstrap')) {
       for (const dependency of Object.keys({ ...manifest.dependencies, ...manifest.optionalDependencies })) copyDependency(dependency);
     }
     copyDependency('pg');
-    execFileSync('zip', ['-qr', 'function.zip', 'index.cjs', 'ca.pem', '009_product_payment_keys.sql', 'node_modules'], { cwd: temp });
+    execFileSync('zip', ['-qr', 'function.zip', 'index.cjs', 'ca.pem', '009_product_payment_keys.sql', '010_orm_runtime.sql', 'node_modules'], { cwd: temp });
     const FunctionName = 'learning-guide-sit-bootstrap';
     const existing = optional('lambda', 'get-function', { FunctionName });
     if (!existing) {
@@ -126,8 +129,16 @@ if (process.argv.includes('--bootstrap')) {
 if (process.argv.includes('--deploy')) {
   const sha = execFileSync('git', ['rev-parse','HEAD'], { encoding: 'utf8' }).trim();
   const variables = Object.fromEntries(Object.entries(config.RuntimeEnvironmentVariables).filter(([key]) => !/(SECRET|PASSWORD|TOKEN|DATABASE_URL|SMTP_PASS|OPENROUTER_API_KEY|WECHAT_APP_ID)/.test(key)));
-  for (const key of Object.keys(variables)) if (key.startsWith('SMTP_')) delete variables[key];
-  Object.assign(variables, { APP_ENV: 'SIT', NODE_ENV: 'production', APP_VERSION: sha, NEXT_PUBLIC_APP_URL: 'https://sit.ilovelearningguide.com', OPENROUTER_SITE_URL: 'https://sit.ilovelearningguide.com', DATA_S3_BUCKET: out.BucketName, DATA_S3_PREFIX: 'learning-guide/sit', STORAGE_BACKEND: 'postgresql', DATABASE_CA_FILE: 'deploy/rds-ap-southeast-1.pem', PAYMENT_MODE: 'stripe', STRIPE_SANDBOX: '1', LOCAL_SOCIAL_LOGIN: '0', EMAIL_VERIFICATION_REQUIRED: '1' });
+  Object.assign(variables, {
+    APP_ENV: 'SIT', NODE_ENV: 'production', APP_VERSION: sha,
+    NEXT_PUBLIC_APP_URL: 'https://sit.ilovelearningguide.com', OPENROUTER_SITE_URL: 'https://sit.ilovelearningguide.com',
+    DATA_S3_BUCKET: out.BucketName, DATA_S3_PREFIX: 'learning-guide/sit', STORAGE_BACKEND: 'postgresql',
+    DATABASE_CA_FILE: 'deploy/rds-ap-southeast-1.pem', PAYMENT_MODE: 'stripe', STRIPE_SANDBOX: '1',
+    LOCAL_SOCIAL_LOGIN: '0', EMAIL_VERIFICATION_REQUIRED: '1',
+    SMTP_HOST: original.SMTP_HOST, SMTP_USER: original.SMTP_USER,
+    SMTP_PORT: original.SMTP_PORT || '465', SMTP_SECURE: original.SMTP_SECURE || '1',
+    SMTP_FROM: original.SMTP_FROM || original.SMTP_USER
+  });
   let sourceConfig = { ...source.SourceConfiguration, AutoDeploymentsEnabled: false, CodeRepository: { ...source.SourceConfiguration.CodeRepository, SourceCodeVersion: { Type: 'BRANCH', Value: 'codex/sit-deployment' }, CodeConfiguration: { ConfigurationSource: 'API', CodeConfigurationValues: { Runtime: 'NODEJS_22', BuildCommand: 'npm ci && npm run build', StartCommand: 'npm run start -- -p 8080', Port: '8080', RuntimeEnvironmentVariables: variables, RuntimeEnvironmentSecrets: secretArns } } } };
   if (process.env.SIT_IMAGE) {
     if (!/^851987565851\.dkr\.ecr\.ap-southeast-1\.amazonaws\.com\/learning-guide-portal@sha256:[a-f0-9]{64}$/.test(process.env.SIT_IMAGE)) throw new Error('SIT image must be pinned to a digest in the approved ECR repository');

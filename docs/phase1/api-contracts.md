@@ -4,9 +4,9 @@ Course-authoring extension: `PUT /api/backoffice/courses/:courseId/draft`, contr
 
 所有 JSON API 使用：
 
-Email registration uses `POST /api/auth/sign-up`, activation uses `POST /api/auth/verify-email`, and resend uses `POST /api/auth/resend-verification`. When verification is required, register sends first and commits the user and token only after the send is accepted; a duplicate register returns `verificationRequired: true` and no user. Resend returns accepted for an unknown address, a cooldown, and a send failure, and replaces the live token only after the send succeeds.
+Email registration uses `POST /api/auth/sign-up`, activation uses `POST /api/auth/verify-email`, and resend uses `POST /api/auth/resend-verification`. When verification is required, register sends first and commits the user and token only after the send is accepted; a duplicate register returns `verificationRequired: true` and no user. Only an explicit resend action can request a link; loading the check-email page never sends mail. A pending account can receive at most one verification email every 60 seconds and ten within a rolling 24-hour period. A successful resend response is `{ ok: true, data: { accepted: true } }` for an unknown address, a cooldown, and a send failure, and the live token is replaced only after the send succeeds. The daily cap returns `429 VERIFICATION_DAILY_LIMIT` and does not replace the token. Email input is limited to 254 characters; `POST /api/auth/check-email` returns `400 EMAIL_TOO_LONG` when that limit is exceeded. Issuing a new link invalidates the previous one. Authentication endpoints return stable `code` values rather than display text; the Portal and Learning Guide Backoffice Portal render user-facing errors from `messages/en-GB.json` or `messages/zh-CN.json` according to the current locale.
 
-Google authentication uses `GET /api/auth/google` and `GET /api/auth/google/callback`. The first route creates a signed state/nonce/PKCE transaction and redirects to Google. The callback verifies the transaction and Google ID Token before calling the User Authentication service and creating the application Session cookie. Existing email accounts are not automatically linked.
+Google authentication uses `GET /api/auth/google` and `GET /api/auth/google/callback`. The first route creates a signed state/nonce/PKCE transaction and redirects to Google. The callback verifies the transaction and Google ID Token before calling the User Authentication service and creating the application Session cookie. A newly created Google user receives the verified email prefix as Name, including email-prefix characters normally rejected by manual Name validation; a later callback never overwrites it. Existing email accounts are not automatically linked.
 
 WeChat uses `GET /api/auth/wechat?locale=en-GB&returnTo=/en-GB/account/my-learning` and `GET /api/auth/wechat/callback?code=...&state=...`. Callbacks return a 303 redirect and expire the transaction cookie on success and failure. Failures preserve a validated locale/returnTo and use `oauthError=state|cancelled|disabled|wechat-conflict|wechat`. The trusted identity contract is `contracts/wechat.ts`: subject is always `appId:openid`; UnionID is metadata. WeChat users may have `email: null` and `emailVerifiedAt: null`; an active linked WeChat account can hold a Session without email verification. Email/password authentication still requires verified email. No accounts are merged by profile or email. Provider tokens and codes are never returned to the client.
 
@@ -35,6 +35,8 @@ Password reset uses `POST /api/auth/password-reset/request` with `{ email, local
 Google 和 WeChat 回调必须在服务端校验 state、code、issuer/provider subject 和 trusted origin；不能把 provider profile 当成已登录事实直接信任。
 
 ## Purchase / Payment / Subscription
+
+A purchase command is an offer: `scope` (`course` | `category` | `everything`), `planId`, plan `amountMinor`, and `trial`. A trial quote stores due-now `0` and keeps the plan amount on the plan snapshot. The course sidebar, `GET /[locale]/pricing?courseId=`, and trial confirmation each display the offer that command commits. `POST /api/subscription/quote` and the order writers reject a category plan when that category has no published course. check-email copy claims an activation email only when verification is required and a pending user still holds an unused verification link (`services/checkEmailPage.ts`).
 
 ```ts
 // POST /api/subscription/quote
@@ -69,7 +71,7 @@ type CheckoutResponse = { orderId: string; checkoutUrl: string };
 // Body: raw Buffer，不先 parse JSON
 ```
 
-Webhook 处理：验签 → 写入唯一 `stripe_events` → 按 event type 重新读取 Stripe 对象 → 在一个数据库事务内更新 PaymentAttempt、Order、Subscription、Entitlement → 返回 200。重复 event 不重做业务写入。
+Webhook 处理：验签 → 写入唯一 `stripe_events` → 按 event type 重新读取 Stripe 对象 → 在一个数据库事务内更新 PaymentAttempt、Order、Subscription、Entitlement → 返回 200。重复 event 不重做业务写入。浏览器 `success_url` 不是开通凭证；其他页面不订阅该事件，见 [`payment-state-propagation.md`](./payment-state-propagation.md)。
 
 ## Protected learning / My Learning
 

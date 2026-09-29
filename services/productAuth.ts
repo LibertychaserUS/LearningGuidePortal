@@ -9,6 +9,7 @@ import { canAuthorCourses } from "./backofficeAccess";
 export const SESSION_COOKIE = "learning_guide_session";
 export const ADMIN_SESSION_COOKIE = "learning_guide_admin_session";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+export const AUTH_SESSION_MAX_AGE = 60 * 60 * 24 * 14;
 
 async function headerHostname() {
   const headerStore = await headers();
@@ -16,7 +17,8 @@ async function headerHostname() {
   return raw.split(":")[0].toLowerCase();
 }
 
-export async function currentProductUser(): Promise<ProductUser | null> {
+export async function currentProductUser(request?: Request): Promise<ProductUser | null> {
+  if (request) return currentProductUserFromRequest(request);
   const cookieStore = await cookies();
   return getUserBySessionToken(cookieStore.get(SESSION_COOKIE)?.value);
 }

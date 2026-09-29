@@ -53,7 +53,7 @@ CONFIRM_SANDBOX_CATALOGUE=learning-guide/dev node --import tsx --require ./scrip
 
 The command requires `APP_ENV=DEV`, the exact DEV data prefix, `STRIPE_SANDBOX=1` and a test API key. It validates all eight Stripe prices first, then updates only matching plans and affected outstanding quotes within a PostgreSQL transaction. It does not import local users or replace the cloud dataset. Run during a quiet maintenance period: the existing application's whole-document storage is not a substitute for a fully transactional order database across multiple instances.
 
-DEV (`learning-guide-portal`) deploys automatically from GitHub Actions on push to `main`. Native App Runner auto-deploy is off so a busy service cannot drop later commits. SIT stays a manual `Deploy SIT` dispatch. A configuration-only update does not necessarily fetch the latest Git commit; the DEV workflow calls `start-deployment` after the service is RUNNING.
+DEV (`learning-guide-portal`) publishes from the `dev` branch via GitHub **Deploy DEV**. App Runner `npm start` applies pending `db/data-migrations` before serving. SIT stays a manual `Deploy SIT` dispatch. Direction: [data-migrations.md](data-migrations.md).
 
 ## Run locally
 
@@ -82,6 +82,7 @@ For an isolated production-build check, stop only this sandbox server, run `NEXT
 - Does not grant access for `payment_status=unpaid`. Grants access after a valid signed paid event and checks the order amount/currency.
 - Handles `checkout.session.expired` and `checkout.session.async_payment_failed` without granting access or revoking an already successful purchase.
 - A browser return/cancel is not itself proof of payment or session expiry. Closing Checkout can leave it open for retry; LG records cancellation after the session expires. A declined card can likewise be retried while the session remains open.
+- Other pages do not receive a push when the webhook writes `paid`. They re-read the store on the next navigation or refresh. Record of hops, network interruption, and page pull: [`payment-state-propagation.md`](./payment-state-propagation.md).
 - Invoice events are marked processed after successful handling, not before. Invoice-ID checks and repeat-safe grace handling support retries. Current Stripe invoice-parent and subscription-item period fields are supported.
 
 ## Results, 9 September 2026

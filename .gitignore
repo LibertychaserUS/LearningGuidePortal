@@ -11,4 +11,7 @@ data
 tsconfig.tsbuildinfo
 *.log
 .env
+.evn
 .env*.local
+receipts/
+receipts-run/

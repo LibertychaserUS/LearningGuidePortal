@@ -27,8 +27,8 @@ after(async () => {
   }
 });
 
-test("checkEntitlement takes only userId and courseId — no device argument", () => {
-  assert.equal(store.checkEntitlement.length, 2);
+test("checkEntitlement can take an optional device band after userId and courseId", () => {
+  assert.ok(store.checkEntitlement.length >= 2);
 });
 
 test("checkEntitlement.allowed is false when the user has no entitlements", async () => {
@@ -51,10 +51,10 @@ test("rejectIfUnauthenticated returns 401 JSON when the Request has no cookie", 
 
 test("registerUserAttempt does not overwrite an existing password or invent a role", async () => {
   const email = "lock-register@example.test";
-  const first = await store.registerUserAttempt({ email, password: "password1", role: "admin" as never });
+  const first = await store.registerUserAttempt({ email, password: "password1", nickname: "Lock User", role: "admin" as never });
   assert.equal(first.created, true);
   assert.equal(first.user.role, "student");
-  const second = await store.registerUserAttempt({ email, password: "attacker9", role: "operator" });
+  const second = await store.registerUserAttempt({ email, password: "attacker9", nickname: "Attacker", role: "operator" });
   assert.equal(second.created, false);
   assert.equal(second.user.role, "student");
   await store.verifyEmailToken(await store.issueEmailVerificationToken(first.user.id));
@@ -75,6 +75,17 @@ test("createSession replaces existing sessions only when asked", async () => {
   assert.equal(await store.getUserBySessionToken(first.token), null);
   assert.equal(await store.getUserBySessionToken(second.token), null);
   assert.ok(await store.getUserBySessionToken(replaced.token));
+});
+
+test("remembered authentication sessions expire after exactly 14 days", async () => {
+  const user = await store.registerUser({ email: "remember-session@example.test", password: "password1" });
+  await store.verifyEmailToken(await store.issueEmailVerificationToken(user.id));
+  const maxAgeSeconds = 60 * 60 * 24 * 14;
+  const session = await store.createSession(user.id, { maxAgeSeconds });
+  const stored = (await store.ensureProductData()).sessions.at(-1);
+  assert.ok(stored);
+  assert.equal(Date.parse(session.expiresAt) - Date.parse(stored.createdAt), maxAgeSeconds * 1000);
+  assert.ok(await store.getUserBySessionToken(session.token));
 });
 
 test("a cancelled trial cannot be completed again; resume restores the same window", async () => {
