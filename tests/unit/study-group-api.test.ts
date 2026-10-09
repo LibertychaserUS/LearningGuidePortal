@@ -94,7 +94,7 @@ test("study group API requires a session, hides sessions until join, and does no
   const scheduled = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
     title: "Session",
     startsAt,
-    durationMinutes: 30,
+    durationSeconds: 1800,
     maxParticipants: 2
   }, token, { groupId });
   assert.equal(scheduled.status, 200);
@@ -115,17 +115,21 @@ test("study group API requires a session, hides sessions until join, and does no
   const accepted = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
     title,
     startsAt: startsLater,
-    durationMinutes: 25,
+    durationSeconds: 2700,
     maxParticipants: 4
   }, token, { groupId });
   assert.equal(accepted.status, 200);
   const acceptedBody = await accepted.json();
   assert.equal(acceptedBody.data.title, title);
-  assert.equal(acceptedBody.data.durationMinutes, 25);
+  assert.equal(acceptedBody.data.durationSeconds, 2700);
+  assert.equal(acceptedBody.data.durationMinutes, undefined);
+  const storedSeconds = await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "study-group.json"), "utf8");
+  assert.equal(storedSeconds.includes("durationMinutes"), false);
+  assert.equal(storedSeconds.includes("\"durationSeconds\":2700"), true);
   const tooLong = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
     title: `${title}x`,
     startsAt: startsLater,
-    durationMinutes: 25,
+    durationSeconds: 2700,
     maxParticipants: 4
   }, token, { groupId });
   assert.equal(tooLong.status, 400);
@@ -137,4 +141,29 @@ test("study group API requires a session, hides sessions until join, and does no
   }, token, { groupId });
   assert.equal(missingDuration.status, 400);
   assert.equal((await missingDuration.json()).code, "validation");
+  const minutesOnly = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+    title: "Minutes",
+    startsAt: startsLater,
+    durationMinutes: 90,
+    maxParticipants: 4
+  }, token, { groupId });
+  assert.equal(minutesOnly.status, 400);
+  assert.equal((await minutesOnly.json()).code, "validation");
+  const bareMinute = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+    title: "Bare",
+    startsAt: startsLater,
+    durationSeconds: 30,
+    maxParticipants: 4
+  }, token, { groupId });
+  assert.equal(bareMinute.status, 400);
+  assert.equal((await bareMinute.json()).code, "validation");
+  for (const durationSeconds of [45, 60, 90, 25, 1]) {
+    const rejected = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+      title: "Other",
+      startsAt: startsLater,
+      durationSeconds,
+      maxParticipants: 4
+    }, token, { groupId });
+    assert.equal(rejected.status, 400);
+  }
 });

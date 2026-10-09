@@ -101,7 +101,7 @@ test("host edits title and about, cannot change the course, and cancel keeps com
     groupId: group.id,
     title: "Already finished",
     startsAt: "2026-09-19T01:00:00.000Z",
-    durationMinutes: 45,
+    durationSeconds: 2700,
     maxParticipants: 2
   });
   await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: "2026-09-19T01:50:00.000Z" });
@@ -116,38 +116,43 @@ test("host edits title and about, cannot change the course, and cancel keeps com
   assert.equal(stored.sessions.some((item) => item.id === session.id && item.status === "completed"), true);
 });
 
-test("session title stops at 20 characters and duration is any whole number of minutes", async () => {
+test("session title stops at 20 characters and duration is one of four minute lengths stored as seconds", async () => {
   const group = await service.createGroup({ actorUserId: "host", title: "Duration group", courseId: "course-1", about: "Duration about." });
   const title = "12345678901234567890";
+  const storedSeconds = [1800, 2700, 3600, 5400];
   const scheduled = await service.scheduleSession({
     actorUserId: "host",
     groupId: group.id,
     title,
     startsAt: "2026-09-19T12:00:00.000Z",
-    durationMinutes: 25,
+    durationSeconds: 2700,
     maxParticipants: 6
   });
   assert.equal(scheduled.title, title);
-  assert.equal(scheduled.durationMinutes, 25);
+  assert.equal(scheduled.durationSeconds, 2700);
+  assert.equal("durationMinutes" in scheduled, false);
   const stored = (await repository.read()).sessions.find((item) => item.id === scheduled.id);
-  assert.equal(stored?.durationMinutes, 25);
-  for (const durationMinutes of [1, 30, 45, 60, 90, 120]) {
+  assert.equal(stored?.durationSeconds, 2700);
+  assert.equal(JSON.stringify(stored).includes("durationMinutes"), false);
+  for (const durationSeconds of storedSeconds) {
     const row = await service.scheduleSession({
       actorUserId: "host",
       groupId: group.id,
-      title: "Other",
+      title: "Listed",
       startsAt: "2026-09-19T13:00:00.000Z",
-      durationMinutes,
+      durationSeconds,
       maxParticipants: 2
     });
-    assert.equal(row.durationMinutes, durationMinutes);
+    assert.equal(row.durationSeconds, durationSeconds);
+  }
+  for (const durationSeconds of [30, 45, 60, 90, 1, 25, 120, 0, -1, 1.5, Number.NaN]) {
+    await assert.rejects(
+      () => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Bad", startsAt: "2026-09-19T12:00:00.000Z", durationSeconds, maxParticipants: 6 }),
+      (error: unknown) => (error as { code: string }).code === "validation"
+    );
   }
   await assert.rejects(
-    () => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: `${title}x`, startsAt: "2026-09-19T12:00:00.000Z", durationMinutes: 25, maxParticipants: 6 }),
-    (error: unknown) => (error as { code: string }).code === "validation"
-  );
-  await assert.rejects(
-    () => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Missing", startsAt: "2026-09-19T12:00:00.000Z", durationMinutes: Number.NaN, maxParticipants: 6 }),
+    () => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: `${title}x`, startsAt: "2026-09-19T12:00:00.000Z", durationSeconds: 2700, maxParticipants: 6 }),
     (error: unknown) => (error as { code: string }).code === "validation"
   );
   await assert.rejects(
@@ -162,8 +167,8 @@ test("session schedule, attendance, capacity, start and token follow the P0 rule
   access.add("m3:course-1");
   const group = await service.createGroup({ actorUserId: "host", title: "Sessions", courseId: "course-1", about: "Sessions about." });
   for (const userId of ["m1", "m2", "m3"]) await service.joinGroup({ actorUserId: userId, groupId: group.id });
-  await assert.rejects(() => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Too big", startsAt: "2026-09-19T12:00:00.000Z", durationMinutes: 30, maxParticipants: 7 }), (error: unknown) => (error as { code: string }).code === "validation");
-  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Road to 1933", startsAt: "2026-09-19T12:00:00.000Z", durationMinutes: 45, maxParticipants: 2, focus: "Weimar" });
+  await assert.rejects(() => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Too big", startsAt: "2026-09-19T12:00:00.000Z", durationSeconds: 1800, maxParticipants: 7 }), (error: unknown) => (error as { code: string }).code === "validation");
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Road to 1933", startsAt: "2026-09-19T12:00:00.000Z", durationSeconds: 2700, maxParticipants: 2, focus: "Weimar" });
   assert.equal(session.aiTutorEnabled, true);
   assert.equal(session.state, "scheduled");
   const hidden = await service.getGroup({ actorUserId: "outsider", groupId: group.id });
@@ -175,7 +180,7 @@ test("session schedule, attendance, capacity, start and token follow the P0 rule
   await service.cancelAttendance({ actorUserId: "m1", sessionId: session.id });
   assert.equal((await service.getSession({ actorUserId: "m1", sessionId: session.id })).plannedCount, 0);
   await assert.rejects(() => service.enterSession({ actorUserId: "m1", sessionId: session.id, requestedAt: NOW }), (error: unknown) => (error as { code: string }).code === "session_not_open");
-  const soon = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Soon", startsAt: "2026-09-19T02:09:00.000Z", durationMinutes: 30, maxParticipants: 2, aiTutorEnabled: false });
+  const soon = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Soon", startsAt: "2026-09-19T02:09:00.000Z", durationSeconds: 1800, maxParticipants: 2, aiTutorEnabled: false });
   assert.equal(soon.state, "starting_soon");
   assert.equal(soon.aiTutorEnabled, false);
   const first = service.enterSession({ actorUserId: "m2", sessionId: soon.id, requestedAt: "2026-09-19T02:00:02.000Z" });
@@ -228,7 +233,7 @@ test("reminders go to the host and plan-to-attend members only, once", async () 
   const group = await service.createGroup({ actorUserId: "host", title: "Reminders", courseId: "course-1", about: "Reminder about." });
   await service.joinGroup({ actorUserId: "planner", groupId: group.id });
   await service.joinGroup({ actorUserId: "quiet", groupId: group.id });
-  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Reminder session", startsAt: "2026-09-19T02:10:00.000Z", durationMinutes: 30, maxParticipants: 4 });
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Reminder session", startsAt: "2026-09-19T02:10:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
   await service.planToAttend({ actorUserId: "planner", sessionId: session.id });
   notes.length = 0;
   mails.length = 0;

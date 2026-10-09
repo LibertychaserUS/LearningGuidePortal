@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  SESSION_DURATION_SECONDS,
   STARTING_SOON_MS,
   StudyGroupError,
   TOKEN_TTL_SECONDS,
@@ -129,7 +130,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       title: session.title,
       relatedLessonId: session.relatedLessonId,
       startsAt: session.startsAt,
-      durationMinutes: session.durationMinutes,
+      durationSeconds: session.durationSeconds,
       maxParticipants: session.maxParticipants,
       focus: session.focus,
       aiTutorEnabled: session.aiTutorEnabled,
@@ -314,11 +315,11 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       await Promise.all(notified.map((userId) => deps.notify({ userId, title: "Study Group cancelled", body: "This Study Group is no longer available." })));
     },
 
-    async scheduleSession(input: { actorUserId: string; groupId: string; title: string; startsAt: string; durationMinutes: number; maxParticipants: number; relatedLessonId?: string | null; focus?: string | null; aiTutorEnabled?: boolean }) {
+    async scheduleSession(input: { actorUserId: string; groupId: string; title: string; startsAt: string; durationSeconds: number; maxParticipants: number; relatedLessonId?: string | null; focus?: string | null; aiTutorEnabled?: boolean }) {
       const title = requireText(input.title, "Session Title", 20);
       const startsAt = new Date(input.startsAt);
       if (Number.isNaN(startsAt.getTime())) throw new StudyGroupError("validation", "Start Time is required.");
-      if (!Number.isInteger(input.durationMinutes) || input.durationMinutes < 1) throw new StudyGroupError("validation", "Duration is required.");
+      if (!SESSION_DURATION_SECONDS.includes(input.durationSeconds as (typeof SESSION_DURATION_SECONDS)[number])) throw new StudyGroupError("validation", "Duration is required.");
       if (!Number.isInteger(input.maxParticipants) || input.maxParticipants < 2 || input.maxParticipants > 6) throw new StudyGroupError("validation", "Maximum Participants must be from 2 to 6.");
       const now = deps.now().toISOString();
       const session = await deps.repository.update((store) => {
@@ -331,7 +332,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
           title,
           relatedLessonId: clean(input.relatedLessonId || "") || null,
           startsAt: startsAt.toISOString(),
-          durationMinutes: input.durationMinutes,
+          durationSeconds: input.durationSeconds,
           maxParticipants: input.maxParticipants,
           focus: (() => { const focus = clean(input.focus || ""); if (focus.length > 50) throw new StudyGroupError("validation", "Session Focus is too long."); return focus || null; })(),
           aiTutorEnabled: input.aiTutorEnabled !== false,
