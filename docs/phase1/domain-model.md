@@ -47,6 +47,10 @@ erDiagram
 | `entitlements` | `user_id`, `scope`, `scope_id`, `device`, `state`, `valid_to`, `source` | 访问判断只使用当前有效记录；历史不删除 |
 | `study_records` / `study_events` | user/course/lesson、event type、seconds、client event id | client event id 唯一；时间累计由服务端限制上限并去重 |
 | `notifications` | `user_id`, `type`, `title`, `body`, `read_at` | 逐条读写；header unread count 使用查询结果 |
+| `study_groups` | `id`, `title`, `course_id`, `about`, `host_user_id`, `status` | one Course; Course is immutable; status `active` or `cancelled` |
+| `study_group_memberships` | `group_id`, `user_id`, `role`, `joined_at`, `left_at` | role `host` or `member`; one active membership per user and Group |
+| `live_sessions` | `id`, `group_id`, `starts_at`, `duration_minutes`, `max_participants`, `ai_tutor_enabled`, `status` | max participants 2–6 including Host; status `scheduled`, `live`, `completed`, or `removed` |
+| `study_group_meetings` | `id`, `session_id`, `started_at`, `ended_at` | one row when the Host starts the Session; not a token audit |
 | `audit_events` | actor、action、entity、payload、created_at | Refund、Resynchronise Payment、发布和权限变化必须有记录 |
 
 ## 3. 状态规则

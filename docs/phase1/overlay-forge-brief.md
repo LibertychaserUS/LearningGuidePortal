@@ -298,7 +298,7 @@ OF-21 是「正文是否描述了 diff」。本条是「这一单该装哪一层
 | `inbox/login.md` | AUTH-01..06 |
 | `inbox/payment.md` | PAY-01..10 |
 | `inbox/portal.md` `inbox/my-learning.md` | 已有叶子；套件 `active` |
-| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` `suites/order` `suites/visitor-trial` | `schema: overlay-suite/v2`，`status: active`。login/payment/order/visitor-trial → `tests/io/*.test.ts` |
+| `suites/login` `suites/payment` `suites/portal` `suites/my-learning` `suites/order` `suites/visitor-trial` `suites/study-group` | `schema: overlay-suite/v2`，`status: active`。login/payment/order/visitor-trial → `tests/io/*.test.ts`。study-group → `tests/unit/study-group-*.test.ts` |
 | `invariants.yaml` | `INV-unauth-no-grant`（AUTH-06, PAY-01/02/08）；`INV-browser-not-price`（PAY-01/03/09）；`INV-one-charge`（PAY-04/05/10）；`INV-expired-no-learn`（ML-FR-004, PAY-09） |
 | `.github/CODEOWNERS` | `suites/**`、`inbox/**`、`.github/workflows/**`、入口文档归 `@LibertychaserUS` |
 | `.github/workflows/overlay-check.yml` | 单 job `overlay-check`：checkout `AIOps@overlay-v2.0.0` → `_aiops`、`npm ci`、`overlay validate` + `cover` + `run` |

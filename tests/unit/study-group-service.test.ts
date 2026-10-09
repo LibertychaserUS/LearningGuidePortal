@@ -1,0 +1,204 @@
+import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { after, before, test } from "node:test";
+import { readFile } from "node:fs/promises";
+import { createStudyGroupService, type StudyGroupService } from "../../modules/group-study/service";
+import { createStudyGroupRepository, type StudyGroupRepository } from "../../modules/group-study/repository";
+import { decryptTokenLogLine } from "../../modules/group-study/tokenLog";
+
+const NOW = "2026-09-19T02:00:00.000Z";
+let directory: string;
+let service: StudyGroupService;
+let repository: StudyGroupRepository;
+const access = new Set<string>();
+const mails: Array<{ to: string; subject: string }> = [];
+const notes: Array<{ userId: string; title: string }> = [];
+const tokenLogKey = Buffer.alloc(32, 7);
+
+before(async () => {
+  directory = await mkdtemp(path.join(tmpdir(), "lg-study-group-"));
+  access.add("host:course-1");
+  repository = createStudyGroupRepository(directory);
+  service = createStudyGroupService({
+    repository,
+    now: () => new Date(NOW),
+    hasCourseAccess: async (userId, courseId) => access.has(`${userId}:${courseId}`),
+    courseSummary: async (courseId) => courseId === "course-1" ? { id: courseId, title: "German History", slug: "german-history" } : null,
+    accessibleCourses: async (userId) => access.has(`${userId}:course-1`) ? [{ id: "course-1", title: "German History", slug: "german-history" }] : [],
+    userProfile: async (userId) => ({ id: userId, displayName: userId === "host" ? "Anna Williams" : userId, email: userId === "nomail" ? null : `${userId}@example.test`, locale: "en-GB" }),
+    notify: async (input) => { notes.push(input); },
+    sendMail: async (input) => { mails.push(input); },
+    liveKit: { apiKey: "lk-key", apiSecret: "lk-secret-at-least-32-characters", url: "wss://livekit.example.test" },
+    tokenLogKey
+  });
+});
+
+after(async () => {
+  await rm(directory, { recursive: true, force: true });
+});
+
+test("a learner with course access creates a discoverable group and becomes Host", async () => {
+  const group = await service.createGroup({
+    actorUserId: "host",
+    title: "Why did Germany reach 1933?",
+    courseId: "course-1",
+    about: "A study group for the Weimar period."
+  });
+  assert.equal(group.courseId, "course-1");
+  assert.equal(group.hostUserId, "host");
+  assert.equal(group.status, "active");
+  assert.equal(group.role, "host");
+  const mine = await service.listMine("host");
+  const discovered = await service.listDiscover({ actorUserId: "other" });
+  assert.equal(mine.some((item) => item.id === group.id && item.role === "host"), true);
+  assert.equal(discovered.some((item) => item.id === group.id), true);
+  assert.equal((await service.listDiscover({ actorUserId: "host" })).some((item) => item.id === group.id), false);
+});
+
+test("join is immediate for course access, duplicate join does not add a member, and leave returns the group to discover", async () => {
+  access.add("member:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Join group", courseId: "course-1", about: "About the group." });
+  await assert.rejects(() => service.joinGroup({ actorUserId: "outsider", groupId: group.id }), (error: unknown) => (error as { code: string }).code === "course_access_required");
+  const joined = await service.joinGroup({ actorUserId: "member", groupId: group.id });
+  assert.equal(joined.role, "member");
+  const again = await service.joinGroup({ actorUserId: "member", groupId: group.id });
+  assert.equal(again.memberCount, joined.memberCount);
+  assert.equal((await service.listDiscover({ actorUserId: "member" })).some((item) => item.id === group.id), false);
+  access.add("viewer:course-1");
+  const preview = await service.getGroup({ actorUserId: "viewer", groupId: group.id });
+  assert.equal(preview.sessions, null);
+  assert.equal(preview.canJoin, true);
+  const detail = await service.getGroup({ actorUserId: "outsider", groupId: group.id });
+  assert.equal(detail.sessions, null);
+  assert.equal(detail.canJoin, false);
+  assert.ok(detail.members.length >= 2);
+  await service.leaveGroup({ actorUserId: "member", groupId: group.id });
+  assert.equal((await service.listMine("member")).some((item) => item.id === group.id), false);
+  assert.equal((await service.listDiscover({ actorUserId: "member" })).some((item) => item.id === group.id), true);
+  await assert.rejects(() => service.leaveGroup({ actorUserId: "host", groupId: group.id }), (error: unknown) => (error as { code: string }).code === "forbidden");
+});
+
+test("create rejects missing fields and a learner without course access", async () => {
+  await assert.rejects(() => service.createGroup({ actorUserId: "host", title: "  ", courseId: "course-1", about: "About" }), (error: unknown) => (error as { code: string }).code === "validation");
+  await assert.rejects(() => service.createGroup({ actorUserId: "host", title: "Title", courseId: "course-1", about: "" }), (error: unknown) => (error as { code: string }).code === "validation");
+  await assert.rejects(() => service.createGroup({ actorUserId: "stranger", title: "Title", courseId: "course-1", about: "About" }), (error: unknown) => (error as { code: string }).code === "course_access_required");
+  await assert.rejects(() => service.createGroup({ actorUserId: "host", title: "x".repeat(51), courseId: "course-1", about: "About" }), (error: unknown) => (error as { code: string }).code === "validation");
+});
+
+test("host edits title and about, cannot change the course, and cancel keeps completed history out of the lists", async () => {
+  access.add("member:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Original", courseId: "course-1", about: "Original about." });
+  await service.joinGroup({ actorUserId: "member", groupId: group.id });
+  const edited = await service.editGroup({ actorUserId: "host", groupId: group.id, title: "Updated", about: "Updated about." });
+  assert.equal(edited.title, "Updated");
+  assert.equal(edited.courseId, "course-1");
+  await assert.rejects(() => service.editGroup({ actorUserId: "member", groupId: group.id, title: "Nope", about: "Nope." }), (error: unknown) => (error as { code: string }).code === "forbidden");
+  await assert.rejects(() => service.editGroup({ actorUserId: "host", groupId: group.id, title: "Updated", about: "Updated about.", courseId: "other-course" }), (error: unknown) => (error as { code: string }).code === "conflict");
+  const session = await service.scheduleSession({
+    actorUserId: "host",
+    groupId: group.id,
+    title: "Already finished",
+    startsAt: "2026-09-19T01:00:00.000Z",
+    durationMinutes: 45,
+    maxParticipants: 2
+  });
+  await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: "2026-09-19T01:50:00.000Z" });
+  await service.startSession({ actorUserId: "host", sessionId: session.id });
+  await service.leaveSession({ actorUserId: "host", sessionId: session.id });
+  notes.length = 0;
+  await service.cancelGroup({ actorUserId: "host", groupId: group.id });
+  assert.equal((await service.listMine("host")).some((item) => item.id === group.id), false);
+  assert.equal((await service.listDiscover({ actorUserId: "member" })).some((item) => item.id === group.id), false);
+  assert.equal(notes.some((item) => item.userId === "member"), true);
+  const stored = await repository.read();
+  assert.equal(stored.sessions.some((item) => item.id === session.id && item.status === "completed"), true);
+});
+
+test("session schedule, attendance, capacity, start and token follow the P0 rules", async () => {
+  access.add("m1:course-1");
+  access.add("m2:course-1");
+  access.add("m3:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Sessions", courseId: "course-1", about: "Sessions about." });
+  for (const userId of ["m1", "m2", "m3"]) await service.joinGroup({ actorUserId: userId, groupId: group.id });
+  await assert.rejects(() => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Too big", startsAt: "2026-09-19T12:00:00.000Z", durationMinutes: 30, maxParticipants: 7 }), (error: unknown) => (error as { code: string }).code === "validation");
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Road to 1933", startsAt: "2026-09-19T12:00:00.000Z", durationMinutes: 45, maxParticipants: 2, focus: "Weimar" });
+  assert.equal(session.aiTutorEnabled, true);
+  assert.equal(session.state, "scheduled");
+  const hidden = await service.getGroup({ actorUserId: "outsider", groupId: group.id });
+  assert.equal(hidden.sessions, null);
+  await service.planToAttend({ actorUserId: "m1", sessionId: session.id });
+  await service.planToAttend({ actorUserId: "m1", sessionId: session.id });
+  assert.equal((await service.getSession({ actorUserId: "m1", sessionId: session.id })).plannedCount, 1);
+  assert.equal((await service.getSession({ actorUserId: "m1", sessionId: session.id })).viewerPlanned, true);
+  await service.cancelAttendance({ actorUserId: "m1", sessionId: session.id });
+  assert.equal((await service.getSession({ actorUserId: "m1", sessionId: session.id })).plannedCount, 0);
+  await assert.rejects(() => service.enterSession({ actorUserId: "m1", sessionId: session.id, requestedAt: NOW }), (error: unknown) => (error as { code: string }).code === "session_not_open");
+  const soon = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Soon", startsAt: "2026-09-19T02:09:00.000Z", durationMinutes: 30, maxParticipants: 2, aiTutorEnabled: false });
+  assert.equal(soon.state, "starting_soon");
+  assert.equal(soon.aiTutorEnabled, false);
+  const first = service.enterSession({ actorUserId: "m2", sessionId: soon.id, requestedAt: "2026-09-19T02:00:02.000Z" });
+  const second = service.enterSession({ actorUserId: "m1", sessionId: soon.id, requestedAt: "2026-09-19T02:00:01.000Z" });
+  const third = service.enterSession({ actorUserId: "m3", sessionId: soon.id, requestedAt: "2026-09-19T02:00:03.000Z" });
+  const entered = await Promise.allSettled([first, second, third]);
+  assert.equal(entered.filter((item) => item.status === "fulfilled").length, 2);
+  assert.equal(entered[2].status, "rejected");
+  const waiting = await service.getSession({ actorUserId: "m1", sessionId: soon.id });
+  assert.equal(waiting.occupancy, 2);
+  assert.equal(waiting.state, "starting_soon");
+  const duplicate = await service.enterSession({ actorUserId: "m1", sessionId: soon.id, requestedAt: "2026-09-19T02:00:04.000Z" });
+  assert.equal(duplicate.occupancy, 2);
+  const started = await service.startSession({ actorUserId: "host", sessionId: soon.id });
+  assert.equal(started.state, "live");
+  assert.equal(started.occupancy, 2);
+  const meetings = (await repository.read()).meetings.filter((item) => item.sessionId === soon.id);
+  assert.equal(meetings.length, 1);
+  await service.startSession({ actorUserId: "host", sessionId: soon.id });
+  assert.equal((await repository.read()).meetings.filter((item) => item.sessionId === soon.id).length, 1);
+  await assert.rejects(() => service.editSession({ actorUserId: "host", groupId: group.id, sessionId: soon.id, title: "Too late" }), (error: unknown) => (error as { code: string }).code === "forbidden");
+  const token = await service.issueToken({ actorUserId: "m1", sessionId: soon.id });
+  assert.equal(token.liveKitUrl, "wss://livekit.example.test");
+  const payload = JSON.parse(Buffer.from(token.token.split(".")[1], "base64url").toString("utf8")) as { sub: string; video: { room: string; roomAdmin?: boolean }; metadata?: string };
+  assert.equal(payload.sub, "m1");
+  assert.equal(payload.video.room, soon.id);
+  assert.equal(payload.video.roomAdmin, undefined);
+  assert.equal(payload.metadata, undefined);
+  assert.equal(JSON.stringify(payload).toLowerCase().includes("host"), false);
+  const log = await readFile(path.join(directory, "token-issuance.log"), "utf8");
+  assert.equal(log.includes(token.token), false);
+  assert.equal(log.includes("lk-secret-at-least-32-characters"), false);
+  const decoded = decryptTokenLogLine(log.trim().split("\n").at(-1)!, tokenLogKey);
+  assert.equal(decoded.userId, "m1");
+  assert.equal(decoded.sessionId, soon.id);
+  assert.equal(decoded.role, "member");
+  assert.equal(JSON.stringify(decoded).includes(token.token), false);
+  await assert.rejects(() => service.issueToken({ actorUserId: "m3", sessionId: soon.id }), (error: unknown) => (error as { code: string }).code === "forbidden");
+  await assert.rejects(() => service.issueToken({ actorUserId: "m1", sessionId: "missing-session" }), (error: unknown) => (error as { code: string }).code === "not_found");
+  await service.leaveSession({ actorUserId: "m1", sessionId: soon.id });
+  assert.equal((await service.getSession({ actorUserId: "m2", sessionId: soon.id })).state, "live");
+  await service.leaveSession({ actorUserId: "m2", sessionId: soon.id });
+  assert.equal((await service.getSession({ actorUserId: "host", sessionId: soon.id })).state, "completed");
+  assert.equal((await repository.read()).meetings.find((item) => item.sessionId === soon.id)?.endedAt, NOW);
+});
+
+test("reminders go to the host and plan-to-attend members only, once", async () => {
+  access.add("planner:course-1");
+  access.add("quiet:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Reminders", courseId: "course-1", about: "Reminder about." });
+  await service.joinGroup({ actorUserId: "planner", groupId: group.id });
+  await service.joinGroup({ actorUserId: "quiet", groupId: group.id });
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Reminder session", startsAt: "2026-09-19T02:10:00.000Z", durationMinutes: 30, maxParticipants: 4 });
+  await service.planToAttend({ actorUserId: "planner", sessionId: session.id });
+  notes.length = 0;
+  mails.length = 0;
+  await service.dispatchDueReminders();
+  const reminded = notes.map((item) => item.userId).sort();
+  assert.deepEqual(reminded, ["host", "planner"]);
+  assert.deepEqual(mails.map((item) => item.to).sort(), ["host@example.test", "planner@example.test"]);
+  notes.length = 0;
+  mails.length = 0;
+  await service.dispatchDueReminders();
+  assert.equal(notes.length, 0);
+  assert.equal(mails.length, 0);
+});

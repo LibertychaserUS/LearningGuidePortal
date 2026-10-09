@@ -1,5 +1,7 @@
 # Phase 1：API contract
 
+Study Group uses `{ ok, code, message, data }`. `GET /api/study-groups?view=discover|mine|courses` lists public groups, the caller's groups, or courses the caller can access. `POST /api/study-groups` creates a Group for a caller with valid Course access. Group and Session mutations live under `/api/study-groups/:groupId` and `/api/study-groups/sessions/:sessionId` (`join`, `leave`, `cancel`, `plan`, `cancel-attendance`, `enter`, `start`, `token`). The token response is a short-lived LiveKit participant token for that user and Session, with no Host grant and no stored raw token. Title is at most 50 characters and About at most 200. Maximum participants is 2–6.
+
 Course-authoring extension: `PUT /api/backoffice/courses/:courseId/draft`, contract `contracts/course-authoring.ts`; active operator and same-origin request required. A stale `expectedUpdatedAt` returns 409. See `lgteacher-integration.md` for response codes and preservation rules.
 
 所有 JSON API 使用：
