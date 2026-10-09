@@ -67,7 +67,7 @@
   - Study Groups
     - 想找小组。点页眉 Study Groups。
     - 落到 `/en-GB/portal/study-groups`。
-    - 页面写 “Study Groups are being prepared”，创建、邀请和讨论都还没有控件。这是一条明确停住的路。
+    - 页面是 Study Group：我的小组、发现、创建、加入和直播课。开启 AI Tutor 时，直播中的聊天可以把用户原文送进队列。系统提示留在服务端，这一版不显示模型回答。
   - Contact
     - 想联系人。打开 `/en-GB/contact`。
     - 标题 Get in Touch。有姓名、邮箱、电话、主题、留言和隐私勾选。这次没有提交。
