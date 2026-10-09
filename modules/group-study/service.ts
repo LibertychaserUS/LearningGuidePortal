@@ -315,7 +315,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
     },
 
     async scheduleSession(input: { actorUserId: string; groupId: string; title: string; startsAt: string; durationMinutes: number; maxParticipants: number; relatedLessonId?: string | null; focus?: string | null; aiTutorEnabled?: boolean }) {
-      const title = requireText(input.title, "Session Title", 80);
+      const title = requireText(input.title, "Session Title", 20);
       const startsAt = new Date(input.startsAt);
       if (Number.isNaN(startsAt.getTime())) throw new StudyGroupError("validation", "Start Time is required.");
       if (!Number.isInteger(input.durationMinutes) || input.durationMinutes < 1) throw new StudyGroupError("validation", "Duration is required.");
@@ -354,7 +354,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
         if (!current || current.status === "removed") throw new StudyGroupError("not_found", "Live Session was not found.");
         if (activeMembership(store, current.groupId, input.actorUserId)?.role !== "host") throw new StudyGroupError("forbidden", "Only the Host can edit a Live Session.");
         if (current.status !== "scheduled") throw new StudyGroupError("forbidden", "Edit Session is available only before the Session starts.");
-        if (input.title) current.title = requireText(input.title, "Session Title", 80);
+        if (input.title) current.title = requireText(input.title, "Session Title", 20);
         current.updatedAt = now;
         return current;
       });

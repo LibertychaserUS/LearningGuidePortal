@@ -109,4 +109,32 @@ test("study group API requires a session, hides sessions until join, and does no
   assert.equal(storeFile.includes("lk-secret-at-least-32-characters"), false);
   const wrong = await call(postToken, "http://localhost/api/study-groups/sessions/missing/token", {}, token, { sessionId: "missing" });
   assert.equal(wrong.status, 404);
+
+  const startsLater = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
+  const title = "12345678901234567890";
+  const accepted = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+    title,
+    startsAt: startsLater,
+    durationMinutes: 25,
+    maxParticipants: 4
+  }, token, { groupId });
+  assert.equal(accepted.status, 200);
+  const acceptedBody = await accepted.json();
+  assert.equal(acceptedBody.data.title, title);
+  assert.equal(acceptedBody.data.durationMinutes, 25);
+  const tooLong = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+    title: `${title}x`,
+    startsAt: startsLater,
+    durationMinutes: 25,
+    maxParticipants: 4
+  }, token, { groupId });
+  assert.equal(tooLong.status, 400);
+  assert.equal((await tooLong.json()).code, "validation");
+  const missingDuration = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+    title: "No duration",
+    startsAt: startsLater,
+    maxParticipants: 4
+  }, token, { groupId });
+  assert.equal(missingDuration.status, 400);
+  assert.equal((await missingDuration.json()).code, "validation");
 });

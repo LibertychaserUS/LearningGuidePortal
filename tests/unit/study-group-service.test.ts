@@ -116,6 +116,46 @@ test("host edits title and about, cannot change the course, and cancel keeps com
   assert.equal(stored.sessions.some((item) => item.id === session.id && item.status === "completed"), true);
 });
 
+test("session title stops at 20 characters and duration is any whole number of minutes", async () => {
+  const group = await service.createGroup({ actorUserId: "host", title: "Duration group", courseId: "course-1", about: "Duration about." });
+  const title = "12345678901234567890";
+  const scheduled = await service.scheduleSession({
+    actorUserId: "host",
+    groupId: group.id,
+    title,
+    startsAt: "2026-09-19T12:00:00.000Z",
+    durationMinutes: 25,
+    maxParticipants: 6
+  });
+  assert.equal(scheduled.title, title);
+  assert.equal(scheduled.durationMinutes, 25);
+  const stored = (await repository.read()).sessions.find((item) => item.id === scheduled.id);
+  assert.equal(stored?.durationMinutes, 25);
+  for (const durationMinutes of [1, 30, 45, 60, 90, 120]) {
+    const row = await service.scheduleSession({
+      actorUserId: "host",
+      groupId: group.id,
+      title: "Other",
+      startsAt: "2026-09-19T13:00:00.000Z",
+      durationMinutes,
+      maxParticipants: 2
+    });
+    assert.equal(row.durationMinutes, durationMinutes);
+  }
+  await assert.rejects(
+    () => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: `${title}x`, startsAt: "2026-09-19T12:00:00.000Z", durationMinutes: 25, maxParticipants: 6 }),
+    (error: unknown) => (error as { code: string }).code === "validation"
+  );
+  await assert.rejects(
+    () => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Missing", startsAt: "2026-09-19T12:00:00.000Z", durationMinutes: Number.NaN, maxParticipants: 6 }),
+    (error: unknown) => (error as { code: string }).code === "validation"
+  );
+  await assert.rejects(
+    () => service.editSession({ actorUserId: "host", groupId: group.id, sessionId: scheduled.id, title: `${title}x` }),
+    (error: unknown) => (error as { code: string }).code === "validation"
+  );
+});
+
 test("session schedule, attendance, capacity, start and token follow the P0 rules", async () => {
   access.add("m1:course-1");
   access.add("m2:course-1");
