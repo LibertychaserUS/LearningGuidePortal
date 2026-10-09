@@ -13,8 +13,8 @@ let directory: string;
 let service: StudyGroupService;
 let repository: StudyGroupRepository;
 const access = new Set<string>();
-const mails: Array<{ to: string; subject: string }> = [];
-const notes: Array<{ userId: string; title: string }> = [];
+const mails: Array<{ to: string; subject: string; text: string }> = [];
+const notes: Array<{ userId: string; title: string; body: string }> = [];
 const tokenLogKey = Buffer.alloc(32, 7);
 
 before(async () => {
@@ -161,6 +161,64 @@ test("session title stops at 20 characters and duration is one of four minute le
   );
 });
 
+test("host edits schedule fields before start and cannot shrink below the people already present", async () => {
+  access.add("e1:course-1");
+  access.add("e2:course-1");
+  access.add("e3:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Edit group", courseId: "course-1", about: "Edit about." });
+  for (const userId of ["e1", "e2", "e3"]) await service.joinGroup({ actorUserId: userId, groupId: group.id });
+  const session = await service.scheduleSession({
+    actorUserId: "host",
+    groupId: group.id,
+    title: "Before",
+    startsAt: "2026-09-19T02:09:00.000Z",
+    durationSeconds: 1800,
+    maxParticipants: 6,
+    focus: "Old",
+    aiTutorEnabled: true
+  });
+  const edited = await service.editSession({
+    actorUserId: "host",
+    groupId: group.id,
+    sessionId: session.id,
+    title: "After edit",
+    relatedLessonId: "lesson-1",
+    startsAt: "2026-09-19T02:08:00.000Z",
+    durationSeconds: 3600,
+    maxParticipants: 4,
+    focus: "New focus",
+    aiTutorEnabled: false
+  });
+  assert.equal(edited.title, "After edit");
+  assert.equal(edited.relatedLessonId, "lesson-1");
+  assert.equal(edited.startsAt, "2026-09-19T02:08:00.000Z");
+  assert.equal(edited.durationSeconds, 3600);
+  assert.equal(edited.maxParticipants, 4);
+  assert.equal(edited.focus, "New focus");
+  assert.equal(edited.aiTutorEnabled, false);
+  for (const [index, userId] of ["e1", "e2", "e3"].entries()) {
+    await service.enterSession({ actorUserId: userId, sessionId: session.id, requestedAt: `2026-09-19T02:00:0${index + 1}.000Z` });
+  }
+  const occupied = await service.getSession({ actorUserId: "host", sessionId: session.id });
+  assert.equal(occupied.occupancy, 3);
+  await assert.rejects(
+    () => service.editSession({ actorUserId: "host", groupId: group.id, sessionId: session.id, maxParticipants: 2 }),
+    (error: unknown) => (error as { code: string }).code === "conflict"
+  );
+  const kept = await service.getSession({ actorUserId: "host", sessionId: session.id });
+  assert.equal(kept.maxParticipants, 4);
+  assert.equal(kept.occupancy, 3);
+  assert.equal(kept.title, "After edit");
+  const present = (await repository.read()).presences.filter((item) => item.sessionId === session.id && item.enteredAt && !item.leftAt);
+  assert.equal(present.length, 3);
+  await service.startSession({ actorUserId: "host", sessionId: session.id });
+  await assert.rejects(
+    () => service.editSession({ actorUserId: "host", groupId: group.id, sessionId: session.id, title: "Too late" }),
+    (error: unknown) => (error as { code: string }).code === "forbidden"
+  );
+  assert.equal((await service.getSession({ actorUserId: "host", sessionId: session.id })).title, "After edit");
+});
+
 test("session schedule, attendance, capacity, start and token follow the P0 rules", async () => {
   access.add("m1:course-1");
   access.add("m2:course-1");
@@ -227,6 +285,40 @@ test("session schedule, attendance, capacity, start and token follow the P0 rule
   assert.equal((await repository.read()).meetings.find((item) => item.sessionId === soon.id)?.endedAt, NOW);
 });
 
+test("a failed token issuance does not keep the seat", async () => {
+  const group = await service.createGroup({ actorUserId: "host", title: "Token seat", courseId: "course-1", about: "About the group." });
+  const session = await service.scheduleSession({
+    actorUserId: "host",
+    groupId: group.id,
+    title: "Open",
+    startsAt: "2026-09-19T02:05:00.000Z",
+    durationSeconds: 1800,
+    maxParticipants: 2
+  });
+  await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  const seated = (await repository.read()).presences.filter((item) => item.sessionId === session.id && item.enteredAt && !item.leftAt).map((item) => item.userId);
+  assert.deepEqual(seated, ["host"]);
+  const blocked = createStudyGroupService({
+    repository,
+    now: () => new Date(NOW),
+    hasCourseAccess: async (userId, courseId) => access.has(`${userId}:${courseId}`),
+    courseSummary: async (courseId) => courseId === "course-1" ? { id: courseId, title: "German History", slug: "german-history" } : null,
+    accessibleCourses: async () => [],
+    userProfile: async (userId) => ({ id: userId, displayName: userId, email: `${userId}@example.test`, locale: "en-GB" }),
+    notify: async () => undefined,
+    sendMail: async () => undefined,
+    liveKit: { apiKey: "", apiSecret: "", url: "" },
+    tokenLogKey
+  });
+  await assert.rejects(
+    () => blocked.issueToken({ actorUserId: "host", sessionId: session.id }),
+    (error: unknown) => (error as { code: string }).code === "unavailable"
+  );
+  const stillSeated = (await repository.read()).presences.filter((item) => item.sessionId === session.id && item.enteredAt && !item.leftAt);
+  assert.deepEqual(stillSeated.map((item) => item.userId), []);
+  assert.equal((await repository.read()).meetings.some((item) => item.sessionId === session.id), false);
+});
+
 test("reminders go to the host and plan-to-attend members only, once", async () => {
   access.add("planner:course-1");
   access.add("quiet:course-1");
@@ -238,12 +330,12 @@ test("reminders go to the host and plan-to-attend members only, once", async () 
   notes.length = 0;
   mails.length = 0;
   await service.dispatchDueReminders();
-  const reminded = notes.map((item) => item.userId).sort();
+  const reminded = notes.filter((item) => item.body.includes("Reminder session")).map((item) => item.userId).sort();
   assert.deepEqual(reminded, ["host", "planner"]);
-  assert.deepEqual(mails.map((item) => item.to).sort(), ["host@example.test", "planner@example.test"]);
+  assert.deepEqual(mails.filter((item) => item.text.includes("Reminder session")).map((item) => item.to).sort(), ["host@example.test", "planner@example.test"]);
   notes.length = 0;
   mails.length = 0;
   await service.dispatchDueReminders();
-  assert.equal(notes.length, 0);
-  assert.equal(mails.length, 0);
+  assert.equal(notes.filter((item) => item.body.includes("Reminder session")).length, 0);
+  assert.equal(mails.filter((item) => item.text.includes("Reminder session")).length, 0);
 });

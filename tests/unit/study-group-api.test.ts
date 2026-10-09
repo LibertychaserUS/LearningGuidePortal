@@ -17,6 +17,9 @@ let postJoin: Route;
 let postSession: Route;
 let postEnter: Route;
 let postToken: Route;
+let patchSession: Route;
+let memberToken = "";
+let otherMemberToken = "";
 
 function call(handler: (request: Request, context: { params: Promise<Record<string, string>> }) => Promise<Response>, url: string, body?: unknown, cookie?: string, params?: Record<string, string>, method = body === undefined ? "GET" : "POST") {
   return handler(new Request(url, {
@@ -43,19 +46,28 @@ before(async () => {
   const later = new Date(Date.now() + 86_400_000).toISOString();
   data.users.push(
     { id: "api-host", email: "host@example.test", passwordHash: null, nickname: "Anna", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
-    { id: "api-stranger", email: "stranger@example.test", passwordHash: null, nickname: "Sam", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" }
+    { id: "api-stranger", email: "stranger@example.test", passwordHash: null, nickname: "Sam", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
+    { id: "api-m1", email: "m1@example.test", passwordHash: null, nickname: "Mia", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
+    { id: "api-m2", email: "m2@example.test", passwordHash: null, nickname: "Noah", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" }
   );
   data.courses.push({ id: "api-course", slug: "german-history", title: "German History", description: "Course", status: "published", sections: [], createdAt: now, updatedAt: now });
-  data.entitlements.push({ id: "api-access", userId: "api-host", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" });
+  data.entitlements.push(
+    { id: "api-access", userId: "api-host", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" },
+    { id: "api-access-m1", userId: "api-m1", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" },
+    { id: "api-access-m2", userId: "api-m2", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" }
+  );
   await files.atomicWriteJson(path.join(files.systemRoot(), "learning_guide", "product.json"), data);
   token = (await store.createSession("api-host")).token;
   strangerToken = (await store.createSession("api-stranger")).token;
+  memberToken = (await store.createSession("api-m1")).token;
+  otherMemberToken = (await store.createSession("api-m2")).token;
   postGroup = (await import("../../app/api/study-groups/route")).POST as unknown as Route;
   getGroups = (await import("../../app/api/study-groups/route")).GET as unknown as Route;
   postJoin = (await import("../../app/api/study-groups/[groupId]/join/route")).POST as unknown as Route;
   postSession = (await import("../../app/api/study-groups/[groupId]/sessions/route")).POST as unknown as Route;
   postEnter = (await import("../../app/api/study-groups/sessions/[sessionId]/enter/route")).POST as unknown as Route;
   postToken = (await import("../../app/api/study-groups/sessions/[sessionId]/token/route")).POST as unknown as Route;
+  patchSession = (await import("../../app/api/study-groups/sessions/[sessionId]/route")).PATCH as unknown as Route;
 });
 
 after(async () => {
@@ -166,4 +178,52 @@ test("study group API requires a session, hides sessions until join, and does no
     }, token, { groupId });
     assert.equal(rejected.status, 400);
   }
+});
+
+test("enter uses server receipt time and edit keeps people when the maximum would drop below them", async () => {
+  const created = await call(postGroup, "http://localhost/api/study-groups", { title: "Race", courseId: "api-course", about: "About the race." }, token);
+  const groupId = (await created.json()).data.id as string;
+  await call(postJoin, `http://localhost/api/study-groups/${groupId}/join`, {}, memberToken, { groupId });
+  await call(postJoin, `http://localhost/api/study-groups/${groupId}/join`, {}, otherMemberToken, { groupId });
+  const startsAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const scheduled = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+    title: "Race session",
+    startsAt,
+    durationSeconds: 1800,
+    maxParticipants: 2
+  }, token, { groupId });
+  const sessionId = (await scheduled.json()).data.id as string;
+  const hostEntered = await call(postEnter, `http://localhost/api/study-groups/sessions/${sessionId}/enter`, {}, token, { sessionId });
+  assert.equal(hostEntered.status, 200);
+  const earlyClaim = "2000-01-01T00:00:00.000Z";
+  const lateClaim = "2099-01-01T00:00:00.000Z";
+  const first = call(postEnter, `http://localhost/api/study-groups/sessions/${sessionId}/enter`, { requestedAt: lateClaim }, memberToken, { sessionId });
+  const second = call(postEnter, `http://localhost/api/study-groups/sessions/${sessionId}/enter`, { requestedAt: earlyClaim }, otherMemberToken, { sessionId });
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  assert.equal(firstResult.status, 200);
+  assert.equal(secondResult.status, 409);
+  const storeFile = await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "study-group.json"), "utf8");
+  const store = JSON.parse(storeFile) as { presences: Array<{ sessionId: string; userId: string; requestedAt: string; leftAt: string | null }> };
+  const seated = store.presences.filter((item) => item.sessionId === sessionId && !item.leftAt);
+  assert.equal(seated.length, 2);
+  assert.equal(seated.some((item) => item.userId === "api-m2"), false);
+  assert.equal(seated.some((item) => item.requestedAt === earlyClaim || item.requestedAt === lateClaim), false);
+  const wide = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+    title: "Wide",
+    startsAt,
+    durationSeconds: 1800,
+    maxParticipants: 6
+  }, token, { groupId });
+  const wideId = (await wide.json()).data.id as string;
+  assert.equal((await call(postEnter, `http://localhost/api/study-groups/sessions/${wideId}/enter`, {}, token, { sessionId: wideId })).status, 200);
+  assert.equal((await call(postEnter, `http://localhost/api/study-groups/sessions/${wideId}/enter`, {}, memberToken, { sessionId: wideId })).status, 200);
+  assert.equal((await call(postEnter, `http://localhost/api/study-groups/sessions/${wideId}/enter`, {}, otherMemberToken, { sessionId: wideId })).status, 200);
+  const shrunk = await call(patchSession, `http://localhost/api/study-groups/sessions/${wideId}`, {
+    groupId,
+    maxParticipants: 2
+  }, token, { sessionId: wideId }, "PATCH");
+  assert.equal(shrunk.status, 409);
+  const after = JSON.parse(await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "study-group.json"), "utf8")) as { presences: Array<{ sessionId: string; leftAt: string | null }>; sessions: Array<{ id: string; maxParticipants: number }> };
+  assert.equal(after.presences.filter((item) => item.sessionId === wideId && !item.leftAt).length, 3);
+  assert.equal(after.sessions.find((item) => item.id === wideId)?.maxParticipants, 6);
 });

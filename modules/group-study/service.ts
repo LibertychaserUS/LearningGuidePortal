@@ -348,14 +348,31 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       return sessionView(await deps.repository.read(), session, input.actorUserId);
     },
 
-    async editSession(input: { actorUserId: string; groupId: string; sessionId: string; title?: string }) {
+    async editSession(input: { actorUserId: string; groupId: string; sessionId: string; title?: string; relatedLessonId?: string | null; startsAt?: string; durationSeconds?: number; maxParticipants?: number; focus?: string | null; aiTutorEnabled?: boolean }) {
+      if (input.title !== undefined) requireText(input.title, "Session Title", 20);
+      if (input.startsAt !== undefined && Number.isNaN(new Date(input.startsAt).getTime())) throw new StudyGroupError("validation", "Start Time is required.");
+      if (input.durationSeconds !== undefined && !SESSION_DURATION_SECONDS.includes(input.durationSeconds as (typeof SESSION_DURATION_SECONDS)[number])) throw new StudyGroupError("validation", "Duration is required.");
+      if (input.maxParticipants !== undefined && (!Number.isInteger(input.maxParticipants) || input.maxParticipants < 2 || input.maxParticipants > 6)) throw new StudyGroupError("validation", "Maximum Participants must be from 2 to 6.");
+      let focus: string | null | undefined;
+      if (input.focus !== undefined) {
+        focus = clean(input.focus || "");
+        if (focus.length > 50) throw new StudyGroupError("validation", "Session Focus is too long.");
+        focus = focus || null;
+      }
       const now = deps.now().toISOString();
       const session = await deps.repository.update((store) => {
         const current = store.sessions.find((item) => item.id === input.sessionId && item.groupId === input.groupId);
         if (!current || current.status === "removed") throw new StudyGroupError("not_found", "Live Session was not found.");
         if (activeMembership(store, current.groupId, input.actorUserId)?.role !== "host") throw new StudyGroupError("forbidden", "Only the Host can edit a Live Session.");
         if (current.status !== "scheduled") throw new StudyGroupError("forbidden", "Edit Session is available only before the Session starts.");
-        if (input.title) current.title = requireText(input.title, "Session Title", 20);
+        if (input.maxParticipants !== undefined && input.maxParticipants < occupancy(store, current.id)) throw new StudyGroupError("conflict", "Maximum Participants is below the number already in the session.");
+        if (input.title !== undefined) current.title = requireText(input.title, "Session Title", 20);
+        if (input.relatedLessonId !== undefined) current.relatedLessonId = clean(input.relatedLessonId || "") || null;
+        if (input.startsAt !== undefined) current.startsAt = new Date(input.startsAt).toISOString();
+        if (input.durationSeconds !== undefined) current.durationSeconds = input.durationSeconds;
+        if (input.maxParticipants !== undefined) current.maxParticipants = input.maxParticipants;
+        if (focus !== undefined) current.focus = focus;
+        if (input.aiTutorEnabled !== undefined) current.aiTutorEnabled = input.aiTutorEnabled;
         current.updatedAt = now;
         return current;
       });
@@ -495,27 +512,36 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       if (state === "completed") throw new StudyGroupError("session_unavailable", "This Live Session has ended.");
       const presence = store.presences.find((item) => item.sessionId === session.id && item.userId === input.actorUserId && item.enteredAt && !item.leftAt);
       if (!presence) throw new StudyGroupError("forbidden", "Enter the Live Session before requesting a token.");
-      if (!deps.liveKit.apiKey || !deps.liveKit.apiSecret) throw new StudyGroupError("unavailable", "LiveKit is not configured.");
-      const profile = await deps.userProfile(input.actorUserId);
-      const signed = signParticipantToken({
-        apiKey: deps.liveKit.apiKey,
-        apiSecret: deps.liveKit.apiSecret,
-        identity: input.actorUserId,
-        name: profile?.displayName || input.actorUserId,
-        room: session.id,
-        ttlSeconds: TOKEN_TTL_SECONDS,
-        now: deps.now()
+      const releaseSeat = () => deps.repository.update((current) => {
+        const row = current.presences.find((item) => item.sessionId === session.id && item.userId === input.actorUserId && item.enteredAt && !item.leftAt);
+        if (row) row.leftAt = deps.now().toISOString();
       });
-      const line = encryptTokenLogLine({
-        userId: input.actorUserId,
-        role: membership.role,
-        sessionId: session.id,
-        state: "token_issued",
-        at: deps.now().toISOString()
-      }, deps.tokenLogKey);
-      if (line.includes(signed.token) || line.includes(deps.liveKit.apiSecret)) throw new StudyGroupError("unavailable", "Token log refused.");
-      await deps.repository.appendTokenLog(line);
-      return { token: signed.token, expiresAt: signed.expiresAt, liveKitUrl: deps.liveKit.url };
+      try {
+        if (!deps.liveKit.apiKey || !deps.liveKit.apiSecret) throw new StudyGroupError("unavailable", "LiveKit is not configured.");
+        const profile = await deps.userProfile(input.actorUserId);
+        const signed = signParticipantToken({
+          apiKey: deps.liveKit.apiKey,
+          apiSecret: deps.liveKit.apiSecret,
+          identity: input.actorUserId,
+          name: profile?.displayName || input.actorUserId,
+          room: session.id,
+          ttlSeconds: TOKEN_TTL_SECONDS,
+          now: deps.now()
+        });
+        const line = encryptTokenLogLine({
+          userId: input.actorUserId,
+          role: membership.role,
+          sessionId: session.id,
+          state: "token_issued",
+          at: deps.now().toISOString()
+        }, deps.tokenLogKey);
+        if (line.includes(signed.token) || line.includes(deps.liveKit.apiSecret)) throw new StudyGroupError("unavailable", "Token log refused.");
+        await deps.repository.appendTokenLog(line);
+        return { token: signed.token, expiresAt: signed.expiresAt, liveKitUrl: deps.liveKit.url };
+      } catch (error) {
+        await releaseSeat();
+        throw error;
+      }
     },
 
     async dispatchDueReminders() {

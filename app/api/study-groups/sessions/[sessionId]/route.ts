@@ -17,12 +17,18 @@ export async function PATCH(request: Request, context: { params: Promise<{ sessi
   if (!user) return unauthenticated();
   const { sessionId } = await context.params;
   try {
-    const body = await request.json() as { groupId?: string; title?: string };
+    const body = await request.json() as { groupId?: string; title?: string; relatedLessonId?: string | null; startsAt?: string; durationSeconds?: number; maxParticipants?: number; focus?: string | null; aiTutorEnabled?: boolean };
     return studyGroupData(await studyGroupService().editSession({
       actorUserId: user.id,
       groupId: body.groupId || "",
       sessionId,
-      title: body.title
+      title: body.title,
+      relatedLessonId: body.relatedLessonId,
+      startsAt: body.startsAt,
+      durationSeconds: body.durationSeconds,
+      maxParticipants: body.maxParticipants,
+      focus: body.focus,
+      aiTutorEnabled: body.aiTutorEnabled
     }));
   } catch (error) {
     return studyGroupFailure(error);
