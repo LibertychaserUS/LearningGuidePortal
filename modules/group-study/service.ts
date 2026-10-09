@@ -517,6 +517,23 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       return { token: signed.token, expiresAt: signed.expiresAt, liveKitUrl: deps.liveKit.url };
     },
 
+    async queueTutorRequest(input: { actorUserId: string; sessionId: string; message: string }) {
+      const message = clean(input.message || "");
+      if (!message) throw new StudyGroupError("validation", "AI Tutor request text is required.");
+      if (message.length > 2000) throw new StudyGroupError("validation", "AI Tutor request is too long.");
+      const queuedAt = deps.now().toISOString();
+      return deps.repository.update((store) => {
+        const { session } = requireOpenSession(store, input.sessionId, input.actorUserId);
+        if (!session.aiTutorEnabled) throw new StudyGroupError("forbidden", "AI Tutor is not enabled for this Session.");
+        if (effectiveSessionState(session, deps.now()) !== "live") throw new StudyGroupError("session_not_open", "AI Tutor can be requested only while the Session is live.");
+        const presence = store.presences.find((item) => item.sessionId === session.id && item.userId === input.actorUserId && item.enteredAt && !item.leftAt);
+        if (!presence) throw new StudyGroupError("forbidden", "Enter the Live Session before requesting AI Tutor.");
+        const row = { id: randomUUID(), sessionId: session.id, userId: input.actorUserId, message, queuedAt };
+        store.tutorRequests.push(row);
+        return { id: row.id, queuedAt: row.queuedAt };
+      });
+    },
+
     async dispatchDueReminders() {
       const now = deps.now();
       const due = await deps.repository.update((store) => {

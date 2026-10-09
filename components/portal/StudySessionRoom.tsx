@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 import { sessionControls } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
-import { studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+import { studyGroupRequest, tutorQueueBody, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
 type ChatLine = { id: string; from: string; text: string };
 type Tile = { identity: string; name: string; host: boolean; mic: boolean };
+type AttachableTrack = { attach: (element: HTMLMediaElement) => HTMLMediaElement; detach: (element: HTMLMediaElement) => HTMLMediaElement[] };
+type LocalMedia = { setMicrophoneEnabled: (on: boolean) => Promise<unknown>; setCameraEnabled: (on: boolean) => Promise<unknown>; setScreenShareEnabled: (on: boolean) => Promise<unknown>; publishData: (data: Uint8Array, options: { reliable: boolean }) => Promise<unknown>; identity?: string; isMicrophoneEnabled: boolean; isCameraEnabled: boolean };
 
 export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessionId: string }) {
   const copy = getMessages(locale).studyGroupsPage;
@@ -22,7 +24,13 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [draft, setDraft] = useState("");
   const [hands, setHands] = useState<string[]>([]);
-  const [roomApi, setRoomApi] = useState<{ localParticipant: { setMicrophoneEnabled: (on: boolean) => Promise<unknown>; setCameraEnabled: (on: boolean) => Promise<unknown>; setScreenShareEnabled: (on: boolean) => Promise<unknown>; publishData: (data: Uint8Array, options: { reliable: boolean }) => Promise<unknown>; identity?: string } } | null>(null);
+  const [roomApi, setRoomApi] = useState<{ localParticipant: LocalMedia } | null>(null);
+  const [micOn, setMicOn] = useState(false);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareTrack, setShareTrack] = useState<AttachableTrack | null>(null);
+  const [addressTutor, setAddressTutor] = useState(false);
+  const shareVideo = useRef<HTMLVideoElement>(null);
 
   async function load() {
     const current = await studyGroupRequest<StudySession>(`/api/study-groups/sessions/${sessionId}`);
@@ -43,6 +51,17 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     }
     const { Room, RoomEvent } = await import("livekit-client");
     const room = new Room();
+    const showShare = () => {
+      const publications = [
+        ...room.localParticipant.trackPublications.values(),
+        ...Array.from(room.remoteParticipants.values()).flatMap((person) => [...person.trackPublications.values()])
+      ];
+      const shared = publications.find((item) => item.source === "screen_share" && item.track);
+      setShareTrack(shared?.track ?? null);
+      setSharing([...room.localParticipant.trackPublications.values()].some((item) => item.source === "screen_share" && item.track));
+      setMicOn(room.localParticipant.isMicrophoneEnabled);
+      setCameraOn(room.localParticipant.isCameraEnabled);
+    };
     room.on(RoomEvent.DataReceived, (payload, participant) => {
       const message = JSON.parse(new TextDecoder().decode(payload)) as { type: string; text?: string };
       const from = participant?.identity || "participant";
@@ -60,8 +79,12 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     };
     room.on(RoomEvent.ParticipantConnected, paint);
     room.on(RoomEvent.ParticipantDisconnected, paint);
-    room.on(RoomEvent.TrackMuted, paint);
-    room.on(RoomEvent.TrackUnmuted, paint);
+    room.on(RoomEvent.TrackMuted, () => { paint(); showShare(); });
+    room.on(RoomEvent.TrackUnmuted, () => { paint(); showShare(); });
+    room.on(RoomEvent.TrackSubscribed, showShare);
+    room.on(RoomEvent.TrackUnsubscribed, showShare);
+    room.on(RoomEvent.LocalTrackPublished, showShare);
+    room.on(RoomEvent.LocalTrackUnpublished, showShare);
     await room.connect(issued.data.liveKitUrl, issued.data.token);
     setRoomApi(room);
     setConnected(true);
@@ -77,6 +100,24 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   useEffect(() => {
     if (session?.state === "live" && !connected && !left) void connect().catch(() => setErrorCode("unavailable"));
   }, [session?.state, connected, left]);
+
+  useEffect(() => {
+    const element = shareVideo.current;
+    if (!shareTrack || !element) return;
+    shareTrack.attach(element);
+    return () => { shareTrack.detach(element); };
+  }, [shareTrack]);
+
+  async function setMedia(kind: "mic" | "camera" | "share", enabled: boolean) {
+    const local = roomApi?.localParticipant;
+    if (!local) return;
+    if (kind === "mic") await local.setMicrophoneEnabled(enabled);
+    if (kind === "camera") await local.setCameraEnabled(enabled);
+    if (kind === "share") await local.setScreenShareEnabled(enabled);
+    if (kind === "mic") setMicOn(enabled);
+    if (kind === "camera") setCameraOn(enabled);
+    if (kind === "share") setSharing(enabled);
+  }
 
   if (!session) return <p className={styles.panel} role="status">{errorCode ? copy.errors[errorCode as keyof typeof copy.errors] || copy.errors.error : copy.loading}</p>;
   if (session.state === "completed" || left) {
@@ -108,6 +149,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         <h1>{session.title}</h1>
         <p className={styles.meta}>{group?.courseTitle} · {copy.live}</p>
         {errorText ? <p className={styles.alert} role="alert">{errorText} <button className={styles.textButton} type="button" onClick={() => { setErrorCode(""); setConnected(false); }}>{roomCopy.reconnect}</button></p> : null}
+        {shareTrack ? <video ref={shareVideo} className={styles.shareMain} autoPlay playsInline /> : null}
         <div className={styles.videos}>
           {tiles.length === 0 ? <div className={styles.tile}><span>{connected ? copy.loading : roomCopy.notConnected}</span></div> : tiles.map((tile) => (
             <div className={styles.tile} key={tile.identity}>
@@ -116,9 +158,9 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           ))}
         </div>
         <div className={styles.controls}>
-          {controls.includes("mic") ? <button type="button" onClick={() => void roomApi?.localParticipant.setMicrophoneEnabled(true)}>{roomCopy.mic}</button> : null}
-          {controls.includes("camera") ? <button type="button" onClick={() => void roomApi?.localParticipant.setCameraEnabled(true)}>{roomCopy.camera}</button> : null}
-          {controls.includes("share") ? <button type="button" onClick={() => void roomApi?.localParticipant.setScreenShareEnabled(true)}>{roomCopy.share}</button> : null}
+          {controls.includes("mic") ? <button type="button" aria-pressed={micOn} onClick={() => void setMedia("mic", !micOn).catch(() => setMicOn(false))}>{roomCopy.mic}</button> : null}
+          {controls.includes("camera") ? <button type="button" aria-pressed={cameraOn} onClick={() => void setMedia("camera", !cameraOn).catch(() => setCameraOn(false))}>{roomCopy.camera}</button> : null}
+          {controls.includes("share") ? <button type="button" aria-pressed={sharing} onClick={() => void setMedia("share", !sharing).catch(() => setSharing(false))}>{roomCopy.share}</button> : null}
           {controls.includes("raise-hand") ? <button type="button" onClick={() => void publish({ type: "raise-hand" })}>{roomCopy.raiseHand}</button> : null}
           {controls.includes("leave") ? <button type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
         </div>
@@ -127,10 +169,26 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         <h2>{roomCopy.participants} {session.occupancy}/{session.maxParticipants}</h2>
         <div className={styles.chatLog} aria-live="polite">
           <h3>{roomCopy.chat}</h3>
-          {chat.map((line) => <p key={line.id}><strong>{line.from}</strong> {line.text}</p>)}
+          {chat.map((line) => <p key={line.id}><strong>{line.from}</strong> {line.text.startsWith(`${roomCopy.aiTutor} `) ? <><span className={styles.tutorMention}>{roomCopy.aiTutor}</span>{line.text.slice(roomCopy.aiTutor.length)}</> : line.text}</p>)}
           {!connected ? <p>{roomCopy.chatUnavailable}</p> : null}
         </div>
-        <form className={styles.chatForm} onSubmit={(event) => { event.preventDefault(); if (!draft.trim() || !connected) return; void publish({ type: "chat", text: draft.trim() }); setDraft(""); }}>
+        <form className={styles.chatForm} onSubmit={(event) => {
+          event.preventDefault();
+          const text = draft.trim();
+          if (!text || !connected) return;
+          const mention = addressTutor && session.aiTutorEnabled;
+          const chatText = mention ? `${roomCopy.aiTutor} ${text}` : text;
+          void publish({ type: "chat", text: chatText });
+          setChat((items) => [...items, { id: `local-${items.length}`, from: roomCopy.you, text: chatText }]);
+          if (mention) {
+            void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/ai-tutor`, { method: "POST", body: JSON.stringify(tutorQueueBody(text)) }).then((queued) => {
+              if (!queued.ok) setErrorCode(queued.code);
+            });
+          }
+          setDraft("");
+          setAddressTutor(false);
+        }}>
+          {session.aiTutorEnabled ? <button className={styles.tutorEntry} type="button" aria-pressed={addressTutor} onClick={() => setAddressTutor((on) => !on)}>{roomCopy.aiTutor}</button> : null}
           <label className={styles.meta}>{roomCopy.chat}<input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={roomCopy.chatPlaceholder} disabled={!connected} /></label>
           <button className={styles.primary} type="submit" disabled={!connected}>{roomCopy.send}</button>
         </form>

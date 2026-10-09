@@ -531,7 +531,7 @@
     "maxParticipants": "最多参与人数",
     "focus": "本节重点",
     "enableAiTutor": "为本节启用 AI Tutor",
-    "aiTutorStored": "这里只保存设置，供以后的版本使用。直播课中还不能使用 AI Tutor。",
+    "aiTutorStored": "保持开启时，直播中的参与者可以在聊天里发送 @AI Tutor 请求。请求会进入队列。这一版不显示导师回复。",
     "plan": "计划参加",
     "planning": "你已计划参加。这不保留座位。",
     "cancelAttendance": "取消参加",
@@ -551,6 +551,8 @@
     "room": {
       "participants": "参与者",
       "chat": "聊天",
+      "aiTutor": "@AI Tutor",
+      "you": "你",
       "mic": "麦克风",
       "camera": "摄像头",
       "share": "共享屏幕",

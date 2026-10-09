@@ -1,6 +1,6 @@
 # Study Group AI Tutor plan
 
-This phase stores whether a Live Session has AI Tutor enabled. It does not call a model, write chat, or put a tutor in the room.
+This phase stores whether a Live Session has AI Tutor enabled. When that flag is on and the Session is live, a participant can queue their own chat text. The server keeps the AI Tutor system prompt. The page, the client bundle, and LiveKit messages do not carry it. Queued text is user data. This phase does not call a model and does not return or render an answer.
 
 ## Later behaviour
 
@@ -15,6 +15,6 @@ When a later phase turns the stored flag on:
 
 ## Out of this phase
 
-- No tutor route, prompt, or Knowledge System call from Group Study.
-- No tutor control inside the Live Session room.
-- No persisted transcript of tutor messages.
+- No model call, no Knowledge System call, and no tutor answer in the room.
+- The client does not send a system prompt or a rewritten instruction. `POST /api/study-groups/sessions/:sessionId/ai-tutor` accepts `{ message }` and returns `{ id, queuedAt }`.
+- Chat text stays in LiveKit. The queue row is the request, not a tutor transcript.

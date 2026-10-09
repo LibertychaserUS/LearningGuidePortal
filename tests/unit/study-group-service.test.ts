@@ -202,3 +202,20 @@ test("reminders go to the host and plan-to-attend members only, once", async () 
   assert.equal(notes.length, 0);
   assert.equal(mails.length, 0);
 });
+
+test("a live participant queues their own text and the response has no tutor answer", async () => {
+  const group = await service.createGroup({ actorUserId: "host", title: "Tutor queue", courseId: "course-1", about: "About the tutor queue." });
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Tutor session", startsAt: "2026-09-19T02:05:00.000Z", durationMinutes: 30, maxParticipants: 6, aiTutorEnabled: true });
+  await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await service.startSession({ actorUserId: "host", sessionId: session.id });
+  const text = "Why did 1928 look stable?";
+  const queued = await service.queueTutorRequest({ actorUserId: "host", sessionId: session.id, message: text });
+  assert.equal("answer" in queued, false);
+  assert.equal(JSON.stringify(queued).includes("You are"), false);
+  const stored = (await repository.read()).tutorRequests.find((item) => item.id === queued.id);
+  assert.equal(stored?.message, text);
+  const off = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "No tutor", startsAt: "2026-09-19T02:06:00.000Z", durationMinutes: 30, maxParticipants: 6, aiTutorEnabled: false });
+  await service.enterSession({ actorUserId: "host", sessionId: off.id, requestedAt: NOW });
+  await service.startSession({ actorUserId: "host", sessionId: off.id });
+  await assert.rejects(() => service.queueTutorRequest({ actorUserId: "host", sessionId: off.id, message: text }), (error: unknown) => (error as { code: string }).code === "forbidden");
+});

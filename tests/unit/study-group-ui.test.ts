@@ -4,7 +4,7 @@ import { sessionControls, studyGroupPane } from "../../modules/group-study/uiSta
 import { readFileSync } from "node:fs";
 import en from "../../messages/en-GB.json";
 import zh from "../../messages/zh-CN.json";
-import { DURATION_MINUTE_CHOICES, fill, SESSION_TITLE_MAX, sessionTitleCount } from "../../components/portal/studyGroupClient";
+import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, SESSION_TITLE_MAX, sessionTitleCount, tutorQueueBody } from "../../components/portal/studyGroupClient";
 
 test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", () => {
   assert.deepEqual([...DURATION_MINUTE_CHOICES], [30, 45, 60, 90]);
@@ -17,6 +17,32 @@ test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", (
   assert.match(source, /DURATION_MINUTE_CHOICES\.map/);
   assert.equal(source.includes("durationSeconds"), false);
   assert.equal(source.includes('type="number"'), false);
+});
+
+test("the chat control queues the user's text and does not carry a system prompt or an answer", () => {
+  assert.deepEqual(tutorQueueBody("Why did 1928 look stable?"), { message: "Why did 1928 look stable?" });
+  assert.equal("prompt" in tutorQueueBody("Why did 1928 look stable?"), false);
+  const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
+  assert.match(room, /tutorQueueBody\(text\)/);
+  assert.match(room, /session\.aiTutorEnabled \?/);
+  assert.equal(room.includes("/api/ai-tutor"), false);
+  assert.equal(room.includes("prompts/"), false);
+  assert.equal(room.includes("You are"), false);
+  assert.equal(room.includes("queued.data"), false);
+});
+
+test("host start opens the room only after entry succeeds", () => {
+  assert.equal(hostMayOpenRoom(true, true), true);
+  assert.equal(hostMayOpenRoom(true, false), false);
+  assert.equal(hostMayOpenRoom(false, false), false);
+  const page = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
+  assert.match(page, /copy\.createdTitle/);
+  assert.match(page, /copy\.openGroup/);
+  assert.match(page, /copy\.editSession/);
+  assert.match(page, /\/enter/);
+  const css = readFileSync(new URL("../../components/portal/study-groups.module.css", import.meta.url), "utf8");
+  assert.match(css, /\.memberList[\s\S]*overflow-y: auto/);
+  assert.match(css, /\.shareMain/);
 });
 
 test("session title counter matches the 20 character Figma limit", () => {

@@ -40,6 +40,14 @@ export const SESSION_TITLE_MAX = 20;
 
 export const DURATION_MINUTE_CHOICES = [30, 45, 60, 90] as const;
 
+export function hostMayOpenRoom(startOk: boolean, enterOk: boolean) {
+  return startOk && enterOk;
+}
+
+export function tutorQueueBody(message: string) {
+  return { message };
+}
+
 export function sessionTitleCount(value: string) {
   const length = Math.min(value.length, SESSION_TITLE_MAX);
   return `${length}/${SESSION_TITLE_MAX}`;

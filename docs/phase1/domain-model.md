@@ -51,6 +51,7 @@ erDiagram
 | `study_group_memberships` | `group_id`, `user_id`, `role`, `joined_at`, `left_at` | role `host` or `member`; one active membership per user and Group |
 | `live_sessions` | `id`, `group_id`, `starts_at`, `duration_minutes`, `max_participants`, `ai_tutor_enabled`, `status` | max participants 2–6 including Host; status `scheduled`, `live`, `completed`, or `removed` |
 | `study_group_meetings` | `id`, `session_id`, `started_at`, `ended_at` | one row when the Host starts the Session; not a token audit |
+| `study_group_tutor_requests` | `id`, `session_id`, `user_id`, `message`, `queued_at` | queued user text only; no system prompt and no model answer |
 | `audit_events` | actor、action、entity、payload、created_at | Refund、Resynchronise Payment、发布和权限变化必须有记录 |
 
 ## 3. 状态规则
