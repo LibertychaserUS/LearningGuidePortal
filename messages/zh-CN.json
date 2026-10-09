@@ -530,6 +530,7 @@
     "plannedDuration": "{count} 分钟",
     "maxParticipants": "最多参与人数",
     "focus": "本节重点",
+    "aiTutorLabel": "AI Tutor",
     "enableAiTutor": "为本节启用 AI Tutor",
     "aiTutorStored": "保持开启时，直播中的参与者可以在聊天里发送 @AI Tutor 请求。请求会进入队列。这一版不显示导师回复。",
     "plan": "计划参加",

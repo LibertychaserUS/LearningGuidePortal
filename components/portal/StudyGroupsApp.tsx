@@ -31,6 +31,9 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [waitingSession, setWaitingSession] = useState<StudySession | null>(null);
   const [attendees, setAttendees] = useState<StudySession["attendees"]>([]);
   const [sessionTitle, setSessionTitle] = useState("");
+  const [sessionFocus, setSessionFocus] = useState("");
+  const [createTitle, setCreateTitle] = useState("");
+  const [createAbout, setCreateAbout] = useState("");
 
   async function loadLists() {
     const [myResult, discoverResult, courseResult] = await Promise.all([
@@ -180,20 +183,20 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
         <h1 className={styles.title}>{copy.title}</h1>
         <div className={styles.sectionHead}>
           <h2>{copy.myGroups}</h2>
-          {signedIn ? <button className={styles.create} type="button" onClick={() => setDialog("create")}>+ {copy.create}</button> : null}
+          {signedIn ? <button className={styles.create} type="button" onClick={() => { setCreateTitle(""); setCreateAbout(""); setDialog("create"); }}>+ {copy.create}</button> : null}
         </div>
         <div className={styles.tabs} role="group" aria-label={copy.myGroups}>
           <button type="button" aria-pressed={mineFilter === "all"} onClick={() => setMineFilter("all")}>{copy.all}</button>
           <button type="button" aria-pressed={mineFilter === "host"} onClick={() => setMineFilter("host")}>{copy.hostedByMe}</button>
         </div>
-        {signedIn && visibleMine.length === 0 ? <p className={styles.course}>{copy.noMine}</p> : null}
+        {signedIn && visibleMine.length === 0 ? <p className={styles.noMine}>{copy.noMine}</p> : null}
         {visibleMine.map((group) => (
           <button className={styles.card} type="button" key={group.id} aria-current={selectedId === group.id} onClick={() => void openGroup(group.id)}>
             <h3>{group.title}</h3>
-            <p className={styles.meta}>{group.courseTitle}</p>
-            <span className={styles.badge}>{group.role === "host" ? copy.hosted : copy.joined}</span>
-            {group.live ? <span className={`${styles.badge} ${styles.live}`}>{copy.live}</span> : null}
-            <p className={styles.meta}>{fill(copy.learners, { count: group.memberCount })}</p>
+            {group.live ? <span className={styles.live}>{copy.live}</span> : null}
+            <p className={styles.course}>{group.courseTitle}</p>
+            {group.role ? <span className={`${styles.role} ${group.role === "host" ? styles.hosted : styles.joined}`}>{group.role === "host" ? copy.hosted : copy.joined}</span> : null}
+            <p className={styles.count}>{fill(copy.learners, { count: group.memberCount })}</p>
           </button>
         ))}
         <hr className={styles.rule} />
@@ -212,8 +215,8 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
         {discover.map((group) => (
           <button className={styles.card} type="button" key={group.id} aria-current={selectedId === group.id} onClick={() => void openGroup(group.id)}>
             <h3>{group.title}</h3>
-            <p className={styles.meta}>{group.courseTitle}</p>
-            <p className={styles.meta}>{fill(copy.learners, { count: group.memberCount })}</p>
+            <p className={styles.course}>{group.courseTitle}</p>
+            <p className={styles.count}>{fill(copy.learners, { count: group.memberCount })}</p>
           </button>
         ))}
       </aside>
@@ -225,9 +228,9 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
         {dialog === "create" ? <form className={styles.panel} onSubmit={(event) => { event.preventDefault(); void submitCreate(new FormData(event.currentTarget)); }}>
           <h2>{copy.create}</h2>
           <p className={styles.lead}>{copy.createLead}</p>
-          <label className={styles.field}>{copy.groupTitle} <span className={styles.req}>*</span><input name="title" required maxLength={50} placeholder={copy.enterTitle} /></label>
-          <label className={styles.field}>{copy.relatedCourse} <span className={styles.req}>*</span><select name="courseId" required defaultValue=""><option value="">{copy.selectCourse}</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label>
-          <label className={styles.field}>{copy.about} <span className={styles.req}>*</span><textarea name="about" required maxLength={200} placeholder={copy.enterDescription} /></label>
+          <label className={styles.field}><span>{copy.groupTitle} <span className={styles.req}>*</span></span><span className={styles.fieldBox}><input name="title" required maxLength={50} placeholder={copy.enterTitle} value={createTitle} onChange={(event) => setCreateTitle(event.target.value.slice(0, 50))} /><span className={styles.counter}>{createTitle.length}/50</span></span></label>
+          <label className={styles.field}><span>{copy.relatedCourse} <span className={styles.req}>*</span></span><select name="courseId" required defaultValue=""><option value="">{copy.selectCourse}</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label>
+          <label className={styles.field}><span>{copy.about} <span className={styles.req}>*</span></span><span className={styles.fieldBox}><textarea name="about" required maxLength={200} placeholder={copy.enterDescription} value={createAbout} onChange={(event) => setCreateAbout(event.target.value.slice(0, 200))} /><span className={styles.counter}>{createAbout.length}/200</span></span></label>
           <div className={styles.actions}><button className={styles.ghost} type="button" onClick={() => setDialog(null)}>{copy.cancel}</button><button className={styles.primary} type="submit">{copy.create}</button></div>
           {errorCode !== "error" && errorCode !== "ok" ? <p className={styles.alert} role="alert">{errorText}</p> : null}
         </form> : null}
@@ -246,8 +249,10 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
               {pane.kind === "join-gate" ? (
                 <>
                   <p className={styles.joinBanner}>{copy.joinBanner}</p>
+                  <div className={styles.locked} aria-hidden="true"><span /><span /><span /></div>
+                  <div className={styles.locked} aria-hidden="true"><span /><span /><span /></div>
                   <p className={styles.joinNote}>{selected.canJoin ? copy.joinAccess : copy.getCourseAccess}</p>
-                  {selected.canJoin ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/${selected.id}/join`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } await loadLists(); await openGroup(selected.id); }}>{copy.joinGroup}</button> : <a className={styles.primary} href={signedIn ? `/${locale}/portal/courses/${selected.courseSlug}` : `/${locale}/portal/sign-in`}>{signedIn ? copy.getCourseAccess : copy.signIn}</a>}
+                  <div className={styles.joinAction}>{selected.canJoin ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/${selected.id}/join`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } await loadLists(); await openGroup(selected.id); }}>{copy.joinGroup}</button> : <a className={styles.primary} href={signedIn ? `/${locale}/portal/courses/${selected.courseSlug}` : `/${locale}/portal/sign-in`}>{signedIn ? copy.getCourseAccess : copy.signIn}</a>}</div>
                 </>
               ) : null}
               {pane.kind === "sessions" && (selected.sessions || []).length === 0 ? <div className={styles.emptySessions}><p>{copy.noSessions}</p><Image src="/portal/study-groups/empty-sessions.png" width={150} height={113} alt="" /></div> : null}
@@ -273,9 +278,9 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
             <aside className={styles.memberCol} aria-label={copy.members}>
               <h3>{copy.members} <span className={styles.countBadge}>{selected.memberCount}</span></h3>
               <ul className={styles.memberList}>
-                {(selected.members || []).map((member) => <li key={member.userId}><span className={styles.avatar}>{member.displayName.slice(0, 1)}</span><span>{member.displayName}</span>{member.role === "host" ? <span className={styles.hostTag}>{copy.room.host}</span> : null}</li>)}
+                {(selected.members || []).map((member) => <li key={member.userId}><span className={styles.memberAvatar}>{member.displayName.slice(0, 1)}</span><span>{member.displayName}</span>{member.role === "host" ? <span className={styles.hostTag}>{copy.room.host}</span> : null}</li>)}
               </ul>
-              {selected.role === "host" ? <div className={styles.hostFoot}><p>{copy.hostingNote}</p><button className={styles.primary} type="button" onClick={() => { setSessionTitle(""); setDialog("schedule"); }}>{copy.schedule}</button><button className={styles.ghost} type="button" onClick={() => setDialog("edit")}>{copy.editGroup}</button><button className={styles.danger} type="button" onClick={async () => { if (!window.confirm(copy.confirmCancelGroup)) return; await studyGroupRequest(`/api/study-groups/${selected.id}/cancel`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.cancelGroup}</button></div> : null}
+              {selected.role === "host" ? <div className={styles.hostFoot}><p>{copy.hostingNote}</p><button className={styles.primary} type="button" onClick={() => { setSessionTitle(""); setSessionFocus(""); setDialog("schedule"); }}>{copy.schedule}</button><button className={styles.ghost} type="button" onClick={() => setDialog("edit")}>{copy.editGroup}</button><button className={styles.danger} type="button" onClick={async () => { if (!window.confirm(copy.confirmCancelGroup)) return; await studyGroupRequest(`/api/study-groups/${selected.id}/cancel`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.cancelGroup}</button></div> : null}
             </aside>
           </div>
         ) : null}
@@ -299,21 +304,22 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
             {dialog === "schedule" ? (
               <>
                 <p className={styles.lead}>{copy.arrangeLead}</p>
-                <label className={styles.field}>{copy.sessionTitle} <span className={styles.req}>*</span><input name="title" required maxLength={SESSION_TITLE_MAX} value={sessionTitle} onChange={(event) => setSessionTitle(event.target.value.slice(0, SESSION_TITLE_MAX))} /><span className={styles.counter}>{sessionTitleCount(sessionTitle)}</span></label>
+                <div className={styles.contextCard}><strong>{selected?.title}</strong><span>{selected?.about}</span></div>
+                <label className={styles.field}><span>{copy.sessionTitle} <span className={styles.req}>*</span></span><span className={styles.fieldBox}><input name="title" required maxLength={SESSION_TITLE_MAX} value={sessionTitle} onChange={(event) => setSessionTitle(event.target.value.slice(0, SESSION_TITLE_MAX))} /><span className={styles.counter}>{sessionTitleCount(sessionTitle)}</span></span></label>
                 <label className={styles.field}>{copy.selectLesson}<select name="lesson" defaultValue=""><option value="">{copy.selectLesson}</option></select></label>
                 <div className={styles.pair}>
-                  <label className={styles.field}>{copy.date} <span className={styles.req}>*</span><input name="date" type="date" required /></label>
-                  <label className={styles.field}>{copy.startTime} <span className={styles.req}>*</span><input name="time" type="time" required /></label>
-                  <label className={styles.field}>{copy.duration} <span className={styles.req}>*</span><select name="durationMinutes" required defaultValue=""><option value="">{copy.selectDuration}</option>{DURATION_MINUTE_CHOICES.map((minutes) => <option key={minutes} value={minutes}>{fill(copy.plannedDuration, { count: minutes })}</option>)}</select></label>
-                  <label className={styles.field}>{copy.maxParticipants} <span className={styles.req}>*</span><select name="maxParticipants" required defaultValue="6">{[2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
+                  <label className={styles.field}><span>{copy.date} <span className={styles.req}>*</span></span><input name="date" type="date" required /></label>
+                  <label className={styles.field}><span>{copy.startTime} <span className={styles.req}>*</span></span><input name="time" type="time" required /></label>
+                  <label className={styles.field}><span>{copy.duration} <span className={styles.req}>*</span></span><select name="durationMinutes" required defaultValue=""><option value="">{copy.selectDuration}</option>{DURATION_MINUTE_CHOICES.map((minutes) => <option key={minutes} value={minutes}>{fill(copy.plannedDuration, { count: minutes })}</option>)}</select></label>
+                  <label className={styles.field}><span>{copy.maxParticipants} <span className={styles.req}>*</span> <span className={styles.hint}>{copy.maximumSix}</span></span><select name="maxParticipants" required defaultValue=""><option value="">{copy.selectMaximum}</option>{[2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
                 </div>
-                <label className={styles.field}>{copy.focus}<textarea name="focus" maxLength={50} placeholder={copy.enterDescription} /></label>
-                <label className={styles.switch}><input name="aiTutor" type="checkbox" defaultChecked /> {copy.enableAiTutor}</label>
+                <label className={styles.field}>{copy.focus}<span className={`${styles.fieldBox} ${styles.focusBox}`}><textarea name="focus" maxLength={50} placeholder={copy.enterDescription} value={sessionFocus} onChange={(event) => setSessionFocus(event.target.value.slice(0, 50))} /><span className={styles.counter}>{sessionFocus.length}/50</span></span></label>
+                <label className={styles.switch}><span>{copy.aiTutorLabel} <span className={styles.hint}>{copy.enableAiTutor}</span></span><input name="aiTutor" type="checkbox" defaultChecked /></label>
               </>
             ) : null}
-            <div className={styles.row}>
-              {dialog === "edit" || dialog === "edit-session" || dialog === "schedule" ? <button className={styles.primary} type="submit">{dialog === "schedule" ? copy.scheduleAction : copy.save}</button> : null}
+            <div className={styles.dialogActions}>
               <button className={styles.ghost} type="button" onClick={() => setDialog(null)}>{copy.cancel}</button>
+              {dialog === "edit" || dialog === "edit-session" || dialog === "schedule" ? <button className={styles.primary} type="submit">{dialog === "schedule" ? copy.scheduleAction : copy.save}</button> : null}
             </div>
           </form>
         </dialog>
