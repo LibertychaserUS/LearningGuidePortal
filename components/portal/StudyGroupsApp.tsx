@@ -153,6 +153,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
           <button type="button" aria-pressed={mineFilter === "all"} onClick={() => setMineFilter("all")}>{copy.all}</button>
           <button type="button" aria-pressed={mineFilter === "host"} onClick={() => setMineFilter("host")}>{copy.hostedByMe}</button>
         </div>
+        {signedIn && visibleMine.length === 0 ? <p className={styles.course}>{copy.noMine}</p> : null}
         {visibleMine.map((group) => (
           <button className={styles.card} type="button" key={group.id} aria-current={selectedId === group.id} onClick={() => void openGroup(group.id)}>
             <h3>{group.title}</h3>
@@ -196,60 +197,50 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
           <div className={styles.actions}><button className={styles.ghost} type="button" onClick={() => setDialog(null)}>{copy.cancel}</button><button className={styles.primary} type="submit">{copy.create}</button></div>
           {errorCode !== "error" && errorCode !== "ok" ? <p className={styles.alert} role="alert">{errorText}</p> : null}
         </form> : null}
-        {selected && pane.kind !== "loading" && pane.kind !== "error" ? (
-          <div className={styles.split}>
-            <article className={styles.detail}>
-              <header>
-                <h2>{selected.title}</h2>
-                {selected.role === "host" ? <span className={styles.badge}>{copy.hosting}</span> : null}
-                {selected.role === "member" ? <span className={styles.badge}>{copy.joined}</span> : null}
-                <p className={styles.meta}>{copy.relatedCourse}</p>
-                <p>{selected.courseTitle}</p>
-                <p className={styles.meta}>{copy.about}</p>
-                <p>{selected.about}</p>
-              </header>
+        {selected && pane.kind !== "loading" && pane.kind !== "error" && dialog !== "create" ? (
+          <div className={styles.sheet}>
+            <article>
+              <h2 className={styles.groupTitle}>{selected.title}</h2>
+              {selected.role === "host" ? <span className={styles.hostChip}>{copy.hosting}</span> : null}
+              {selected.role === "member" ? <span className={styles.hostChip}>{copy.joined}</span> : null}
+              <div className={styles.facts}>
+                <div><h3>{copy.relatedCourse}</h3><p>{selected.courseTitle}</p></div>
+                <div><h3 className={styles.aboutLabel}>{copy.about}</h3><p className={styles.aboutBody}>{selected.about}</p></div>
+              </div>
+              <div className={styles.tabRow}><span className={styles.tab}>{copy.liveSessions}</span><span className={styles.countBadge}>{(selected.sessions || []).length}</span></div>
+              <h3 className={styles.sectionLabel}>{copy.liveSessions}</h3>
               {pane.kind === "join-gate" ? (
-                <div className={styles.row}>
-                  {selected.canJoin ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/${selected.id}/join`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } await loadLists(); await openGroup(selected.id); }}>{copy.joinGroup}</button> : <a className={styles.primary} href={`/${locale}/portal/courses/${selected.courseSlug}`}>{copy.getCourseAccess}</a>}
-                  {!signedIn ? <a href={`/${locale}/portal/sign-in`}>{copy.signIn}</a> : null}
-                </div>
+                <>
+                  <p className={styles.joinBanner}>{copy.joinBanner}</p>
+                  <p className={styles.joinNote}>{selected.canJoin ? copy.joinAccess : copy.getCourseAccess}</p>
+                  {selected.canJoin ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/${selected.id}/join`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } await loadLists(); await openGroup(selected.id); }}>{copy.joinNow}</button> : <a className={styles.primary} href={signedIn ? `/${locale}/portal/courses/${selected.courseSlug}` : `/${locale}/portal/sign-in`}>{signedIn ? copy.getCourseAccess : copy.signIn}</a>}
+                </>
               ) : null}
-              {pane.kind === "sessions" ? (
-                <div>
-                  <div className={styles.sectionTitle}>
-                    <h3>{copy.liveSessions}</h3>
-                    {selected.role === "host" ? <button className={styles.primary} type="button" onClick={() => setDialog("schedule")}>{copy.schedule}</button> : null}
-                  </div>
-                  {(selected.sessions || []).length === 0 ? <p>{copy.noSessions}</p> : null}
-                  {(selected.sessions || []).map((session) => (
-                    <article className={styles.session} key={session.id}>
-                      <h3>{session.title}</h3>
-                      <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {session.durationMinutes} min</p>
-                      <p className={styles.meta}>{session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
-                      <div className={styles.row}>
-                        {selected.role === "host" && session.state === "starting_soon" ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/sessions/${session.id}/start`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } router.push(`/${locale}/portal/study-groups/sessions/${session.id}`); }}>{copy.start}</button> : null}
-                        {session.state === "starting_soon" || session.state === "live" ? <button className={styles.primary} type="button" disabled={session.occupancy >= session.maxParticipants} onClick={() => void enter(session)}>{session.occupancy >= session.maxParticipants ? copy.sessionFull : copy.joinNow}</button> : null}
-                        {session.state === "scheduled" && selected.role === "member" && !session.viewerPlanned ? <button className={styles.primary} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/plan`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.plan}</button> : null}
-                        {session.state === "scheduled" && session.viewerPlanned ? <><p className={styles.meta}>{copy.planning}</p><button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/cancel-attendance`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.cancelAttendance}</button></> : null}
-                        {selected.role === "host" && (session.state === "scheduled" || session.state === "starting_soon") ? <button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/cancel`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.cancelSession}</button> : null}
-                        <button className={styles.textButton} type="button" onClick={() => { setAttendees(session.attendees); setDialog("attendees"); }}>{copy.viewAttendees}</button>
-                      </div>
-                    </article>
-                  ))}
+              {pane.kind === "sessions" && (selected.sessions || []).length === 0 ? <div className={styles.emptySessions}><p>{copy.noSessions}</p><Image src="/portal/study-groups/empty-sessions.png" width={150} height={113} alt="" /></div> : null}
+              {pane.kind === "sessions" ? (selected.sessions || []).map((session) => (
+                <article className={styles.session} key={session.id}>
+                  <h3>{session.title}</h3>
+                  <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {session.durationMinutes} min</p>
+                  <p className={styles.meta}>{session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
                   <div className={styles.row}>
-                    {selected.role === "host" ? <button className={styles.textButton} type="button" onClick={() => setDialog("edit")}>{copy.editGroup}</button> : null}
-                    {selected.role === "host" ? <button className={styles.danger} type="button" onClick={async () => { if (!window.confirm(copy.confirmCancelGroup)) return; await studyGroupRequest(`/api/study-groups/${selected.id}/cancel`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.cancelGroup}</button> : null}
-                    {selected.role === "member" ? <button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/${selected.id}/leave`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.leaveGroup}</button> : null}
+                    {selected.role === "host" && session.state === "starting_soon" ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/sessions/${session.id}/start`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } router.push(`/${locale}/portal/study-groups/sessions/${session.id}`); }}>{copy.start}</button> : null}
+                    {session.state === "starting_soon" || session.state === "live" ? <button className={styles.primary} type="button" disabled={session.occupancy >= session.maxParticipants} onClick={() => void enter(session)}>{session.occupancy >= session.maxParticipants ? copy.sessionFull : copy.joinNow}</button> : null}
+                    {session.state === "scheduled" && selected.role === "member" && !session.viewerPlanned ? <button className={styles.primary} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/plan`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.plan}</button> : null}
+                    {session.state === "scheduled" && session.viewerPlanned ? <><p className={styles.meta}>{copy.planning}</p><button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/cancel-attendance`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.cancelAttendance}</button></> : null}
+                    {selected.role === "host" && (session.state === "scheduled" || session.state === "starting_soon") ? <button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/cancel`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.cancelSession}</button> : null}
+                    <button className={styles.textButton} type="button" onClick={() => { setAttendees(session.attendees); setDialog("attendees"); }}>{copy.viewAttendees}</button>
                   </div>
-                  {errorCode !== "error" && errorCode !== "ok" ? <p className={styles.alert} role="alert">{errorText}</p> : null}
-                </div>
-              ) : null}
+                </article>
+              )) : null}
+              {selected.role === "member" ? <button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/${selected.id}/leave`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.leaveGroup}</button> : null}
+              {errorCode !== "error" && errorCode !== "ok" ? <p className={styles.alert} role="alert">{errorText}</p> : null}
             </article>
-            <aside className={styles.members} aria-label={copy.members}>
-              <h3>{copy.members} {selected.memberCount}</h3>
+            <aside className={styles.memberCol} aria-label={copy.members}>
+              <h3>{copy.members} <span className={styles.countBadge}>{selected.memberCount}</span></h3>
               <ul>
-                {(selected.members || []).map((member) => <li key={member.userId}><span>{member.displayName}</span>{member.role === "host" ? <span className={styles.badge}>{copy.room.host}</span> : null}</li>)}
+                {(selected.members || []).map((member) => <li key={member.userId}><span className={styles.avatar}>{member.displayName.slice(0, 1)}</span><span>{member.displayName}</span>{member.role === "host" ? <span className={styles.hostTag}>{copy.room.host}</span> : null}</li>)}
               </ul>
+              {selected.role === "host" ? <div className={styles.hostFoot}><p>{copy.hostingNote}</p><button className={styles.primary} type="button" onClick={() => setDialog("schedule")}>{copy.schedule}</button><button className={styles.ghost} type="button" onClick={() => setDialog("edit")}>{copy.editGroup}</button><button className={styles.danger} type="button" onClick={async () => { if (!window.confirm(copy.confirmCancelGroup)) return; await studyGroupRequest(`/api/study-groups/${selected.id}/cancel`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.cancelGroup}</button></div> : null}
             </aside>
           </div>
         ) : null}
