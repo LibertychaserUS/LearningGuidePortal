@@ -531,7 +531,7 @@
     "sessionTitle": "Session Title",
     "date": "Date",
     "startTime": "Start time",
-    "duration": "Duration (minutes)",
+    "duration": "Duration",
     "maxParticipants": "Maximum participants",
     "focus": "Session focus",
     "enableAiTutor": "Enable AI Tutor for this session",

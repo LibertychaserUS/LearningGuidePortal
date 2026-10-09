@@ -526,7 +526,7 @@
     "sessionTitle": "直播课标题",
     "date": "日期",
     "startTime": "开始时间",
-    "duration": "时长（分钟）",
+    "duration": "时长",
     "maxParticipants": "最多参与人数",
     "focus": "本节重点",
     "enableAiTutor": "为本节启用 AI Tutor",

@@ -261,12 +261,12 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
             {dialog === "schedule" ? (
               <>
                 <p className={styles.lead}>{copy.arrangeLead}</p>
-                <label className={styles.field}>{copy.sessionTitle} <span className={styles.req}>*</span><input name="title" required maxLength={80} /></label>
+                <label className={styles.field}>{copy.sessionTitle} <span className={styles.req}>*</span><input name="title" required /></label>
                 <label className={styles.field}>{copy.selectLesson}<select name="lesson" defaultValue=""><option value="">{copy.selectLesson}</option></select></label>
                 <div className={styles.pair}>
                   <label className={styles.field}>{copy.date} <span className={styles.req}>*</span><input name="date" type="date" required /></label>
                   <label className={styles.field}>{copy.startTime} <span className={styles.req}>*</span><input name="time" type="time" required /></label>
-                  <label className={styles.field}>{copy.duration} <span className={styles.req}>*</span><select name="duration" required defaultValue="45"><option value="30">30</option><option value="45">45</option><option value="60">60</option><option value="90">90</option></select></label>
+                  <label className={styles.field}>{copy.duration} <span className={styles.req}>*</span><input name="duration" type="number" min={1} required placeholder={copy.selectDuration} /></label>
                   <label className={styles.field}>{copy.maxParticipants} <span className={styles.req}>*</span><select name="maxParticipants" required defaultValue="6">{[2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
                 </div>
                 <label className={styles.field}>{copy.focus}<textarea name="focus" maxLength={50} placeholder={copy.enterDescription} /></label>
