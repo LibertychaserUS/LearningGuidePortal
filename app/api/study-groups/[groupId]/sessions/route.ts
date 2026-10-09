@@ -9,7 +9,7 @@ export async function POST(request: Request, context: { params: Promise<{ groupI
     const body = await request.json() as {
       title?: string;
       startsAt?: string;
-      durationMinutes?: number;
+      durationSeconds?: number;
       maxParticipants?: number;
       relatedLessonId?: string | null;
       focus?: string | null;
@@ -20,7 +20,7 @@ export async function POST(request: Request, context: { params: Promise<{ groupI
       groupId,
       title: body.title || "",
       startsAt: body.startsAt || "",
-      durationMinutes: Number(body.durationMinutes),
+      durationSeconds: Number(body.durationSeconds),
       maxParticipants: Number(body.maxParticipants),
       relatedLessonId: body.relatedLessonId,
       focus: body.focus,

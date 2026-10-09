@@ -8,13 +8,18 @@ export type StudyGroupRepository = {
   update<T>(mutate: (store: StudyGroupStore) => T | Promise<T>): Promise<T>;
 };
 
+function withoutMinutes(session: StudyGroupStore["sessions"][number] & { durationMinutes?: number }) {
+  const { durationMinutes: _minutes, ...rest } = session;
+  return rest;
+}
+
 function normalise(value: Partial<StudyGroupStore> | null): StudyGroupStore {
   const base = emptyStore();
   if (!value) return base;
   return {
     groups: value.groups ?? [],
     memberships: value.memberships ?? [],
-    sessions: value.sessions ?? [],
+    sessions: (value.sessions ?? []).map((session) => withoutMinutes(session)),
     intents: value.intents ?? [],
     presences: value.presences ?? [],
     meetings: value.meetings ?? [],
