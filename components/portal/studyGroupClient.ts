@@ -38,6 +38,8 @@ export async function studyGroupRequest<T>(url: string, init?: RequestInit): Pro
 
 export const SESSION_TITLE_MAX = 20;
 
+export const DURATION_MINUTE_CHOICES = [30, 45, 60, 90] as const;
+
 export function sessionTitleCount(value: string) {
   const length = Math.min(value.length, SESSION_TITLE_MAX);
   return `${length}/${SESSION_TITLE_MAX}`;

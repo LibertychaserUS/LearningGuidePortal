@@ -1,7 +1,23 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { sessionControls, studyGroupPane } from "../../modules/group-study/uiState";
-import { SESSION_TITLE_MAX, sessionTitleCount } from "../../components/portal/studyGroupClient";
+import { readFileSync } from "node:fs";
+import en from "../../messages/en-GB.json";
+import zh from "../../messages/zh-CN.json";
+import { DURATION_MINUTE_CHOICES, fill, SESSION_TITLE_MAX, sessionTitleCount } from "../../components/portal/studyGroupClient";
+
+test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", () => {
+  assert.deepEqual([...DURATION_MINUTE_CHOICES], [30, 45, 60, 90]);
+  assert.equal(en.studyGroupsPage.duration, "Duration");
+  assert.equal(zh.studyGroupsPage.duration, "时长");
+  assert.deepEqual(DURATION_MINUTE_CHOICES.map((minutes) => fill(en.studyGroupsPage.plannedDuration, { count: minutes })), ["30 mins", "45 mins", "60 mins", "90 mins"]);
+  assert.deepEqual(DURATION_MINUTE_CHOICES.map((minutes) => fill(zh.studyGroupsPage.plannedDuration, { count: minutes })), ["30 分钟", "45 分钟", "60 分钟", "90 分钟"]);
+  const source = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
+  assert.match(source, /select name="durationMinutes" required/);
+  assert.match(source, /DURATION_MINUTE_CHOICES\.map/);
+  assert.equal(source.includes("durationSeconds"), false);
+  assert.equal(source.includes('type="number"'), false);
+});
 
 test("session title counter matches the 20 character Figma limit", () => {
   assert.equal(SESSION_TITLE_MAX, 20);

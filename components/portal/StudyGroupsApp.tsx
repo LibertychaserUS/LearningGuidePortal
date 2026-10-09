@@ -7,7 +7,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 import { studyGroupPane } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
-import { fill, SESSION_TITLE_MAX, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+import { DURATION_MINUTE_CHOICES, fill, SESSION_TITLE_MAX, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
 type CourseOption = { id: string; title: string; slug: string };
 type Card = { id: string; title: string; courseTitle: string; role: "host" | "member" | null; memberCount: number; live: boolean; courseId: string };
@@ -115,7 +115,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
       body: JSON.stringify({
         title: form.get("title"),
         startsAt,
-        durationMinutes: Number(form.get("duration")),
+        durationMinutes: Number(form.get("durationMinutes")),
         maxParticipants: Number(form.get("maxParticipants")),
         focus: form.get("focus"),
         aiTutorEnabled: form.get("aiTutor") === "on"
@@ -267,7 +267,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                 <div className={styles.pair}>
                   <label className={styles.field}>{copy.date} <span className={styles.req}>*</span><input name="date" type="date" required /></label>
                   <label className={styles.field}>{copy.startTime} <span className={styles.req}>*</span><input name="time" type="time" required /></label>
-                  <label className={styles.field}>{copy.duration} <span className={styles.req}>*</span><select name="duration" required defaultValue=""><option value="">{copy.selectDuration}</option></select></label>
+                  <label className={styles.field}>{copy.duration} <span className={styles.req}>*</span><select name="durationMinutes" required defaultValue=""><option value="">{copy.selectDuration}</option>{DURATION_MINUTE_CHOICES.map((minutes) => <option key={minutes} value={minutes}>{fill(copy.plannedDuration, { count: minutes })}</option>)}</select></label>
                   <label className={styles.field}>{copy.maxParticipants} <span className={styles.req}>*</span><select name="maxParticipants" required defaultValue="6">{[2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
                 </div>
                 <label className={styles.field}>{copy.focus}<textarea name="focus" maxLength={50} placeholder={copy.enterDescription} /></label>
