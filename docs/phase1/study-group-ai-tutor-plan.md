@@ -1,10 +1,21 @@
 # Study Group AI Tutor plan
 
-This phase stores whether a Live Session has AI Tutor enabled. When that flag is on and the Session is live, a participant can queue their own chat text. The server keeps the AI Tutor system prompt. The page, the client bundle, and LiveKit messages do not carry it. Queued text is user data. This phase does not call a model and does not return or render an answer.
+A participant in a live Session can enqueue their own text. One shared answer can then be published into that Session's LiveKit chat. Closed choices are in `docs/phase1/study-group/decisions.md`.
+
+## This phase
+
+- A participant who has entered a live Session with the flag on can enqueue a request.
+- The item stores the user id, the session id, the text, and the server receipt time.
+- The same client event id returns the original item.
+- Enqueue does not call a model, change occupancy, or issue a token.
+- One question is in flight per Session, in server receipt order. A later question waits.
+- The room posts `{ message }` to `POST /api/study-groups/sessions/:sessionId/ai-tutor`. The server function is `enqueueTutor`.
+- If Course Knowledge retrieval returns nothing, the shared chat says the course material does not contain the answer.
+- Otherwise the server calls OpenRouter with the model id from one environment variable and publishes the reply to the shared LiveKit chat.
 
 ## Later behaviour
 
-When a later phase turns the stored flag on:
+When a later phase attaches a tutor to the queue:
 
 - Any current participant may invoke the tutor from the shared LiveKit chat.
 - The prompt and the reply stay in that ephemeral chat. They are not database rows.
@@ -15,6 +26,6 @@ When a later phase turns the stored flag on:
 
 ## Out of this phase
 
-- No model call, no Knowledge System call, and no tutor answer in the room.
-- The client does not send a system prompt or a rewritten instruction. `POST /api/study-groups/sessions/:sessionId/ai-tutor` accepts `{ message }` and returns `{ id, queuedAt }`.
+- No private tutor channel and no screen parsing.
+- No second knowledge base, table, or import.
 - Chat text stays in LiveKit. The queue row is the request, not a tutor transcript.

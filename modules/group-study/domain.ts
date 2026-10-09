@@ -29,7 +29,7 @@ export type LiveSessionRow = {
   title: string;
   relatedLessonId: string | null;
   startsAt: string;
-  durationMinutes: number;
+  durationSeconds: number;
   maxParticipants: number;
   focus: string | null;
   aiTutorEnabled: boolean;
@@ -76,8 +76,11 @@ export type TutorRequestRow = {
   id: string;
   sessionId: string;
   userId: string;
-  message: string;
-  queuedAt: string;
+  clientEventId: string;
+  text: string;
+  receivedAt: string;
+  inFlight: boolean;
+  answeredAt?: string | null;
 };
 
 export type StudyGroupStore = {
@@ -91,6 +94,7 @@ export type StudyGroupStore = {
   tutorRequests: TutorRequestRow[];
 };
 
+export const SESSION_DURATION_SECONDS = [1800, 2700, 3600, 5400] as const;
 export const STARTING_SOON_MS = 10 * 60 * 1000;
 export const TOKEN_TTL_SECONDS = 10 * 60;
 
