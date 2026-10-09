@@ -3,18 +3,20 @@ import { studyGroupService } from "@/modules/group-study/runtime";
 
 let receipt = 0;
 
-export async function POST(request: Request, context: { params: Promise<{ sessionId: string }> }) {
+export function POST(request: Request, context: { params: Promise<{ sessionId: string }> }) {
   const requestedAt = `${new Date().toISOString()}#${String(++receipt).padStart(8, "0")}`;
-  const user = await signedInUser(request);
-  if (!user) return unauthenticated();
-  const { sessionId } = await context.params;
-  try {
-    return studyGroupData(await studyGroupService().enterSession({
-      actorUserId: user.id,
-      sessionId,
-      requestedAt
-    }));
-  } catch (error) {
-    return studyGroupFailure(error);
-  }
+  return studyGroupService().orderEntry(requestedAt, async () => {
+    const user = await signedInUser(request);
+    if (!user) return unauthenticated();
+    const { sessionId } = await context.params;
+    try {
+      return studyGroupData(await studyGroupService().grantSeat({
+        actorUserId: user.id,
+        sessionId,
+        requestedAt
+      }));
+    } catch (error) {
+      return studyGroupFailure(error);
+    }
+  });
 }

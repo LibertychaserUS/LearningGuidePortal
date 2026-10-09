@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { SESSION_COOKIE } from "../../services/productAuth";
+import { STUDY_GROUP_TUTOR_SYSTEM_PROMPT } from "../../modules/group-study/tutorPrompt";
 
 const cwd = process.cwd();
 const env = { ...process.env };
@@ -18,6 +19,8 @@ let postSession: Route;
 let postEnter: Route;
 let postToken: Route;
 let patchSession: Route;
+let postStart: Route;
+let postTutor: Route;
 let memberToken = "";
 let otherMemberToken = "";
 
@@ -68,6 +71,8 @@ before(async () => {
   postEnter = (await import("../../app/api/study-groups/sessions/[sessionId]/enter/route")).POST as unknown as Route;
   postToken = (await import("../../app/api/study-groups/sessions/[sessionId]/token/route")).POST as unknown as Route;
   patchSession = (await import("../../app/api/study-groups/sessions/[sessionId]/route")).PATCH as unknown as Route;
+  postStart = (await import("../../app/api/study-groups/sessions/[sessionId]/start/route")).POST as unknown as Route;
+  postTutor = (await import("../../app/api/study-groups/sessions/[sessionId]/tutor/route")).POST as unknown as Route;
 });
 
 after(async () => {
@@ -226,4 +231,61 @@ test("enter uses server receipt time and edit keeps people when the maximum woul
   const after = JSON.parse(await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "study-group.json"), "utf8")) as { presences: Array<{ sessionId: string; leftAt: string | null }>; sessions: Array<{ id: string; maxParticipants: number }> };
   assert.equal(after.presences.filter((item) => item.sessionId === wideId && !item.leftAt).length, 3);
   assert.equal(after.sessions.find((item) => item.id === wideId)?.maxParticipants, 6);
+});
+
+test("AI Tutor enqueue is idempotent and does not issue a token or call a model", async () => {
+  const fetches: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    fetches.push(String(input));
+    throw new Error("provider");
+  }) as typeof fetch;
+  try {
+    const created = await call(postGroup, "http://localhost/api/study-groups", { title: "Tutor", courseId: "api-course", about: "About the tutor queue." }, token);
+    const groupId = (await created.json()).data.id as string;
+    const startsAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const scheduled = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+      title: "Tutor session",
+      startsAt,
+      durationSeconds: 1800,
+      maxParticipants: 4,
+      aiTutorEnabled: true
+    }, token, { groupId });
+    const sessionId = (await scheduled.json()).data.id as string;
+    assert.equal((await call(postEnter, `http://localhost/api/study-groups/sessions/${sessionId}/enter`, {}, token, { sessionId })).status, 200);
+    assert.equal((await call(postStart, `http://localhost/api/study-groups/sessions/${sessionId}/start`, {}, token, { sessionId })).status, 200);
+    const occupancyBefore = JSON.parse(await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "study-group.json"), "utf8")) as { presences: Array<{ sessionId: string; leftAt: string | null }> };
+    const beforeCount = occupancyBefore.presences.filter((item) => item.sessionId === sessionId && !item.leftAt).length;
+    const queued = await call(postTutor, `http://localhost/api/study-groups/sessions/${sessionId}/tutor`, {
+      text: "Why 1933?",
+      clientEventId: "evt-api-1",
+      receivedAt: "1999-01-01T00:00:00.000Z"
+    }, token, { sessionId });
+    assert.equal(queued.status, 200);
+    const body = await queued.json();
+    assert.equal(body.data.userId, "api-host");
+    assert.equal(body.data.sessionId, sessionId);
+    assert.equal(body.data.text, "Why 1933?");
+    assert.notEqual(body.data.receivedAt, "1999-01-01T00:00:00.000Z");
+    const replay = await call(postTutor, `http://localhost/api/study-groups/sessions/${sessionId}/tutor`, {
+      text: "Different",
+      clientEventId: "evt-api-1"
+    }, token, { sessionId });
+    assert.equal(replay.status, 200);
+    assert.equal((await replay.json()).data.id, body.data.id);
+    const stored = JSON.parse(await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "study-group.json"), "utf8")) as { tutorRequests: Array<{ clientEventId: string }>; presences: Array<{ sessionId: string; leftAt: string | null }>; chat?: unknown };
+    assert.equal(stored.tutorRequests.filter((item) => item.clientEventId === "evt-api-1").length, 1);
+    assert.equal(stored.chat, undefined);
+    assert.equal(stored.presences.filter((item) => item.sessionId === sessionId && !item.leftAt).length, beforeCount);
+    assert.equal(fetches.length, 0);
+    const log = await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "token-issuance.log"), "utf8").catch((error: NodeJS.ErrnoException) => error.code === "ENOENT" ? "" : Promise.reject(error));
+    assert.equal(log.includes(body.data.text), false);
+    const secret = "fake-tutor-secret-not-in-response";
+    process.env.STUDY_GROUP_TUTOR_KEY_UNUSED = secret;
+    const raw = JSON.stringify(body);
+    assert.equal(raw.includes(secret), false);
+    assert.equal(raw.includes(STUDY_GROUP_TUTOR_SYSTEM_PROMPT), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

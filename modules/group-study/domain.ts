@@ -72,6 +72,16 @@ export type ReminderRow = {
   sentAt: string;
 };
 
+export type TutorRequestRow = {
+  id: string;
+  sessionId: string;
+  userId: string;
+  clientEventId: string;
+  text: string;
+  receivedAt: string;
+  inFlight: boolean;
+};
+
 export type StudyGroupStore = {
   groups: StudyGroupRow[];
   memberships: MembershipRow[];
@@ -80,6 +90,7 @@ export type StudyGroupStore = {
   presences: PresenceRow[];
   meetings: MeetingRow[];
   reminders: ReminderRow[];
+  tutorRequests: TutorRequestRow[];
 };
 
 export const SESSION_DURATION_SECONDS = [1800, 2700, 3600, 5400] as const;
@@ -87,7 +98,7 @@ export const STARTING_SOON_MS = 10 * 60 * 1000;
 export const TOKEN_TTL_SECONDS = 10 * 60;
 
 export function emptyStore(): StudyGroupStore {
-  return { groups: [], memberships: [], sessions: [], intents: [], presences: [], meetings: [], reminders: [] };
+  return { groups: [], memberships: [], sessions: [], intents: [], presences: [], meetings: [], reminders: [], tutorRequests: [] };
 }
 
 export function effectiveSessionState(session: LiveSessionRow, now: Date): EffectiveSessionState | "removed" {

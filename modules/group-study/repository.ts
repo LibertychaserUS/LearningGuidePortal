@@ -23,7 +23,8 @@ function normalise(value: Partial<StudyGroupStore> | null): StudyGroupStore {
     intents: value.intents ?? [],
     presences: value.presences ?? [],
     meetings: value.meetings ?? [],
-    reminders: value.reminders ?? []
+    reminders: value.reminders ?? [],
+    tutorRequests: value.tutorRequests ?? []
   };
 }
 

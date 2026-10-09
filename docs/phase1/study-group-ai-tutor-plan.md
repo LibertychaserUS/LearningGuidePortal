@@ -1,10 +1,19 @@
 # Study Group AI Tutor plan
 
-This phase stores whether a Live Session has AI Tutor enabled. It does not call a model, write chat, or put a tutor in the room.
+This phase does not call a model. It stores whether a Live Session has AI Tutor enabled, and a session-scoped request queue a later tutor can read. The queue does not change seats, tokens, or chat.
+
+## This phase
+
+- A participant in a live Session with the flag on can enqueue a request.
+- The item stores the user id, the session id, the text, and the server receipt time.
+- The same client event id returns the original item.
+- The item is not a chat row and not a token row.
+- Enqueue does not change occupancy, does not issue a token, and does not call a provider.
+- There is no drain, no Course Knowledge call, and no understanding-check generation.
 
 ## Later behaviour
 
-When a later phase turns the stored flag on:
+When a later phase attaches a tutor to the queue:
 
 - Any current participant may invoke the tutor from the shared LiveKit chat.
 - The prompt and the reply stay in that ephemeral chat. They are not database rows.
@@ -15,6 +24,6 @@ When a later phase turns the stored flag on:
 
 ## Out of this phase
 
-- No tutor route, prompt, or Knowledge System call from Group Study.
+- No model call and no understanding-check generation.
 - No tutor control inside the Live Session room.
 - No persisted transcript of tutor messages.
