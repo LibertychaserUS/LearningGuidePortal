@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { after, before, test } from "node:test";
+import { afterEach, beforeEach, test } from "node:test";
 import { readFile } from "node:fs/promises";
 import { createStudyGroupService, type StudyGroupService } from "../../modules/group-study/service";
 import { createStudyGroupRepository, type StudyGroupRepository } from "../../modules/group-study/repository";
@@ -17,9 +17,12 @@ const mails: Array<{ to: string; subject: string }> = [];
 const notes: Array<{ userId: string; title: string }> = [];
 const tokenLogKey = Buffer.alloc(32, 7);
 
-before(async () => {
+beforeEach(async () => {
   directory = await mkdtemp(path.join(tmpdir(), "lg-study-group-"));
+  access.clear();
   access.add("host:course-1");
+  notes.length = 0;
+  mails.length = 0;
   repository = createStudyGroupRepository(directory);
   service = createStudyGroupService({
     repository,
@@ -35,8 +38,8 @@ before(async () => {
   });
 });
 
-after(async () => {
-  await rm(directory, { recursive: true, force: true });
+afterEach(async () => {
+  if (directory) await rm(directory, { recursive: true, force: true });
 });
 
 test("a learner with course access creates a discoverable group and becomes Host", async () => {
