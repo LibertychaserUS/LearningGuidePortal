@@ -15,6 +15,8 @@ import {
 import { signParticipantToken } from "./liveKitToken";
 import type { StudyGroupRepository } from "./repository";
 import { encryptTokenLogLine } from "./tokenLog";
+import { createTutorKeyPool, type TutorKeyOutcome } from "./tutorKeyPool";
+import { COURSE_MATERIAL_ABSENT, retrieveCourseKnowledge } from "./tutorAnswer";
 
 export type CourseSummary = { id: string; title: string; slug: string };
 export type UserProfile = { id: string; displayName: string; email: string | null; locale: "en-GB" | "zh-CN" };
@@ -30,6 +32,10 @@ export type StudyGroupDeps = {
   sendMail: (input: { to: string; subject: string; text: string; locale: "en-GB" | "zh-CN" }) => Promise<void>;
   liveKit: { apiKey: string; apiSecret: string; url: string };
   tokenLogKey: Buffer;
+  courseKnowledge?: (courseId: string) => Promise<string>;
+  publishRoomChat?: (input: { room: string; text: string }) => Promise<void>;
+  tutorKeys?: () => Array<{ id: string; secret: string }>;
+  tutorCall?: (input: { secret: string; text: string; context: string }) => Promise<{ outcome: TutorKeyOutcome; latencyMs: number; body?: string }>;
 };
 
 export type GroupView = StudyGroupRow & {
@@ -595,6 +601,44 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
         store.tutorRequests.push(row);
         return row;
       });
+    },
+
+    async deliverTutorAnswer(input: { sessionId: string }) {
+      const snapshot = await deps.repository.read();
+      const session = snapshot.sessions.find((item) => item.id === input.sessionId && item.status !== "removed");
+      if (!session) return null;
+      const item = snapshot.tutorRequests
+        .filter((entry) => entry.sessionId === session.id && entry.inFlight && !entry.answeredAt)
+        .sort((left, right) => left.receivedAt.localeCompare(right.receivedAt) || left.id.localeCompare(right.id))[0];
+      if (!item) return null;
+      const group = snapshot.groups.find((entry) => entry.id === session.groupId);
+      const corpus = group && deps.courseKnowledge ? await deps.courseKnowledge(group.courseId) : "";
+      const context = retrieveCourseKnowledge(corpus, item.text);
+      let reply = COURSE_MATERIAL_ABSENT;
+      if (context) {
+        const keys = deps.tutorKeys?.() ?? [];
+        if (!deps.tutorCall || keys.length === 0) return null;
+        const pool = createTutorKeyPool({
+          keys,
+          call: (secret) => deps.tutorCall!({ secret, text: item.text, context })
+        });
+        const result = await pool.execute(item.text);
+        if (!result.keyId || !result.body) return null;
+        if (keys.some((key) => result.body.includes(key.secret))) return null;
+        reply = result.body;
+      }
+      if (deps.publishRoomChat) await deps.publishRoomChat({ room: session.id, text: reply });
+      await deps.repository.update((store) => {
+        const row = store.tutorRequests.find((entry) => entry.id === item.id);
+        if (!row || row.answeredAt) return;
+        row.answeredAt = deps.now().toISOString();
+        row.inFlight = false;
+        const next = store.tutorRequests
+          .filter((entry) => entry.sessionId === session.id && !entry.answeredAt)
+          .sort((left, right) => left.receivedAt.localeCompare(right.receivedAt) || left.id.localeCompare(right.id))[0];
+        if (next) next.inFlight = true;
+      });
+      return { text: reply };
     },
 
     async dispatchDueReminders() {

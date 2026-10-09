@@ -64,7 +64,11 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     };
     room.on(RoomEvent.DataReceived, (payload, participant) => {
       const message = JSON.parse(new TextDecoder().decode(payload)) as { type: string; text?: string };
-      const from = participant?.identity || "participant";
+      const from = participant?.name || participant?.identity || "participant";
+      if (message.type === "tutor" && message.text) {
+        setChat((items) => [...items, { id: `tutor-${items.length}`, from: roomCopy.aiTutor, text: message.text || "" }]);
+        return;
+      }
       if (message.type === "chat" && message.text) setChat((items) => [...items, { id: `${from}-${items.length}`, from, text: message.text || "" }]);
       if (message.type === "raise-hand") setHands((items) => items.includes(from) ? items : [...items, from]);
     });

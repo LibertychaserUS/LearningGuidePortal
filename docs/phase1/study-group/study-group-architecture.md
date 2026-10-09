@@ -1,6 +1,6 @@
 # Study Group architecture
 
-Design for Oliver Zhang. Sources are PRD v0.10, the locked decisions below, and branch `cursor/study-group-backend-7481` at `18a1046ec71853f77d1b73eda545526c58964826` ([PR 37](https://github.com/LibertychaserUS/LearningGuidePortal/pull/37)). Diagrams are in `study-group-uml.md`. Technology choices are in `study-group-tech-selection.md`. The later AI Tutor phase is in `study-group-ai-tutor-plan.md`.
+Design for Oliver Zhang. Sources are PRD v0.10, the locked decisions below, and branch `cursor/study-group-backend-7481` at `18a1046ec71853f77d1b73eda545526c58964826` ([PR 37](https://github.com/LibertychaserUS/LearningGuidePortal/pull/37)). Diagrams are in `study-group-uml.md`. Technology choices are in `study-group-tech-selection.md`. The later AI Tutor phase is in `study-group-ai-tutor-plan.md`. Later closed choices are in `decisions.md`.
 
 ## Closed decisions
 

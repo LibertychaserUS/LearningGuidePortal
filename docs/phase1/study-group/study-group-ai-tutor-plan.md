@@ -1,6 +1,8 @@
 # Study Group AI Tutor plan
 
-This phase does not call a model. It stores the Live Session flag and a session-scoped request queue. A later tutor can read that queue without changing seats, tokens, or chat.
+Later closed choices are in `decisions.md`.
+
+This phase does not call a model from the enqueue path. It stores the Live Session flag and a session-scoped request queue. A later tutor can read that queue without changing seats, tokens, or chat.
 
 ## This phase
 

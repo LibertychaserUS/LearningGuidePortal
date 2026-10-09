@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { after, before, test } from "node:test";
+import { afterEach, beforeEach, test } from "node:test";
 import { sessionControls } from "../../modules/group-study/uiState";
 import { createStudyGroupRepository, type StudyGroupRepository } from "../../modules/group-study/repository";
 import { createStudyGroupService, type StudyGroupDeps, type StudyGroupService } from "../../modules/group-study/service";
@@ -58,14 +58,18 @@ async function activeUsers(sessionId: string) {
   return store.presences.filter((item) => item.sessionId === sessionId && item.enteredAt && !item.leftAt).map((item) => item.userId);
 }
 
-before(async () => {
+beforeEach(async () => {
   directory = await mkdtemp(path.join(tmpdir(), "lg-study-group-corners-"));
+  access.clear();
+  access.add("host:course-1");
+  notes.length = 0;
+  mails.length = 0;
   repository = createStudyGroupRepository(directory);
   service = serviceWith({ apiKey: "lk-key", apiSecret: SECRET, url: "wss://livekit.example.test" });
 });
 
-after(async () => {
-  await rm(directory, { recursive: true, force: true });
+afterEach(async () => {
+  if (directory) await rm(directory, { recursive: true, force: true });
 });
 
 test("a session title of 20 characters is kept and a longer title is rejected", async () => {

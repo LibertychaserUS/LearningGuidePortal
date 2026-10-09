@@ -1,20 +1,6 @@
-import { randomUUID } from "node:crypto";
-import { signedInUser, studyGroupData, studyGroupFailure, unauthenticated } from "@/modules/group-study/http";
-import { studyGroupService } from "@/modules/group-study/runtime";
+import { acceptTutorPost } from "@/modules/group-study/tutorHttp";
 
 export async function POST(request: Request, context: { params: Promise<{ sessionId: string }> }) {
-  const user = await signedInUser(request);
-  if (!user) return unauthenticated();
   const { sessionId } = await context.params;
-  try {
-    const body = await request.json() as { message?: string; text?: string; clientEventId?: string };
-    return studyGroupData(await studyGroupService().enqueueTutor({
-      actorUserId: user.id,
-      sessionId,
-      text: body.text || body.message || "",
-      clientEventId: body.clientEventId || randomUUID()
-    }));
-  } catch (error) {
-    return studyGroupFailure(error);
-  }
+  return acceptTutorPost(request, sessionId);
 }

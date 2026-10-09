@@ -7,7 +7,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 import { studyGroupPane } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
-import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, SESSION_TITLE_MAX, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, plannedMinutes, scheduleSessionFields, SESSION_TITLE_MAX, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
 type CourseOption = { id: string; title: string; slug: string };
 type Card = { id: string; title: string; courseTitle: string; role: "host" | "member" | null; memberCount: number; live: boolean; courseId: string };
@@ -114,14 +114,14 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     const startsAt = new Date(`${form.get("date")}T${form.get("time")}`).toISOString();
     const result = await studyGroupRequest<StudySession>(`/api/study-groups/${selected.id}/sessions`, {
       method: "POST",
-      body: JSON.stringify({
+      body: JSON.stringify(scheduleSessionFields({
         title: form.get("title"),
         startsAt,
         durationMinutes: Number(form.get("durationMinutes")),
         maxParticipants: Number(form.get("maxParticipants")),
         focus: form.get("focus"),
         aiTutorEnabled: form.get("aiTutor") === "on"
-      })
+      }))
     });
     if (!result.ok) {
       setErrorCode(result.code);
@@ -247,14 +247,14 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                 <>
                   <p className={styles.joinBanner}>{copy.joinBanner}</p>
                   <p className={styles.joinNote}>{selected.canJoin ? copy.joinAccess : copy.getCourseAccess}</p>
-                  {selected.canJoin ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/${selected.id}/join`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } await loadLists(); await openGroup(selected.id); }}>{copy.joinNow}</button> : <a className={styles.primary} href={signedIn ? `/${locale}/portal/courses/${selected.courseSlug}` : `/${locale}/portal/sign-in`}>{signedIn ? copy.getCourseAccess : copy.signIn}</a>}
+                  {selected.canJoin ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/${selected.id}/join`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } await loadLists(); await openGroup(selected.id); }}>{copy.joinGroup}</button> : <a className={styles.primary} href={signedIn ? `/${locale}/portal/courses/${selected.courseSlug}` : `/${locale}/portal/sign-in`}>{signedIn ? copy.getCourseAccess : copy.signIn}</a>}
                 </>
               ) : null}
               {pane.kind === "sessions" && (selected.sessions || []).length === 0 ? <div className={styles.emptySessions}><p>{copy.noSessions}</p><Image src="/portal/study-groups/empty-sessions.png" width={150} height={113} alt="" /></div> : null}
               {pane.kind === "sessions" ? (selected.sessions || []).map((session) => (
                 <article className={styles.session} key={session.id}>
                   <h3>{session.title}</h3>
-                  <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {fill(copy.plannedDuration, { count: session.durationMinutes })}</p>
+                  <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p>
                   <p className={styles.meta}>{session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
                   <div className={styles.row}>
                     {selected.role === "host" && session.state === "starting_soon" ? <button className={styles.primary} type="button" onClick={() => void startSession(session)}>{copy.start}</button> : null}

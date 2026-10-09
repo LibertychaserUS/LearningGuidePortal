@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { after, before, beforeEach, test } from "node:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -23,6 +23,7 @@ let postStart: Route;
 let postTutor: Route;
 let memberToken = "";
 let otherMemberToken = "";
+let filledTokens: string[] = [];
 
 function call(handler: (request: Request, context: { params: Promise<Record<string, string>> }) => Promise<Response>, url: string, body?: unknown, cookie?: string, params?: Record<string, string>, method = body === undefined ? "GET" : "POST") {
   return handler(new Request(url, {
@@ -51,19 +52,29 @@ before(async () => {
     { id: "api-host", email: "host@example.test", passwordHash: null, nickname: "Anna", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
     { id: "api-stranger", email: "stranger@example.test", passwordHash: null, nickname: "Sam", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
     { id: "api-m1", email: "m1@example.test", passwordHash: null, nickname: "Mia", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
-    { id: "api-m2", email: "m2@example.test", passwordHash: null, nickname: "Noah", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" }
+    { id: "api-m2", email: "m2@example.test", passwordHash: null, nickname: "Noah", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
+    { id: "api-m3", email: "m3@example.test", passwordHash: null, nickname: "Ada", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
+    { id: "api-m4", email: "m4@example.test", passwordHash: null, nickname: "Ben", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
+    { id: "api-m5", email: "m5@example.test", passwordHash: null, nickname: "Cleo", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" },
+    { id: "api-m6", email: "m6@example.test", passwordHash: null, nickname: "Dan", locale: "en-GB", status: "active", emailVerifiedAt: now, createdAt: now, role: "student" }
   );
   data.courses.push({ id: "api-course", slug: "german-history", title: "German History", description: "Course", status: "published", sections: [], createdAt: now, updatedAt: now });
   data.entitlements.push(
     { id: "api-access", userId: "api-host", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" },
     { id: "api-access-m1", userId: "api-m1", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" },
-    { id: "api-access-m2", userId: "api-m2", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" }
+    { id: "api-access-m2", userId: "api-m2", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" },
+    { id: "api-access-m3", userId: "api-m3", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" },
+    { id: "api-access-m4", userId: "api-m4", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" },
+    { id: "api-access-m5", userId: "api-m5", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" },
+    { id: "api-access-m6", userId: "api-m6", courseId: "api-course", state: "active", source: "purchase", validTo: later, scope: "course", scopeId: "api-course", device: "pc" }
   );
   await files.atomicWriteJson(path.join(files.systemRoot(), "learning_guide", "product.json"), data);
   token = (await store.createSession("api-host")).token;
   strangerToken = (await store.createSession("api-stranger")).token;
   memberToken = (await store.createSession("api-m1")).token;
   otherMemberToken = (await store.createSession("api-m2")).token;
+  filledTokens = [];
+  for (const id of ["api-m1", "api-m2", "api-m3", "api-m4", "api-m5", "api-m6"]) filledTokens.push((await store.createSession(id)).token);
   postGroup = (await import("../../app/api/study-groups/route")).POST as unknown as Route;
   getGroups = (await import("../../app/api/study-groups/route")).GET as unknown as Route;
   postJoin = (await import("../../app/api/study-groups/[groupId]/join/route")).POST as unknown as Route;
@@ -73,6 +84,10 @@ before(async () => {
   patchSession = (await import("../../app/api/study-groups/sessions/[sessionId]/route")).PATCH as unknown as Route;
   postStart = (await import("../../app/api/study-groups/sessions/[sessionId]/start/route")).POST as unknown as Route;
   postTutor = (await import("../../app/api/study-groups/sessions/[sessionId]/tutor/route")).POST as unknown as Route;
+});
+
+beforeEach(async () => {
+  await rm(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group"), { recursive: true, force: true });
 });
 
 after(async () => {
@@ -277,7 +292,8 @@ test("AI Tutor enqueue is idempotent and does not issue a token or call a model"
     assert.equal(stored.tutorRequests.filter((item) => item.clientEventId === "evt-api-1").length, 1);
     assert.equal(stored.chat, undefined);
     assert.equal(stored.presences.filter((item) => item.sessionId === sessionId && !item.leftAt).length, beforeCount);
-    assert.equal(fetches.length, 0);
+    assert.equal(fetches.some((url) => url.includes("openrouter.ai")), false);
+    assert.equal(fetches.every((url) => url.includes("livekit.example.test")), true);
     const log = await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "token-issuance.log"), "utf8").catch((error: NodeJS.ErrnoException) => error.code === "ENOENT" ? "" : Promise.reject(error));
     assert.equal(log.includes(body.data.text), false);
     const secret = "fake-tutor-secret-not-in-response";
@@ -285,7 +301,43 @@ test("AI Tutor enqueue is idempotent and does not issue a token or call a model"
     const raw = JSON.stringify(body);
     assert.equal(raw.includes(secret), false);
     assert.equal(raw.includes(STUDY_GROUP_TUTOR_SYSTEM_PROMPT), false);
+    assert.equal(fetches.join("\n").includes(secret), false);
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("create, join, schedule, and a full session refuses the Host", async () => {
+  const created = await call(postGroup, "http://localhost/api/study-groups", { title: "Full room", courseId: "api-course", about: "About the full group." }, token);
+  assert.equal(created.status, 200);
+  const groupId = (await created.json()).data.id as string;
+  for (const cookie of filledTokens) {
+    const joined = await call(postJoin, `http://localhost/api/study-groups/${groupId}/join`, {}, cookie, { groupId });
+    assert.equal(joined.status, 200);
+  }
+  const startsAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const scheduled = await call(postSession, `http://localhost/api/study-groups/${groupId}/sessions`, {
+    title: "Six seats",
+    startsAt,
+    durationSeconds: 1800,
+    maxParticipants: 6
+  }, token, { groupId });
+  assert.equal(scheduled.status, 200);
+  const scheduledBody = await scheduled.json();
+  assert.equal(scheduledBody.data.durationSeconds, 1800);
+  assert.equal(scheduledBody.data.durationMinutes, undefined);
+  const sessionId = scheduledBody.data.id as string;
+  for (const cookie of filledTokens) {
+    const entered = await call(postEnter, `http://localhost/api/study-groups/sessions/${sessionId}/enter`, {}, cookie, { sessionId });
+    assert.equal(entered.status, 200);
+  }
+  const host = await call(postEnter, `http://localhost/api/study-groups/sessions/${sessionId}/enter`, {}, token, { sessionId });
+  assert.equal(host.status, 409);
+  assert.equal((await host.json()).code, "session_full");
+  const stored = JSON.parse(await readFile(path.join(directory, "data", "knowledge_system", "learning_guide", "study-group", "study-group.json"), "utf8")) as { sessions: Array<{ id: string; durationSeconds: number }>; presences: Array<{ sessionId: string; userId: string; leftAt: string | null }> };
+  assert.equal(stored.sessions.find((item) => item.id === sessionId)?.durationSeconds, 1800);
+  assert.equal(JSON.stringify(stored).includes("durationMinutes"), false);
+  const seated = stored.presences.filter((item) => item.sessionId === sessionId && !item.leftAt);
+  assert.equal(seated.length, 6);
+  assert.equal(seated.some((item) => item.userId === "api-host"), false);
 });

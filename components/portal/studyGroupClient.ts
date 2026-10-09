@@ -4,7 +4,7 @@ export type StudySession = {
   groupId: string;
   title: string;
   startsAt: string;
-  durationMinutes: number;
+  durationSeconds: number;
   maxParticipants: number;
   focus: string | null;
   aiTutorEnabled: boolean;
@@ -46,6 +46,21 @@ export function hostMayOpenRoom(startOk: boolean, enterOk: boolean) {
 
 export function tutorQueueBody(message: string) {
   return { message };
+}
+
+export function plannedMinutes(session: { durationSeconds: number }) {
+  return Math.round(session.durationSeconds / 60);
+}
+
+export function scheduleSessionFields(input: { title: FormDataEntryValue | null; startsAt: string; durationMinutes: number; maxParticipants: number; focus: FormDataEntryValue | null; aiTutorEnabled: boolean }) {
+  return {
+    title: input.title,
+    startsAt: input.startsAt,
+    durationSeconds: input.durationMinutes * 60,
+    maxParticipants: input.maxParticipants,
+    focus: input.focus,
+    aiTutorEnabled: input.aiTutorEnabled
+  };
 }
 
 export function sessionTitleCount(value: string) {

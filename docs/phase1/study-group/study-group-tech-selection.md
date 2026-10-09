@@ -1,6 +1,6 @@
 # Study Group technology selection
 
-Reviewed against PRD v0.10 and branch `cursor/study-group-backend-7481` at `18a1046ec71853f77d1b73eda545526c58964826` ([PR 37](https://github.com/LibertychaserUS/LearningGuidePortal/pull/37)).
+Reviewed against PRD v0.10 and branch `cursor/study-group-backend-7481` at `18a1046ec71853f77d1b73eda545526c58964826` ([PR 37](https://github.com/LibertychaserUS/LearningGuidePortal/pull/37)). Later closed choices are in `decisions.md`.
 
 The selections below are the ones this design uses. The branch has not moved Group Study onto PostgreSQL yet. That is recorded as the current code, not as a second choice.
 

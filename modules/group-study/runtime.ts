@@ -1,9 +1,27 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { systemRoot } from "@/services/fileStore";
 import { sendStudyGroupReminderEmail } from "@/services/emailService";
 import { checkEntitlement, getProductCourse, getUserById, listPublishedCourses, recordUserNotification } from "@/services/productStore";
 import { createStudyGroupRepository } from "./repository";
 import { createStudyGroupService, type StudyGroupService } from "./service";
+import { openRouterTutorCall, publishLiveKitData, readTutorKeys } from "./tutorAnswer";
+import { STUDY_GROUP_TUTOR_SYSTEM_PROMPT } from "./tutorPrompt";
+
+async function readStoredCourseKnowledge(courseId: string) {
+  const course = await getProductCourse(courseId);
+  const lessons = (course?.sections ?? []).flatMap((section) => section.lessons).map((lesson) => `${lesson.title}\n${lesson.body}`.trim()).filter(Boolean);
+  const root = path.join(process.cwd(), "knowledge", course?.slug || courseId);
+  const parts = [...lessons];
+  for (const file of ["knowledge-pack.json", "canon-excerpts.md", "sources.md"]) {
+    try {
+      parts.push(await readFile(path.join(root, file), "utf8"));
+    } catch {
+      // This course has no file in the existing Course Knowledge directory.
+    }
+  }
+  return parts.join("\n\n");
+}
 
 const services = new Map<string, StudyGroupService>();
 
@@ -54,7 +72,23 @@ export function studyGroupService() {
       apiSecret: process.env.LIVEKIT_API_SECRET?.trim() || "",
       url: process.env.LIVEKIT_URL?.trim() || process.env.NEXT_PUBLIC_LIVEKIT_URL?.trim() || ""
     },
-    tokenLogKey: tokenLogKey()
+    tokenLogKey: tokenLogKey(),
+    courseKnowledge: readStoredCourseKnowledge,
+    tutorKeys: () => readTutorKeys(process.env.STUDY_GROUP_TUTOR_KEYS),
+    tutorCall: (input) => openRouterTutorCall({
+      secret: input.secret,
+      model: process.env.OPENROUTER_MODEL?.trim() || "openrouter/auto",
+      system: STUDY_GROUP_TUTOR_SYSTEM_PROMPT,
+      context: input.context,
+      text: input.text
+    }),
+    publishRoomChat: async ({ room, text }) => {
+      const apiKey = process.env.LIVEKIT_API_KEY?.trim() || "";
+      const apiSecret = process.env.LIVEKIT_API_SECRET?.trim() || "";
+      const url = process.env.LIVEKIT_URL?.trim() || process.env.NEXT_PUBLIC_LIVEKIT_URL?.trim() || "";
+      if (!apiKey || !apiSecret || !url) return;
+      await publishLiveKitData({ url, apiKey, apiSecret, room, text, now: new Date() });
+    }
   });
   services.set(directory, service);
   return service;

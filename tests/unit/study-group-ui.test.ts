@@ -61,6 +61,16 @@ test("study group pane shows empty, error, and a selected group without inventin
   assert.equal(studyGroupPane({ status: "ready", selected: { role: "member", sessions: [] } }).kind, "sessions");
 });
 
+test("Join Study Group is the join label and Hosting is only for the Host", () => {
+  assert.equal(en.studyGroupsPage.joinGroup, "Join Study Group");
+  assert.equal(zh.studyGroupsPage.joinGroup, "加入学习小组");
+  const source = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
+  assert.match(source, /\{copy\.joinGroup\}/);
+  assert.match(source, /selected\.role === "host" \? <span className=\{styles\.hostChip\}>\{copy\.hosting\}<\/span> : null/);
+  assert.match(source, /selected\.role === "host" \? <div className=\{styles\.hostFoot\}>/);
+  assert.equal(source.includes("{copy.hosting}</span> : null"), true);
+});
+
 test("in-room controls stay the same for host and participant, and a full session disables entry", () => {
   assert.deepEqual(sessionControls({ role: "host", state: "live", occupancy: 2, maxParticipants: 6 }), ["mic", "camera", "share", "participants", "raise-hand", "leave"]);
   assert.deepEqual(sessionControls({ role: "member", state: "live", occupancy: 2, maxParticipants: 6 }), ["mic", "camera", "share", "participants", "raise-hand", "leave"]);

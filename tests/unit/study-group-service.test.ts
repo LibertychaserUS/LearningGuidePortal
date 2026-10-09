@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { readFile } from "node:fs/promises";
-import { createStudyGroupService, type StudyGroupService } from "../../modules/group-study/service";
+import { createStudyGroupService, type StudyGroupDeps, type StudyGroupService } from "../../modules/group-study/service";
+import { COURSE_MATERIAL_ABSENT, publishLiveKitData, readTutorKeys } from "../../modules/group-study/tutorAnswer";
 import { createStudyGroupRepository, type StudyGroupRepository } from "../../modules/group-study/repository";
 import { decryptTokenLogLine } from "../../modules/group-study/tokenLog";
 import { STUDY_GROUP_TUTOR_SYSTEM_PROMPT } from "../../modules/group-study/tutorPrompt";
@@ -400,7 +401,7 @@ test("an AI Tutor request is queued for the live session without a model, a seat
     assert.equal(logAfter, logBefore);
     const promptBefore = STUDY_GROUP_TUTOR_SYSTEM_PROMPT;
     assert.match(promptBefore, /course context supplied on that call/i);
-    assert.match(promptBefore, /absent/i);
+    assert.match(promptBefore, /does not contain the answer/i);
     const injected = await service.enqueueTutor({
       actorUserId: "host",
       sessionId: session.id,
@@ -498,4 +499,123 @@ test("a live participant queues their own text and the response has no tutor ans
   await service.enterSession({ actorUserId: "host", sessionId: off.id, requestedAt: NOW });
   await service.startSession({ actorUserId: "host", sessionId: off.id });
   await assert.rejects(() => service.enqueueTutor({ actorUserId: "host", sessionId: off.id, text, clientEventId: "evt-own-off" }), (error: unknown) => (error as { code: string }).code === "forbidden");
+});
+
+function serviceWith(extra: Partial<StudyGroupDeps>) {
+  return createStudyGroupService({
+    repository,
+    now: () => new Date(NOW),
+    hasCourseAccess: async (userId, courseId) => access.has(`${userId}:${courseId}`),
+    courseSummary: async (courseId) => courseId === "course-1" ? { id: courseId, title: "German History", slug: "german-history" } : null,
+    accessibleCourses: async (userId) => access.has(`${userId}:course-1`) ? [{ id: "course-1", title: "German History", slug: "german-history" }] : [],
+    userProfile: async (userId) => ({ id: userId, displayName: userId === "host" ? "Anna Williams" : userId, email: `${userId}@example.test`, locale: "en-GB" }),
+    notify: async (input) => { notes.push(input); },
+    sendMail: async (input) => { mails.push(input); },
+    liveKit: { apiKey: "lk-key", apiSecret: "lk-secret-at-least-32-characters", url: "wss://livekit.example.test" },
+    tokenLogKey,
+    ...extra
+  });
+}
+
+test("a full session refuses the Host when six people are already in", async () => {
+  for (const userId of ["m1", "m2", "m3", "m4", "m5", "m6"]) access.add(`${userId}:course-1`);
+  const group = await service.createGroup({ actorUserId: "host", title: "Full", courseId: "course-1", about: "About the full group." });
+  for (const userId of ["m1", "m2", "m3", "m4", "m5", "m6"]) await service.joinGroup({ actorUserId: userId, groupId: group.id });
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Six", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 6 });
+  for (const [index, userId] of ["m1", "m2", "m3", "m4", "m5", "m6"].entries()) {
+    await service.enterSession({ actorUserId: userId, sessionId: session.id, requestedAt: `2026-09-19T02:00:0${index}.000Z` });
+  }
+  await assert.rejects(
+    () => service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW }),
+    (error: unknown) => (error as { code: string }).code === "session_full"
+  );
+  const seated = (await repository.read()).presences.filter((item) => item.sessionId === session.id && item.enteredAt && !item.leftAt);
+  assert.equal(seated.length, 6);
+  assert.equal(seated.some((item) => item.userId === "host"), false);
+});
+
+test("empty course knowledge refuses without a model call", async () => {
+  const calls: string[] = [];
+  const published: string[] = [];
+  const local = serviceWith({
+    courseKnowledge: async () => "",
+    publishRoomChat: async ({ text }) => { published.push(text); },
+    tutorKeys: () => [{ id: "healthy", secret: "fake-key-healthy" }],
+    tutorCall: async () => { calls.push("called"); return { outcome: "ok", latencyMs: 1, body: "invented fact" }; }
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "Empty knowledge", courseId: "course-1", about: "About the group." });
+  const session = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Empty", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 2700, maxParticipants: 4, aiTutorEnabled: true });
+  await local.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await local.startSession({ actorUserId: "host", sessionId: session.id });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933?", clientEventId: "evt-empty" });
+  const delivered = await local.deliverTutorAnswer({ sessionId: session.id });
+  assert.equal(delivered?.text, COURSE_MATERIAL_ABSENT);
+  assert.deepEqual(published, [COURSE_MATERIAL_ABSENT]);
+  assert.deepEqual(calls, []);
+  const stored = JSON.stringify(await repository.read());
+  assert.equal(stored.includes("invented fact"), false);
+  assert.equal(stored.includes("fake-key-healthy"), false);
+});
+
+test("a rate-limited tutor key fails over to the next healthy key", async () => {
+  const secrets: string[] = [];
+  const published: string[] = [];
+  const local = serviceWith({
+    courseKnowledge: async () => "The Weimar republic ended in 1933 after the constitution of 1919 could not hold the government.",
+    publishRoomChat: async ({ text }) => { published.push(text); },
+    tutorKeys: () => [{ id: "rate-limited", secret: "fake-key-rate-limited" }, { id: "healthy", secret: "fake-key-healthy" }],
+    tutorCall: async ({ secret, context }) => {
+      secrets.push(secret);
+      assert.equal(context.includes("1933"), true);
+      if (secret === "fake-key-rate-limited") return { outcome: "rate_limited", latencyMs: 3 };
+      return { outcome: "ok", latencyMs: 4, body: "The republic ended in 1933." };
+    }
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "Keys", courseId: "course-1", about: "About the group." });
+  const session = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Keys", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 3600, maxParticipants: 4, aiTutorEnabled: true });
+  await local.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await local.startSession({ actorUserId: "host", sessionId: session.id });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933?", clientEventId: "evt-key" });
+  const delivered = await local.deliverTutorAnswer({ sessionId: session.id });
+  assert.equal(delivered?.text, "The republic ended in 1933.");
+  assert.deepEqual(secrets, ["fake-key-rate-limited", "fake-key-healthy"]);
+  assert.deepEqual(published, ["The republic ended in 1933."]);
+  const stored = JSON.stringify(await repository.read());
+  assert.equal(stored.includes("fake-key-rate-limited"), false);
+  assert.equal(stored.includes("fake-key-healthy"), false);
+});
+
+test("shared LiveKit publish has no private destination and no secret", async () => {
+  assert.deepEqual(readTutorKeys(undefined), []);
+  assert.deepEqual(readTutorKeys("not-json"), []);
+  assert.deepEqual(readTutorKeys("[{\"id\":\"a\",\"secret\":\"s\"}]"), [{ id: "a", secret: "s" }]);
+  const calls: Array<{ url: string; body: string; authorization: string }> = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const headers = new Headers(init?.headers);
+    calls.push({ url: String(input), body: String(init?.body ?? ""), authorization: headers.get("authorization") || "" });
+    return new Response("{}", { status: 200 });
+  }) as typeof fetch;
+  try {
+    await publishLiveKitData({
+      url: "wss://livekit.example.test",
+      apiKey: "lk-key",
+      apiSecret: "lk-secret-at-least-32-characters",
+      room: "room-1",
+      text: COURSE_MATERIAL_ABSENT,
+      now: new Date(NOW)
+    });
+  } finally {
+    globalThis.fetch = original;
+  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://livekit.example.test/twirp/livekit.RoomService/SendData");
+  const body = JSON.parse(calls[0].body) as { room: string; data: string; destination_identities?: string[] };
+  assert.equal(body.room, "room-1");
+  assert.equal(body.destination_identities, undefined);
+  const decoded = JSON.parse(Buffer.from(body.data, "base64").toString("utf8")) as { type: string; text: string };
+  assert.equal(decoded.type, "tutor");
+  assert.equal(decoded.text, COURSE_MATERIAL_ABSENT);
+  assert.equal(calls[0].body.includes("lk-secret-at-least-32-characters"), false);
+  assert.equal(calls[0].authorization.includes("lk-secret-at-least-32-characters"), false);
 });
