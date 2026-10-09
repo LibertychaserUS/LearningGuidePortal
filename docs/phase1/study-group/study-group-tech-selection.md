@@ -57,6 +57,17 @@ Rejected:
 - A Host-only or room-admin grant. In-room permissions match a participant.
 - A long-lived token reused across Sessions.
 
+## AI Tutor call
+
+The Study Group tutor uses a direct model call. No agent framework is added. `package.json` on `main` has none. The call layer is a lightweight distributed service, not a heavy platform. It keeps a pool of API keys. On auth failure, rate limit, or quota, it uses another key. It records request count, errors, and latency per key, and sends traffic only to healthy keys. Raw keys are never logged, never committed, and never sent to the browser.
+
+The model vendor is not chosen. How a reply re-enters the LiveKit room is not chosen. The queue remains per Live Session. Course context for an answer is supplied by a later design. The shape of that context, how a knowledge base is built, the structure of the base, and the structure of a piece of knowledge are not chosen. This note adds no schema, table, or sample content for that base.
+
+Not used:
+
+- Vercel AI SDK, LiveKit Agents, Claude Agent SDK, and LangGraph. The call stays direct. No new framework dependency is added.
+- A per-user tutor identity or a course-wide tutor identity. Whether the tutor is one per user or one shared by a Course is not decided.
+
 ## Encrypted issuance log
 
 Each successful issuance appends one line. The line is AES-256-GCM. The payload is user id, Group role, session id, the state `token_issued`, and the time. The line does not contain the raw token or the API secret. There is no token table and no token audit table.
