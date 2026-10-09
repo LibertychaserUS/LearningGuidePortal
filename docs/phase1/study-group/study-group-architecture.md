@@ -7,7 +7,7 @@ Design for Oliver Zhang. Sources are PRD v0.10, the locked decisions below, and 
 - Chat stays in LiveKit. No chat row.
 - One meeting record per meeting. No token audit table. One encrypted log line per issuance. The line has no raw token and no API secret.
 - A Live Session holds at most 6 people including the Host. The Host sets the Session maximum from 2 to 6. Admission is first come, first served by the time the server receives the enter request.
-- AI Tutor is not implemented this phase. The Live Session stores the flag.
+- AI Tutor does not run this phase. The Live Session stores the enabled flag. The seam is a session-scoped queue. An item is the user id, the session id, the text, and the server receipt time. Nothing drains the queue. There is no model call, no Course Knowledge read, and no screen parsing. Appending an item does not change the six-person cap or token issuance. Chat stays in LiveKit and is not that queue.
 - The Host manages the Group only outside the room. In the room the Host has the same permissions as a participant. The LiveKit token has no Host label.
 - Session Title is required and is at most 20 characters. That is the Figma counter `7/20` on frame `599:1806`. The longer sample title on that frame is not the limit. PRD v0.10 does not state another length. The branch still rejects a Session Title over 80 characters in `scheduleSession` and `editSession`, and the schedule input has no `maxLength`.
 - Planned duration is required. The Host chooses 30, 45, 60, or 90 minutes. Those choices are stored as 1800, 2700, 3600, and 5400 seconds. There is no other duration. The Figma session card shows `45 mins`. Branch `18a1046` still stores `durationMinutes` and accepts any integer of at least 1.
@@ -18,9 +18,9 @@ Design for Oliver Zhang. Sources are PRD v0.10, the locked decisions below, and 
 |---|---|
 | UI | Study Groups pages, forms, Session Full, Waiting for Host Start, and the room. Sends HTTP. Connects to LiveKit with the returned token. Sends Chat and Raise Hand as LiveKit data. Does not decide Course access, capacity, or the token grants. |
 | Route Handler | Parses the body, reads the session, calls the application service, returns `{ ok, code, message, data }`. |
-| Application service | Course access, Host and Member rules, Session state, the 2–6 cap, request-time order, meeting creation, token signing, the encrypted line, and seat release when signing fails. |
-| Repository | Study Group, membership, Live Session, attendance intent, presence, the one meeting row, reminders, and the issuance log line. |
-| LiveKit | The room, audio, video, screen share, presence on the wire, and data messages. It does not store Group rows and it does not count seats. |
+| Application service | Course access, Host and Member rules, Session state, the 2–6 cap, request-time order, meeting creation, token signing, the encrypted line, seat release when signing fails, and appending one tutor-queue item. It does not call a model. |
+| Repository | Study Group, membership, Live Session, attendance intent, presence, the one meeting row, reminders, the issuance log line, and the session-scoped tutor queue. Nothing in this phase reads that queue. |
+| LiveKit | The room, audio, video, screen share, presence on the wire, and data messages, including Chat. It does not store Group rows, it does not count seats, and it does not drain the tutor queue. |
 
 Course access is read from Entitlement. Group Study does not write Entitlement. Notifications for cancel-group and the T-10 reminder go through the existing notification and mail services. The service decides who is in the audience.
 
@@ -44,6 +44,7 @@ Enter and token are separate requests. Enter is the seat grant. Token is the cre
 | Meeting | One row when the Host starts that Session. `startedAt`, and `endedAt` when the last participant leaves after start. A second Start does not insert another row. | A row at schedule time. A token. |
 | Reminder | One sent mark per Session and user, for the Host and for members who still Plan to Attend. | A reminder to every Group member. |
 | Issuance log | One encrypted line per successful issuance: user id, role, session id, `token_issued`, time. | The raw token, the API secret, a token table. |
+| Tutor queue | Session-scoped items only. Each item is user id, session id, text, and server receipt time. | A reply, a model name, Course Knowledge, screen bytes, a seat change, or a token. Nothing drains the queue. |
 | LiveKit room | Media and Chat while people are connected. | A database copy of Chat, a recording, or screen pixels for AI Tutor. |
 
 The selected store is PostgreSQL. The branch repository still writes `study-group.json` and `token-issuance.log` on the local file store.
@@ -68,7 +69,9 @@ Each user operation that changes a seat, a meeting, a token, or the log is split
 
 **Leave.** The repository sets `leftAt`. If the Session is Live and occupancy is then zero, the Session becomes Completed and the meeting row gets `endedAt`.
 
-On branch `18a1046`, `enterSession` writes the presence and returns. `issueToken` does not clear that presence when signing fails. The atomic step above is the design. The branch has not combined them.
+**Tutor queue append.** The service records one item for that Session: user id, session id, text, and the time the server received it. The repository stores the item. No step reads it, deletes it, or sends it to a model, to Course Knowledge, or to a screen parser. This append is not part of enter, Host Start, token issuance, or leave. Occupancy and the token are unchanged.
+
+On branch `18a1046`, `enterSession` writes the presence and returns. `issueToken` does not clear that presence when signing fails. The atomic step above is the design. The branch has not combined them. The branch stores the AI Tutor flag and has no tutor queue.
 
 ## Emergency behavior the PRD already states
 
@@ -100,7 +103,7 @@ Verdicts are against PRD v0.10 on branch `18a1046`. `meets` means the branch doe
 | SC-007 | Plan to Attend and Cancel Attendance do not reserve a place. | meets | Intent rows are separate from presence. |
 | SC-008 | A Live Session supports 2–6 concurrent participants including the Host. | meets | Schedule accepts 2–6. Occupancy counts entered people, including a Host who has entered. |
 | SC-009 | Live participants share the same in-room controls for their own media, screen share, Chat, Raise Hand, and Leave. | misses | The control list does not vary by role. Mic, camera, and share only call the enable path, and the room does not render a media element. |
-| SC-010 | When AI Tutor is enabled, any live participant can invoke it in shared Chat. | misses | The flag is stored. The room has no tutor invoke. |
+| SC-010 | When AI Tutor is enabled, any live participant can invoke it in shared Chat. | misses | The flag is stored. The room has no tutor invoke. The design seam is an undrained queue. The branch does not have that queue. |
 | SC-011 | AI Tutor follows Course AI Tutor and Course Knowledge, and does not parse the shared screen. | misses | No tutor call exists, so the screen is not parsed. The grounding behavior is not implemented. |
 | SC-012 | The Session becomes Completed after the final participant leaves. | meets | After start, occupancy zero sets `completed`. |
 | SC-013 | From T-10, joined members may enter and wait, and they count toward occupancy before Host Start. | meets | `effectiveSessionState` and `enterSession`. |

@@ -71,6 +71,12 @@ classDiagram
     state
     at
   }
+  class TutorQueueItem {
+    userId
+    sessionId
+    text
+    receivedAt
+  }
   class LiveKitRoom {
     roomName
     media
@@ -81,6 +87,7 @@ classDiagram
   LiveSession "1" --> "*" AttendanceIntent
   LiveSession "1" --> "*" Presence
   LiveSession "1" --> "0..1" Meeting
+  LiveSession "1" --> "*" TutorQueueItem : session-scoped queue
   LiveSession ..> LiveKitRoom : room name is the session id
   EncryptedIssuanceLog ..> LiveSession : one line after a successful sign
 ```
@@ -88,6 +95,8 @@ classDiagram
 `AttendanceIntent` does not hold a seat. `Presence` holds a seat while `enteredAt` is set and `leftAt` is empty. `Meeting` exists only after Host Start, one row for that Live Session.
 
 `durationSeconds` is one of 1800, 2700, 3600, or 5400. Those are the choices 30, 45, 60, and 90 minutes. The Figma session card shows `45 mins`. Branch `18a1046` still names the field `durationMinutes` and accepts any integer of at least 1.
+
+`TutorQueueItem` is one undrained queue item. `receivedAt` is the server receipt time. The queue is not Chat, and it is not a seat or a token. Branch `18a1046` does not have this queue.
 
 ## Create Study Group
 
@@ -177,7 +186,24 @@ sequenceDiagram
   end
 ```
 
-Chat and Raise Hand after connect are LiveKit data messages. They do not call the repository.
+Chat and Raise Hand after connect are LiveKit data messages. They do not call the repository. They do not append a tutor-queue item.
+
+## AI Tutor queue
+
+The queue belongs to one Live Session. The service appends an item. Nothing drains it. The append does not read occupancy and does not sign a token. Chat remains a LiveKit data message and does not become this item.
+
+```mermaid
+sequenceDiagram
+  participant Service
+  participant Repo
+  participant LiveKit
+  Service->>Repo: append item userId, sessionId, text, server receipt time
+  Repo-->>Service: item stored
+  Note over Repo: no reader and no delete
+  Note over Service: no model, no Course Knowledge, no screen parse
+  Note over Service: occupancy and token issuance stay as they were
+  Note over LiveKit: Chat stays in the room
+```
 
 ## Live Session state
 

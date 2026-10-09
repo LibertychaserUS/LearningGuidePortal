@@ -1,19 +1,24 @@
 # Study Group AI Tutor plan
 
-This is a plan for a later phase. It does not add a route, a prompt, a model call, or a stub that pretends to answer.
+The tutor does not run in this phase. The seam is a queue. This plan does not add a model call, a Course Knowledge read, a screen parser, or a stub that pretends to answer.
 
-Branch `cursor/study-group-backend-7481` at `18a1046ec71853f77d1b73eda545526c58964826` stores `aiTutorEnabled` on the Live Session. The schedule form defaults the flag on. The Host can turn it off before the Session starts. The room does not read the flag to call a tutor.
+Branch `cursor/study-group-backend-7481` at `18a1046ec71853f77d1b73eda545526c58964826` stores `aiTutorEnabled` on the Live Session. The schedule form defaults the flag on. The Host can turn it off before the Session starts. The branch has no tutor queue.
 
 ## This phase
 
-- Persist the flag with the Live Session.
+- Persist the enabled flag with the Live Session.
+- Keep a session-scoped queue. An item is the user id, the session id, the text, and the server receipt time.
+- Nothing drains the queue. No worker reads it, and no item is deleted by a tutor.
+- Do not call a model.
+- Do not read Course Knowledge or a Knowledge Release.
+- Do not parse or send the shared screen, video, or an Interactive Exhibit.
+- Do not change the six-person cap. Do not change token issuance. The queue append is not part of those steps.
+- Chat stays in LiveKit. A queue item is not a Chat row, and Chat is not copied into the queue by the room.
 - Do not put an AI Tutor participant in the LiveKit room.
-- Do not write tutor prompts or replies.
-- Do not call the Course AI Tutor or the Knowledge System from Group Study.
 
 ## Later phase
 
-When a later phase turns the stored flag on, the behavior is the PRD behavior:
+A later phase is what would drain the queue. That phase is not this one. When it exists, the PRD behavior is:
 
 - Any current participant may invoke the tutor from the shared LiveKit Chat.
 - The prompt and the reply stay in that Chat. Everyone currently in the room sees them. They are not database rows.
