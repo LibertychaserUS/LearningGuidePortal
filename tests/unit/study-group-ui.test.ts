@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { sessionControls, studyGroupPane } from "../../modules/group-study/uiState";
+import { SESSION_TITLE_MAX, sessionTitleCount } from "../../components/portal/studyGroupClient";
+
+test("session title counter matches the 20 character Figma limit", () => {
+  assert.equal(SESSION_TITLE_MAX, 20);
+  assert.equal(sessionTitleCount(""), "0/20");
+  assert.equal(sessionTitleCount("1234567"), "7/20");
+  assert.equal(sessionTitleCount("x".repeat(20)), "20/20");
+  assert.equal(sessionTitleCount("x".repeat(21)), "20/20");
+});
 
 test("study group pane shows empty, error, and a selected group without inventing sessions for a visitor", () => {
   assert.equal(studyGroupPane({ status: "loading", selected: null }).kind, "loading");

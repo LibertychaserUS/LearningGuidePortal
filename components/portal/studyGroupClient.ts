@@ -36,6 +36,13 @@ export async function studyGroupRequest<T>(url: string, init?: RequestInit): Pro
   return response.json() as Promise<StudyGroupResponse<T>>;
 }
 
+export const SESSION_TITLE_MAX = 20;
+
+export function sessionTitleCount(value: string) {
+  const length = Math.min(value.length, SESSION_TITLE_MAX);
+  return `${length}/${SESSION_TITLE_MAX}`;
+}
+
 export function fill(template: string, values: Record<string, string | number>) {
   return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), template);
 }

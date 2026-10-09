@@ -7,7 +7,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 import { studyGroupPane } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
-import { fill, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+import { fill, SESSION_TITLE_MAX, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
 type CourseOption = { id: string; title: string; slug: string };
 type Card = { id: string; title: string; courseTitle: string; role: "host" | "member" | null; memberCount: number; live: boolean; courseId: string };
@@ -28,6 +28,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [dialog, setDialog] = useState<"create" | "edit" | "schedule" | "waiting" | "attendees" | null>(null);
   const [waitingSession, setWaitingSession] = useState<StudySession | null>(null);
   const [attendees, setAttendees] = useState<StudySession["attendees"]>([]);
+  const [sessionTitle, setSessionTitle] = useState("");
 
   async function loadLists() {
     const [myResult, discoverResult, courseResult] = await Promise.all([
@@ -220,7 +221,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
               {pane.kind === "sessions" ? (selected.sessions || []).map((session) => (
                 <article className={styles.session} key={session.id}>
                   <h3>{session.title}</h3>
-                  <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {session.durationMinutes} min</p>
+                  <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {fill(copy.plannedDuration, { count: session.durationMinutes })}</p>
                   <p className={styles.meta}>{session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
                   <div className={styles.row}>
                     {selected.role === "host" && session.state === "starting_soon" ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/sessions/${session.id}/start`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } router.push(`/${locale}/portal/study-groups/sessions/${session.id}`); }}>{copy.start}</button> : null}
@@ -240,14 +241,14 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
               <ul>
                 {(selected.members || []).map((member) => <li key={member.userId}><span className={styles.avatar}>{member.displayName.slice(0, 1)}</span><span>{member.displayName}</span>{member.role === "host" ? <span className={styles.hostTag}>{copy.room.host}</span> : null}</li>)}
               </ul>
-              {selected.role === "host" ? <div className={styles.hostFoot}><p>{copy.hostingNote}</p><button className={styles.primary} type="button" onClick={() => setDialog("schedule")}>{copy.schedule}</button><button className={styles.ghost} type="button" onClick={() => setDialog("edit")}>{copy.editGroup}</button><button className={styles.danger} type="button" onClick={async () => { if (!window.confirm(copy.confirmCancelGroup)) return; await studyGroupRequest(`/api/study-groups/${selected.id}/cancel`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.cancelGroup}</button></div> : null}
+              {selected.role === "host" ? <div className={styles.hostFoot}><p>{copy.hostingNote}</p><button className={styles.primary} type="button" onClick={() => { setSessionTitle(""); setDialog("schedule"); }}>{copy.schedule}</button><button className={styles.ghost} type="button" onClick={() => setDialog("edit")}>{copy.editGroup}</button><button className={styles.danger} type="button" onClick={async () => { if (!window.confirm(copy.confirmCancelGroup)) return; await studyGroupRequest(`/api/study-groups/${selected.id}/cancel`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.cancelGroup}</button></div> : null}
             </aside>
           </div>
         ) : null}
       </section>
       {dialog === "edit" || dialog === "schedule" || dialog === "waiting" || dialog === "attendees" ? (
         <dialog open className={styles.modal} aria-modal="true" aria-labelledby="study-group-dialog-title">
-          <form method="dialog" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); if (dialog === "edit") void submitEdit(form); if (dialog === "schedule") void submitSchedule(form); }}>
+          <form method="dialog" onSubmit={(event) => { event.preventDefault(); const formElement = event.currentTarget; if (!formElement.reportValidity()) return; const form = new FormData(formElement); if (dialog === "edit") void submitEdit(form); if (dialog === "schedule") void submitSchedule(form); }}>
             <h2 id="study-group-dialog-title">{dialog === "schedule" ? copy.schedule : dialog === "waiting" ? copy.waiting : dialog === "attendees" ? copy.viewAttendees : dialog === "edit" ? copy.editGroup : copy.create}</h2>
             {dialog === "waiting" ? <p role="status">{copy.waiting}</p> : null}
             {dialog === "attendees" ? <ul>{attendees.map((person) => <li key={person.userId}>{person.displayName}</li>)}</ul> : null}
@@ -261,12 +262,12 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
             {dialog === "schedule" ? (
               <>
                 <p className={styles.lead}>{copy.arrangeLead}</p>
-                <label className={styles.field}>{copy.sessionTitle} <span className={styles.req}>*</span><input name="title" required /></label>
+                <label className={styles.field}>{copy.sessionTitle} <span className={styles.req}>*</span><input name="title" required maxLength={SESSION_TITLE_MAX} value={sessionTitle} onChange={(event) => setSessionTitle(event.target.value.slice(0, SESSION_TITLE_MAX))} /><span className={styles.counter}>{sessionTitleCount(sessionTitle)}</span></label>
                 <label className={styles.field}>{copy.selectLesson}<select name="lesson" defaultValue=""><option value="">{copy.selectLesson}</option></select></label>
                 <div className={styles.pair}>
                   <label className={styles.field}>{copy.date} <span className={styles.req}>*</span><input name="date" type="date" required /></label>
                   <label className={styles.field}>{copy.startTime} <span className={styles.req}>*</span><input name="time" type="time" required /></label>
-                  <label className={styles.field}>{copy.duration} <span className={styles.req}>*</span><input name="duration" type="number" min={1} required placeholder={copy.selectDuration} /></label>
+                  <label className={styles.field}>{copy.duration} <span className={styles.req}>*</span><select name="duration" required defaultValue=""><option value="">{copy.selectDuration}</option></select></label>
                   <label className={styles.field}>{copy.maxParticipants} <span className={styles.req}>*</span><select name="maxParticipants" required defaultValue="6">{[2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
                 </div>
                 <label className={styles.field}>{copy.focus}<textarea name="focus" maxLength={50} placeholder={copy.enterDescription} /></label>

@@ -532,6 +532,7 @@
     "date": "Date",
     "startTime": "Start time",
     "duration": "Duration",
+    "plannedDuration": "{count} minutes",
     "maxParticipants": "Maximum participants",
     "focus": "Session focus",
     "enableAiTutor": "Enable AI Tutor for this session",
