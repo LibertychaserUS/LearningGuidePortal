@@ -111,6 +111,10 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.match(room, /copy\.errors\.session_not_open/);
   assert.match(room, /group\?\.role === "host" \? <button className=\{styles\.primary\} type="button"/);
   assert.match(room, /sessions\/\$\{sessionId\}\/start/);
+  assert.match(room, /errorCode === "session_full"/);
+  assert.match(room, /errorCode === "course_access_required"/);
+  assert.match(room, /copy\.getCourseAccess/);
+  assert.match(room, /!seated && !entryDone/);
   assert.equal(en.studyGroupsPage.start, "Start Live Session");
   assert.match(room, /room\?\.disconnect\(\)/);
   assert.equal(en.studyGroupsPage.errors.connect_failed, "The Live Session could not connect. Check the connection and try again.");

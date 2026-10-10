@@ -55,6 +55,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const [errorCode, setErrorCode] = useState("");
   const [connected, setConnected] = useState(false);
   const [seated, setSeated] = useState(false);
+  const [entryDone, setEntryDone] = useState(false);
   const [left, setLeft] = useState(false);
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [chat, setChat] = useState<ChatLine[]>([]);
@@ -186,12 +187,17 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
 
   useEffect(() => {
     if (!session || left) return;
-    if (session.state !== "starting_soon" && session.state !== "live") return;
+    if (session.state !== "starting_soon" && session.state !== "live") {
+      setEntryDone(true);
+      return;
+    }
     let cancelled = false;
+    setEntryDone(false);
     void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/enter`, { method: "POST", body: "{}" }).then((result) => {
       if (cancelled) return;
       if (result.ok) setSeated(true);
       else if (result.code !== "session_not_open") setErrorCode(result.code);
+      setEntryDone(true);
     });
     return () => { cancelled = true; };
   }, [session?.state, sessionId, left]);
@@ -295,6 +301,12 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       </section>
       </>
     );
+  }
+  if (!seated && (errorCode === "session_full" || errorCode === "course_access_required")) {
+    return <>{path()}<section className={styles.empty} role="alert"><h1>{errorCode === "session_full" ? copy.sessionFull : copy.errors.course_access_required}</h1><p>{session.title}</p>{errorCode === "course_access_required" && group ? <a className={styles.primary} href={`/${locale}/portal/courses/${group.courseSlug}`}>{copy.getCourseAccess}</a> : null}</section></>;
+  }
+  if ((session.state === "starting_soon" || session.state === "live") && !seated && !entryDone) {
+    return <p className={styles.panel} role="status">{copy.loading}</p>;
   }
   if (session.state === "scheduled") {
     return <>{path()}<section className={styles.empty} role="status"><h1>{copy.errors.session_not_open}</h1><p>{session.title}</p></section></>;
