@@ -238,6 +238,17 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   }
 
   const controls = sessionControls({ role: group?.role || "member", state: "live", occupancy: session.occupancy, maxParticipants: session.maxParticipants });
+  const roster = tiles.length
+    ? tiles.map((tile) => ({
+        key: tile.identity,
+        name: tile.name,
+        detail: [tile.host ? roomCopy.host : "", hands.includes(tile.identity) ? roomCopy.raiseHand : "", tileStatus(roomCopy, tile)].filter(Boolean).join(" · ")
+      }))
+    : session.attendees.map((person) => ({
+        key: person.userId,
+        name: person.displayName,
+        detail: group?.members?.some((member) => member.userId === person.userId && member.role === "host") ? roomCopy.host : ""
+      }));
   const errorText = errorCode ? copy.errors[errorCode as keyof typeof copy.errors] || copy.errors.error : "";
 
   async function publish(message: { type: string; text?: string }) {
@@ -273,7 +284,12 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         </div>
       </div>
       <aside className={styles.side} aria-label={roomCopy.participants}>
-        <h2>{roomCopy.participants} {session.occupancy}/{session.maxParticipants}</h2>
+        <div>
+          <h2>{roomCopy.participants} {session.occupancy}/{session.maxParticipants}</h2>
+          <ul className={styles.roster}>
+            {roster.map((person) => <li key={person.key}><span className={styles.rosterInitial}>{person.name.slice(0, 1)}</span><strong>{person.name}</strong>{person.detail ? <span>{person.detail}</span> : null}</li>)}
+          </ul>
+        </div>
         <div className={styles.chatLog} aria-live="polite">
           <h3>{roomCopy.chat}</h3>
           {chat.map((line) => <p key={line.id}><strong>{line.from}</strong> {line.text.startsWith(`${roomCopy.aiTutor} `) ? <><span className={styles.tutorMention}>{roomCopy.aiTutor}</span>{line.text.slice(roomCopy.aiTutor.length)}</> : line.text}</p>)}

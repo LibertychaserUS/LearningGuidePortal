@@ -133,6 +133,10 @@
 .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .controls button, .textButton { border: 1px solid #e4e7ec; background: #fff; border-radius: 8px; min-height: 40px; padding: 0 12px; font: inherit; cursor: pointer; }
 .side { display: grid; grid-template-rows: auto minmax(160px, 1fr) auto; min-height: 520px; }
+.roster { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.roster li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.rosterInitial { width: 28px; height: 28px; border-radius: 14px; background: #e8f1ff; color: #1660d8; display: grid; place-items: center; font-size: 12px; font-weight: 600; flex: none; }
+.roster li span:last-child { color: #6b7280; font-size: 12px; }
 .chatLog { overflow: auto; }
 .chatForm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tutorEntry { border: 0; background: transparent; color: #1d6bff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
