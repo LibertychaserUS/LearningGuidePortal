@@ -123,11 +123,12 @@ test("host edits title and about, cannot change the course, and cancel keeps com
     actorUserId: "host",
     groupId: group.id,
     title: "Already finished",
-    startsAt: "2026-09-19T01:00:00.000Z",
+    startsAt: "2026-09-19T02:05:00.000Z",
     durationSeconds: 2700,
     maxParticipants: 2
   });
-  await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: "2026-09-19T01:50:00.000Z" });
+  await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await assert.rejects(() => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Too late", startsAt: "2026-09-19T01:00:00.000Z", durationSeconds: 1800, maxParticipants: 2 }), (error: unknown) => (error as { code: string }).code === "validation");
   await service.startSession({ actorUserId: "host", sessionId: session.id });
   await service.leaveSession({ actorUserId: "host", sessionId: session.id });
   notes.length = 0;
@@ -558,7 +559,11 @@ test("reminders go to the host and plan-to-attend members only, once", async () 
   assert.equal(notes.filter((item) => item.body.includes("Reminder session")).length, 0);
   assert.equal(mails.filter((item) => item.text.includes("Reminder session")).length, 0);
   const early = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Too early", startsAt: "2026-09-19T02:20:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
-  const past = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Already due", startsAt: NOW, durationSeconds: 1800, maxParticipants: 4 });
+  const past = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Already due", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await repository.update((store) => {
+    const row = store.sessions.find((item) => item.id === past.id);
+    if (row) row.startsAt = NOW;
+  });
   const opened = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Already live", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
   await service.enterSession({ actorUserId: "host", sessionId: opened.id, requestedAt: NOW });
   await service.startSession({ actorUserId: "host", sessionId: opened.id });

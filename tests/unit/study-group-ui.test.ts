@@ -14,6 +14,7 @@ test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", (
   assert.deepEqual(DURATION_MINUTE_CHOICES.map((minutes) => fill(zh.studyGroupsPage.plannedDuration, { count: minutes })), ["30 分钟", "45 分钟", "60 分钟", "90 分钟"]);
   const source = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
   assert.match(source, /select name="durationMinutes" required/);
+  assert.match(source, /type="date" required min=\{todayDate\(\)\}/);
   assert.match(source, /DURATION_MINUTE_CHOICES\.map/);
   assert.match(source, /\(selected\?\.lessons \|\| \[\]\)\.map/);
   assert.equal(scheduleSessionFields({ title: "Road", startsAt: "2026-09-19T02:05:00.000Z", durationMinutes: 45, maxParticipants: 4, focus: null, aiTutorEnabled: true, relatedLessonId: "lesson-1" }).relatedLessonId, "lesson-1");
