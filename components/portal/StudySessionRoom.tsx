@@ -31,6 +31,9 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const [shareTrack, setShareTrack] = useState<AttachableTrack | null>(null);
   const [addressTutor, setAddressTutor] = useState(false);
   const shareVideo = useRef<HTMLVideoElement>(null);
+  const groupRef = useRef<StudyGroupDetail | null>(null);
+  const repaintRef = useRef<(() => void) | null>(null);
+  groupRef.current = group;
 
   async function load() {
     const current = await studyGroupRequest<StudySession>(`/api/study-groups/sessions/${sessionId}`);
@@ -76,7 +79,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       }
     });
     const paint = () => {
-      const hostIds = new Set((group?.members || []).filter((member) => member.role === "host").map((member) => member.userId));
+      const hostIds = new Set((groupRef.current?.members || []).filter((member) => member.role === "host").map((member) => member.userId));
       setTiles([room.localParticipant, ...Array.from(room.remoteParticipants.values())].map((person) => ({
         identity: person.identity,
         name: person.name || person.identity,
@@ -84,14 +87,15 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         mic: person.isMicrophoneEnabled
       })));
     };
+    repaintRef.current = paint;
     room.on(RoomEvent.ParticipantConnected, paint);
     room.on(RoomEvent.ParticipantDisconnected, paint);
     room.on(RoomEvent.TrackMuted, () => { paint(); showShare(); });
     room.on(RoomEvent.TrackUnmuted, () => { paint(); showShare(); });
-    room.on(RoomEvent.TrackSubscribed, showShare);
-    room.on(RoomEvent.TrackUnsubscribed, showShare);
-    room.on(RoomEvent.LocalTrackPublished, showShare);
-    room.on(RoomEvent.LocalTrackUnpublished, showShare);
+    room.on(RoomEvent.TrackSubscribed, () => { paint(); showShare(); });
+    room.on(RoomEvent.TrackUnsubscribed, () => { paint(); showShare(); });
+    room.on(RoomEvent.LocalTrackPublished, () => { paint(); showShare(); });
+    room.on(RoomEvent.LocalTrackUnpublished, () => { paint(); showShare(); });
     await room.connect(issued.data.liveKitUrl, issued.data.token);
     setRoomApi(room);
     setConnected(true);
@@ -107,6 +111,10 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   useEffect(() => {
     if (session?.state === "live" && !connected && !left) void connect().catch(() => setErrorCode("unavailable"));
   }, [session?.state, connected, left]);
+
+  useEffect(() => {
+    repaintRef.current?.();
+  }, [group]);
 
   useEffect(() => {
     const element = shareVideo.current;
