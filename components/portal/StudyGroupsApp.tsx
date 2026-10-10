@@ -90,8 +90,15 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
       return;
     }
     setSelected(result.data);
+    setMine((current) => current.map((group) => group.id === result.data.id ? { ...group, live: result.data.live, memberCount: result.data.memberCount } : group));
     setStatus("ready");
   }
+
+  useEffect(() => {
+    if (!selectedId || !signedIn) return;
+    const timer = window.setInterval(() => { void openGroup(selectedId); }, 3000);
+    return () => window.clearInterval(timer);
+  }, [selectedId, signedIn]);
 
   useEffect(() => {
     void loadLists();
