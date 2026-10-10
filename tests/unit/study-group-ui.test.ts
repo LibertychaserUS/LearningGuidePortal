@@ -218,8 +218,11 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   assert.match(app, /copy\.planNote/);
   assert.match(app, /styles\.planNote/);
   assert.match(app, /styles\.factList/);
+  assert.match(app, /copy\.openStudyGroup/);
   assert.match(app, /sessionDateLabel\(locale, session\.startsAt\)/);
   assert.match(app, /sessionTimeLabel\(locale, session\)/);
+  assert.equal(en.studyGroupsPage.openStudyGroup, "Open Study Group");
+  assert.equal(zh.studyGroupsPage.openStudyGroup, "打开学习小组");
   assert.equal(en.studyGroupsPage.hostingNote, "You are hosting this Study Group.");
   assert.equal(zh.studyGroupsPage.hostingNote, "你正在主持这个学习小组。");
   assert.match(app, /copy\.maximumLine/);
