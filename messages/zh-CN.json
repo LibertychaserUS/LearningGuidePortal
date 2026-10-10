@@ -532,7 +532,6 @@
     "focus": "本节重点",
     "aiTutorLabel": "AI Tutor",
     "enableAiTutor": "为本节启用 AI Tutor",
-    "aiTutorStored": "保持开启时，直播中的参与者可以在共享聊天里发送 @AI Tutor 请求。请求会进入队列，入队本身不调用模型。课程材料里没有答案时，聊天会直接说明。",
     "plan": "计划参加",
     "planning": "你已计划参加。这不保留座位。",
     "cancelAttendance": "取消参加",
