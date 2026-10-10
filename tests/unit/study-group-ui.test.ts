@@ -24,6 +24,7 @@ test("the chat control queues the user's text and does not carry a system prompt
   assert.equal("prompt" in tutorQueueBody("Why did 1928 look stable?"), false);
   const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
   assert.match(room, /tutorQueueBody\(text\)/);
+  assert.match(room, /<time dateTime=\{line\.at\}>/);
   assert.match(room, /session\.aiTutorEnabled \?/);
   assert.equal(room.includes("/api/ai-tutor"), false);
   assert.equal(room.includes("prompts/"), false);
