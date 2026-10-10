@@ -149,6 +149,8 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   assert.match(app, /copy\.attended/);
   assert.match(app, /copy\.reminderHint/);
   assert.match(app, /copy\.maximumLine/);
+  assert.match(app, /view=reminders/);
+  assert.match(app, /styles\.reminders/);
 });
 
 test("the ended screen and live clock follow the Live Session frames", () => {

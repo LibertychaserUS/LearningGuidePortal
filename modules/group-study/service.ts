@@ -693,8 +693,9 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       const dueJobs = (store: StudyGroupStore, record: boolean) => {
         const jobs: Array<{ userId: string; sessionTitle: string }> = [];
         for (const session of store.sessions) {
-          if (session.status === "removed" || session.status === "completed") continue;
-          if (now.getTime() < new Date(session.startsAt).getTime() - STARTING_SOON_MS) continue;
+          if (session.status !== "scheduled") continue;
+          const startsAt = new Date(session.startsAt).getTime();
+          if (now.getTime() < startsAt - STARTING_SOON_MS || now.getTime() >= startsAt) continue;
           const group = store.groups.find((item) => item.id === session.groupId && item.status === "active");
           if (!group) continue;
           const audience = new Set<string>([group.hostUserId]);

@@ -50,12 +50,14 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [sessionLesson, setSessionLesson] = useState("");
   const [createTitle, setCreateTitle] = useState("");
   const [createAbout, setCreateAbout] = useState("");
+  const [reminders, setReminders] = useState<Array<{ body: string; createdAt: string }>>([]);
 
   async function loadLists() {
-    const [myResult, discoverResult, courseResult] = await Promise.all([
+    const [myResult, discoverResult, courseResult, reminderResult] = await Promise.all([
       signedIn ? studyGroupRequest<Card[]>("/api/study-groups?view=mine") : Promise.resolve({ ok: true, code: "ok", message: "", data: [] as Card[] }),
       studyGroupRequest<Card[]>(`/api/study-groups?view=discover&courseId=${encodeURIComponent(courseFilter)}&q=${encodeURIComponent(query)}`),
-      signedIn ? studyGroupRequest<CourseOption[]>("/api/study-groups?view=courses") : Promise.resolve({ ok: true, code: "ok", message: "", data: [] as CourseOption[] })
+      signedIn ? studyGroupRequest<CourseOption[]>("/api/study-groups?view=courses") : Promise.resolve({ ok: true, code: "ok", message: "", data: [] as CourseOption[] }),
+      signedIn ? studyGroupRequest<Array<{ body: string; createdAt: string }>>("/api/study-groups?view=reminders") : Promise.resolve({ ok: true, code: "ok", message: "", data: [] as Array<{ body: string; createdAt: string }> })
     ]);
     if (!myResult.ok || !discoverResult.ok) {
       setStatus("error");
@@ -65,6 +67,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     setMine(myResult.data);
     setDiscover(discoverResult.data);
     if (courseResult.ok) setCourses(courseResult.data);
+    if (reminderResult.ok) setReminders(reminderResult.data);
     const incoming = [
       ...(courseResult.ok ? courseResult.data : []),
       ...myResult.data.map((group) => ({ id: group.courseId, title: group.courseTitle })),
@@ -258,6 +261,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     <div className={styles.layout}>
       <aside className={styles.sidebar} aria-label={copy.title}>
         <h1 className={styles.title}>{copy.title}</h1>
+        {reminders.length ? <ul className={styles.reminders}>{reminders.map((item) => <li role="status" key={`${item.createdAt}-${item.body}`}>{item.body}</li>)}</ul> : null}
         <div className={styles.sectionHead}>
           <h2>{copy.myGroups}</h2>
           {signedIn ? <button className={styles.create} type="button" onClick={() => { setCreateTitle(""); setCreateAbout(""); setDialog("create"); }}>+ {copy.create}</button> : null}

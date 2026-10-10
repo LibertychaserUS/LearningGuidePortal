@@ -520,6 +520,17 @@ test("reminders go to the host and plan-to-attend members only, once", async () 
   await service.dispatchDueReminders();
   assert.equal(notes.filter((item) => item.body.includes("Reminder session")).length, 0);
   assert.equal(mails.filter((item) => item.text.includes("Reminder session")).length, 0);
+  const early = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Too early", startsAt: "2026-09-19T02:20:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  const past = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Already due", startsAt: NOW, durationSeconds: 1800, maxParticipants: 4 });
+  const opened = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Already live", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await service.enterSession({ actorUserId: "host", sessionId: opened.id, requestedAt: NOW });
+  await service.startSession({ actorUserId: "host", sessionId: opened.id });
+  notes.length = 0;
+  mails.length = 0;
+  await service.dispatchDueReminders();
+  assert.equal(notes.some((item) => item.body.includes("Too early") || item.body.includes("Already due") || item.body.includes("Already live")), false);
+  assert.equal(early.title, "Too early");
+  assert.equal(past.title, "Already due");
 });
 
 test("a live participant queues their own text and the response has no tutor answer", async () => {
