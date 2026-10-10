@@ -76,6 +76,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const roomRef = useRef<{ startAudio: () => Promise<void>; disconnect: () => Promise<void> } | null>(null);
   const connectGeneration = useRef(0);
   const [connectAttempt, setConnectAttempt] = useState(0);
+  const [sideTab, setSideTab] = useState<"participants" | "chat">("participants");
   groupRef.current = group;
 
   async function load() {
@@ -114,6 +115,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       const from = participant?.name || participant?.identity || "participant";
       if (message.type === "tutor" && message.text) {
         setChat((items) => [...items, { id: `tutor-${items.length}`, from: roomCopy.aiTutor, text: message.text || "", at: chatStamp() }]);
+        setSideTab("chat");
         return;
       }
       if (message.type === "chat" && message.text) setChat((items) => [...items, { id: `${from}-${items.length}`, from, text: message.text || "", at: chatStamp() }]);
@@ -377,43 +379,51 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           {controls.includes("mic") ? <button type="button" aria-pressed={micOn} onClick={() => void setMedia("mic", !micOn).catch(() => setMicOn(false))}>{roomCopy.mic}</button> : null}
           {controls.includes("camera") ? <button type="button" aria-pressed={cameraOn} onClick={() => void setMedia("camera", !cameraOn).catch(() => setCameraOn(false))}>{roomCopy.camera}</button> : null}
           {controls.includes("share") ? <button type="button" aria-pressed={sharing} onClick={() => void setMedia("share", !sharing).catch(() => setSharing(false))}>{roomCopy.share}</button> : null}
-          {controls.includes("participants") ? <p className={styles.participantCount} data-participants={present}><strong>{present}</strong> {roomCopy.participants}</p> : null}
+          {controls.includes("participants") ? <button type="button" className={styles.participantCount} data-participants={present} aria-pressed={sideTab === "participants"} onClick={() => setSideTab("participants")}><strong>{present}</strong> {roomCopy.participants}</button> : null}
           {controls.includes("raise-hand") ? <button type="button" aria-pressed={Boolean(roomApi?.localParticipant.identity && hands.includes(roomApi.localParticipant.identity))} onClick={() => { const identity = roomApi?.localParticipant.identity || ""; if (!identity) return; const raised = !hands.includes(identity); setHands((items) => raisedHands(items, identity, raised)); void publish({ type: "raise-hand", raised }); }}>{roomCopy.raiseHand}</button> : null}
           {controls.includes("leave") ? <button type="button" onClick={async () => { await releaseRoom(); await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
         </div>
       </div>
-      <aside className={styles.side} aria-label={roomCopy.participants}>
-        <div>
-          <h2>{roomCopy.participants} {present}/{session.maxParticipants}</h2>
-          <ul className={styles.roster}>
-            {roster.map((person) => <li key={person.key}><span className={styles.rosterInitial}>{person.name.slice(0, 1)}</span><strong>{person.name}</strong>{person.detail ? <span>{person.detail}</span> : null}</li>)}
-          </ul>
+      <aside className={styles.side} aria-label={sideTab === "participants" ? roomCopy.participants : roomCopy.chat}>
+        <div className={styles.sideTabs} role="tablist">
+          <button type="button" role="tab" aria-selected={sideTab === "participants"} onClick={() => setSideTab("participants")}>{roomCopy.participants}</button>
+          <button type="button" role="tab" aria-selected={sideTab === "chat"} onClick={() => setSideTab("chat")}>{roomCopy.chat}</button>
         </div>
-        <div className={styles.chatLog} aria-live="polite">
-          <h3>{roomCopy.chat}</h3>
-          {chat.map((line) => <p key={line.id}><strong>{line.from}</strong> <time dateTime={line.at}>{chatLabel(line.at)}</time> {line.text.startsWith(`${roomCopy.aiTutor} `) ? <><span className={styles.tutorMention}>{roomCopy.aiTutor}</span>{line.text.slice(roomCopy.aiTutor.length)}</> : line.text}</p>)}
-          {!connected ? <p>{roomCopy.chatUnavailable}</p> : null}
-        </div>
-        <form className={styles.chatForm} onSubmit={(event) => {
-          event.preventDefault();
-          const text = draft.trim();
-          if (!text || !connected) return;
-          const mention = addressTutor && session.aiTutorEnabled;
-          const chatText = mention ? `${roomCopy.aiTutor} ${text}` : text;
-          void publish({ type: "chat", text: chatText });
-          setChat((items) => [...items, { id: `local-${items.length}`, from: roomCopy.you, text: chatText, at: chatStamp() }]);
-          if (mention) {
-            void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/ai-tutor`, { method: "POST", body: JSON.stringify(tutorQueueBody(text)) }).then((queued) => {
-              if (!queued.ok) setErrorCode(queued.code);
-            });
-          }
-          setDraft("");
-          setAddressTutor(false);
-        }}>
-          {session.aiTutorEnabled ? <button className={styles.tutorEntry} type="button" aria-pressed={addressTutor} onClick={() => setAddressTutor((on) => !on)}>{roomCopy.aiTutor}</button> : null}
-          <label className={styles.meta}>{roomCopy.chat}<input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={roomCopy.chatPlaceholder} disabled={!connected} /></label>
-          <button className={styles.primary} type="submit" disabled={!connected}>{roomCopy.send}</button>
-        </form>
+        {sideTab === "participants" ? (
+          <div className={styles.sidePanel} role="tabpanel">
+            <h2>{roomCopy.participants} {present}/{session.maxParticipants}</h2>
+            <ul className={styles.roster}>
+              {roster.map((person) => <li key={person.key}><span className={styles.rosterInitial}>{person.name.slice(0, 1)}</span><strong>{person.name}</strong>{person.detail ? <span>{person.detail}</span> : null}</li>)}
+            </ul>
+          </div>
+        ) : (
+          <>
+            <div className={styles.chatLog} role="tabpanel" aria-live="polite">
+              {chat.map((line) => <p key={line.id}><strong>{line.from}</strong> <time dateTime={line.at}>{chatLabel(line.at)}</time> {line.text.startsWith(`${roomCopy.aiTutor} `) ? <><span className={styles.tutorMention}>{roomCopy.aiTutor}</span>{line.text.slice(roomCopy.aiTutor.length)}</> : line.text}</p>)}
+              {!connected ? <p>{roomCopy.chatUnavailable}</p> : null}
+            </div>
+            <form className={styles.chatForm} onSubmit={(event) => {
+              event.preventDefault();
+              const text = draft.trim();
+              if (!text || !connected) return;
+              const mention = addressTutor && session.aiTutorEnabled;
+              const chatText = mention ? `${roomCopy.aiTutor} ${text}` : text;
+              void publish({ type: "chat", text: chatText });
+              setChat((items) => [...items, { id: `local-${items.length}`, from: roomCopy.you, text: chatText, at: chatStamp() }]);
+              if (mention) {
+                void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/ai-tutor`, { method: "POST", body: JSON.stringify(tutorQueueBody(text)) }).then((queued) => {
+                  if (!queued.ok) setErrorCode(queued.code);
+                });
+              }
+              setDraft("");
+              setAddressTutor(false);
+            }}>
+              {session.aiTutorEnabled ? <button className={styles.tutorEntry} type="button" aria-pressed={addressTutor} onClick={() => setAddressTutor((on) => !on)}>{roomCopy.aiTutor}</button> : null}
+              <label className={styles.meta}>{roomCopy.chat}<input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={roomCopy.chatPlaceholder} disabled={!connected} /></label>
+              <button className={styles.primary} type="submit" disabled={!connected}>{roomCopy.send}</button>
+            </form>
+          </>
+        )}
       </aside>
     </section>
     </>
