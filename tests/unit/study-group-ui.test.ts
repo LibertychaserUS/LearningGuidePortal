@@ -222,6 +222,9 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   assert.match(app, /generation !== listGeneration\.current/);
   assert.match(app, /openGroupId\.current !== id/);
   assert.match(app, /setAttendeeSessionId\(session\.id\)/);
+  assert.match(app, /session\.attendees\.slice\(0, 4\)/);
+  assert.match(app, /session\.attendees\.length - 4/);
+  assert.match(app, /styles\.avatarRow/);
   assert.match(app, /setAttendeeSessionId\(null\)/);
   assert.match(app, /setEditingSession\(null\)/);
   assert.match(app, /setAttendees\(current\.attendees\)/);
