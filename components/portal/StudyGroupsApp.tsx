@@ -52,6 +52,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [createAbout, setCreateAbout] = useState("");
   const [reminders, setReminders] = useState<Array<{ body: string; createdAt: string }>>([]);
   const listGeneration = useRef(0);
+  const openGroupId = useRef<string | null>(null);
 
   async function loadLists() {
     const generation = ++listGeneration.current;
@@ -85,8 +86,10 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   }
 
   async function openGroup(id: string) {
+    openGroupId.current = id;
     setSelectedId(id);
     const result = await studyGroupRequest<StudyGroupDetail>(`/api/study-groups/${id}`);
+    if (openGroupId.current !== id) return;
     if (!result.ok) {
       setErrorCode(result.code);
       setStatus("error");
@@ -99,8 +102,10 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
 
   async function refreshOpenGroup(id: string) {
     const result = await studyGroupRequest<StudyGroupDetail>(`/api/study-groups/${id}`);
+    if (openGroupId.current !== id) return;
     if (!result.ok) {
       if (result.code === "not_found") {
+        openGroupId.current = null;
         setSelected(null);
         setSelectedId(null);
         void loadLists();
