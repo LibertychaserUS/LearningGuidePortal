@@ -321,7 +321,9 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   }
 
   async function exitTo(href: string) {
-    if (session && session.state === "live" && !left) {
+    if (session && (session.state === "live" || session.state === "starting_soon") && !left && !sessionNotStarted(session)) {
+      releasedRef.current = true;
+      leftRef.current = true;
       await releaseRoom();
       await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" });
     }
@@ -372,7 +374,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     return <>{path()}<section className={styles.empty} role="status"><h1>{copy.notStarted}</h1><p>{copy.notStartedBody}</p><p>{session.title}</p><p>{sessionScheduleLabel(locale, session)}</p></section></>;
   }
   if (session.state !== "live") {
-    return <>{path()}<section className={styles.empty} role="status"><h1>{copy.waiting}</h1><p>{session.title}</p>{session.focus ? <><h2>{copy.focus}</h2><p>{session.focus}</p></> : null}<p>{sessionScheduleLabel(locale, session)}</p><p>{fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p><p>{fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>{group?.role === "host" ? <button className={styles.primary} type="button" onClick={() => { void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/start`, { method: "POST", body: "{}" }).then((started) => { if (!started.ok) { setErrorCode(started.code); return; } return load(); }); }}>{copy.start}</button> : null}</section></>;
+    return <>{path()}<section className={styles.empty} role="status"><h1>{copy.waiting}</h1><p>{session.title}</p>{session.focus ? <><h2>{copy.focus}</h2><p>{session.focus}</p></> : null}<p>{sessionScheduleLabel(locale, session)}</p><p>{fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p><p>{fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p><p>{fill(copy.upToParticipants, { count: session.maxParticipants })}</p>{group?.role === "host" ? <button className={styles.primary} type="button" onClick={() => { void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/start`, { method: "POST", body: "{}" }).then((started) => { if (!started.ok) { setErrorCode(started.code); return; } return load(); }); }}>{copy.start}</button> : null}</section></>;
   }
 
   const controls = sessionControls({ role: group?.role || "member", state: "live", occupancy: session.occupancy, maxParticipants: session.maxParticipants });

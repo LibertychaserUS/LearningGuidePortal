@@ -177,6 +177,12 @@ test("a starting-soon Live Session shows its title, time, duration, and occupanc
   const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
   assert.match(room, /sessionScheduleLabel\(locale, session\)/);
   assert.match(room, /copy\.currentlyInSession/);
+  assert.match(room, /copy\.upToParticipants/);
+  assert.match(room, /session\.state === "live" \|\| session\.state === "starting_soon"/);
+  assert.match(app, /waitingHoldRef/);
+  assert.match(app, /waitingHandedOffRef\.current = true/);
+  assert.match(app, /addEventListener\("pagehide"/);
+  assert.match(app, /keepalive: true/);
   assert.match(app, /setWaitingSession\(null\)/);
   assert.match(app, /if \(result\.code === "not_found"\)/);
   assert.match(room, /current\.code === "not_found"/);
