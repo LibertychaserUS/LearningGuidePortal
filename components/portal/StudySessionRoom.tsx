@@ -98,7 +98,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       const people = [room.localParticipant, ...Array.from(room.remoteParticipants.values())];
       const nextCameras: Record<string, AttachableTrack> = {};
       for (const person of people) {
-        const publication = [...person.trackPublications.values()].find((item) => item.source === "camera" && item.track);
+        const publication = [...person.trackPublications.values()].find((item) => item.source === "camera" && item.track && item.isMuted === false);
         if (publication?.track) nextCameras[person.identity] = publication.track;
       }
       setCameraTracks(nextCameras);

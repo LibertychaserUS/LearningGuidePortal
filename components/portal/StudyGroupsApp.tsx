@@ -215,6 +215,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
         {discover.map((group) => (
           <button className={styles.card} type="button" key={group.id} aria-current={selectedId === group.id} onClick={() => void openGroup(group.id)}>
             <h3>{group.title}</h3>
+            {group.live ? <span className={styles.live}>{copy.live}</span> : null}
             <p className={styles.course}>{group.courseTitle}</p>
             <p className={styles.count}>{fill(copy.learners, { count: group.memberCount })}</p>
           </button>
