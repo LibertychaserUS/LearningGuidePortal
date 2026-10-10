@@ -533,6 +533,22 @@ test("reminders go to the host and plan-to-attend members only, once", async () 
   assert.equal(past.title, "Already due");
 });
 
+test("a zh-CN reminder uses the Chinese sentence", async () => {
+  const localNotes: Array<{ body: string }> = [];
+  const localMails: Array<{ subject: string; text: string }> = [];
+  access.add("host-zh:course-1");
+  const zh = serviceWith({
+    notify: async (input) => { localNotes.push(input); },
+    sendMail: async (input) => { localMails.push(input); },
+    userProfile: async (userId) => ({ id: userId, displayName: userId, email: `${userId}@example.test`, locale: "zh-CN" })
+  });
+  const group = await zh.createGroup({ actorUserId: "host-zh", title: "中文提醒组", courseId: "course-1", about: "Chinese reminder." });
+  await zh.scheduleSession({ actorUserId: "host-zh", groupId: group.id, title: "中文课", startsAt: "2026-09-19T02:08:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await zh.dispatchDueReminders();
+  assert.equal(localNotes.find((item) => item.body.includes("中文课"))?.body, "中文课 将在 10 分钟后开始。");
+  assert.equal(localMails.find((item) => item.text.includes("中文课"))?.subject, "直播课提醒");
+});
+
 test("a live participant queues their own text and the response has no tutor answer", async () => {
   const group = await service.createGroup({ actorUserId: "host", title: "Tutor queue", courseId: "course-1", about: "About the tutor queue." });
   const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Tutor session", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 6, aiTutorEnabled: true });
