@@ -81,6 +81,10 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     const current = await studyGroupRequest<StudySession>(`/api/study-groups/sessions/${sessionId}`);
     if (!current.ok) {
       setErrorCode(current.code);
+      if (current.code === "not_found") {
+        setSession(null);
+        await releaseRoom();
+      }
       return;
     }
     const detail = await studyGroupRequest<StudyGroupDetail>(`/api/study-groups/${current.data.groupId}`);

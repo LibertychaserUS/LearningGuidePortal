@@ -484,6 +484,9 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
         if (current.status !== "scheduled") throw new StudyGroupError("forbidden", "Cancel Session is available only before the Session starts.");
         current.status = "removed";
         current.updatedAt = now;
+        for (const presence of store.presences) {
+          if (presence.sessionId === current.id && presence.enteredAt && !presence.leftAt) presence.leftAt = now;
+        }
       });
     },
 
