@@ -137,7 +137,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
     if (state === "removed") throw new StudyGroupError("not_found", "Live Session was not found.");
     const showActual = state === "live" || state === "completed";
     const people = showActual
-      ? store.presences.filter((item) => item.sessionId === session.id && item.enteredAt)
+      ? store.presences.filter((item) => item.sessionId === session.id && item.enteredAt && (state === "completed" || !item.leftAt))
       : store.intents.filter((item) => item.sessionId === session.id && !item.cancelledAt);
     const attendees = [];
     for (const person of people) {
