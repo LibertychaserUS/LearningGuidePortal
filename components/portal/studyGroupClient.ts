@@ -51,6 +51,12 @@ export function tutorQueueBody(message: string) {
   return { message };
 }
 
+export function sessionNotStarted(session: { state: string; occupancy: number; startsAt: string; durationSeconds: number }, now = Date.now()) {
+  if (session.state !== "starting_soon" || session.occupancy > 0) return false;
+  const end = Date.parse(session.startsAt) + session.durationSeconds * 1000;
+  return Number.isFinite(end) && now >= end;
+}
+
 export function plannedMinutes(session: { durationSeconds: number }) {
   return Math.round(session.durationSeconds / 60);
 }

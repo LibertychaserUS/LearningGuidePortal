@@ -4,7 +4,7 @@ import { participantStatus, raisedHands, sessionControls, sessionStateLabel, stu
 import { readFileSync } from "node:fs";
 import en from "../../messages/en-GB.json";
 import zh from "../../messages/zh-CN.json";
-import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, scheduleSessionFields, SESSION_TITLE_MAX, sessionScheduleLabel, sessionTitleCount, tutorQueueBody } from "../../components/portal/studyGroupClient";
+import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, scheduleSessionFields, SESSION_TITLE_MAX, sessionNotStarted, sessionScheduleLabel, sessionTitleCount, tutorQueueBody } from "../../components/portal/studyGroupClient";
 
 test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", () => {
   assert.deepEqual([...DURATION_MINUTE_CHOICES], [30, 45, 60, 90]);
@@ -118,6 +118,10 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.equal(zh.studyGroupsPage.errors.start_in_past, "开始时间必须还在将来。");
   assert.match(readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8"), /dialog !== "waiting" && dialog !== "attendees"/);
   assert.equal(en.studyGroupsPage.enterWindow, "You can enter from 10 minutes before the start.");
+  assert.equal(en.studyGroupsPage.notStartedBody, "This Live Session was not started.");
+  assert.equal(zh.studyGroupsPage.notStarted, "未开始");
+  assert.equal(sessionNotStarted({ state: "starting_soon", occupancy: 0, startsAt: "2020-01-01T00:00:00.000Z", durationSeconds: 1800 }, Date.parse("2026-01-01T00:00:00.000Z")), true);
+  assert.equal(sessionNotStarted({ state: "starting_soon", occupancy: 1, startsAt: "2020-01-01T00:00:00.000Z", durationSeconds: 1800 }, Date.parse("2026-01-01T00:00:00.000Z")), false);
   assert.equal(zh.studyGroupsPage.enterWindow, "开始前 10 分钟可以进入。");
   assert.match(room, /group\?\.role === "host" \? <button className=\{styles\.primary\} type="button"/);
   assert.match(room, /sessions\/\$\{sessionId\}\/start/);
