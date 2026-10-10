@@ -3,9 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
-import { sessionControls } from "@/modules/group-study/uiState";
+import { participantStatus, sessionControls } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
 import { fill, plannedMinutes, studyGroupRequest, tutorQueueBody, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+
+function tileStatus(copy: { muted: string; speaking: string; micOn: string }, tile: { mic: boolean; speaking: boolean }) {
+  const status = participantStatus(tile);
+  if (status === "muted") return copy.muted;
+  if (status === "speaking") return copy.speaking;
+  return copy.micOn;
+}
 
 function elapsedClock(startedAt: string | null) {
   if (!startedAt) return "00:00";
@@ -14,7 +21,7 @@ function elapsedClock(startedAt: string | null) {
 }
 
 type ChatLine = { id: string; from: string; text: string };
-type Tile = { identity: string; name: string; host: boolean; mic: boolean };
+type Tile = { identity: string; name: string; host: boolean; mic: boolean; speaking: boolean };
 type AttachableTrack = { attach: (element: HTMLMediaElement) => HTMLMediaElement; detach: (element: HTMLMediaElement) => HTMLMediaElement[] };
 type LocalMedia = { setMicrophoneEnabled: (on: boolean) => Promise<unknown>; setCameraEnabled: (on: boolean) => Promise<unknown>; setScreenShareEnabled: (on: boolean) => Promise<unknown>; publishData: (data: Uint8Array, options: { reliable: boolean }) => Promise<unknown>; identity?: string; isMicrophoneEnabled: boolean; isCameraEnabled: boolean };
 
@@ -113,12 +120,14 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         identity: person.identity,
         name: person.name || person.identity,
         host: hostIds.has(person.identity),
-        mic: person.isMicrophoneEnabled
+        mic: person.isMicrophoneEnabled,
+        speaking: person.isSpeaking
       })));
     };
     repaintRef.current = paint;
     room.on(RoomEvent.ParticipantConnected, paint);
     room.on(RoomEvent.ParticipantDisconnected, paint);
+    room.on(RoomEvent.ActiveSpeakersChanged, paint);
     room.on(RoomEvent.TrackMuted, () => { paint(); showShare(); });
     room.on(RoomEvent.TrackUnmuted, () => { paint(); showShare(); });
     const attachRemoteAudio = (track: { kind: string; attach: () => HTMLMediaElement }) => {
@@ -225,7 +234,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           {tiles.length === 0 ? <div className={styles.tile}><span>{connected ? copy.loading : roomCopy.notConnected}</span></div> : tiles.map((tile) => (
             <div className={styles.tile} key={tile.identity}>
               <ParticipantCamera track={cameraTracks[tile.identity] ?? null} />
-              <span>{tile.name}{tile.host ? ` · ${roomCopy.host}` : ""}{hands.includes(tile.identity) ? " · " + roomCopy.raiseHand : ""}{tile.mic ? "" : " · " + roomCopy.mic}</span>
+              <span>{tile.name}{tile.host ? ` · ${roomCopy.host}` : ""}{hands.includes(tile.identity) ? " · " + roomCopy.raiseHand : ""}{" · " + tileStatus(roomCopy, tile)}</span>
             </div>
           ))}
         </div>
