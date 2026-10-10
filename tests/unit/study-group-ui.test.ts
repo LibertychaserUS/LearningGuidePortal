@@ -15,6 +15,7 @@ test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", (
   const source = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
   assert.match(source, /select name="durationMinutes" required/);
   assert.match(source, /type="date" required min=\{todayDate\(\)\}/);
+  assert.match(source, /min=\{earliestTime\(sessionDate\) \|\| undefined\}/);
   assert.match(source, /DURATION_MINUTE_CHOICES\.map/);
   assert.match(source, /\(selected\?\.lessons \|\| \[\]\)\.map/);
   assert.equal(scheduleSessionFields({ title: "Road", startsAt: "2026-09-19T02:05:00.000Z", durationMinutes: 45, maxParticipants: 4, focus: null, aiTutorEnabled: true, relatedLessonId: "lesson-1" }).relatedLessonId, "lesson-1");
