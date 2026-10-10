@@ -109,6 +109,9 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.match(room, /sessions\/\$\{sessionId\}\/enter/);
   assert.match(room, /session\.state === "scheduled"/);
   assert.match(room, /copy\.errors\.session_not_open/);
+  assert.match(room, /group\?\.role === "host" \? <button className=\{styles\.primary\} type="button"/);
+  assert.match(room, /sessions\/\$\{sessionId\}\/start/);
+  assert.equal(en.studyGroupsPage.start, "Start Live Session");
   assert.match(room, /room\?\.disconnect\(\)/);
   assert.equal(en.studyGroupsPage.errors.connect_failed, "The Live Session could not connect. Check the connection and try again.");
   assert.equal(zh.studyGroupsPage.errors.connect_failed, "直播课无法连接。请检查连接后重试。");
