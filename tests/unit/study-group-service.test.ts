@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { readFile } from "node:fs/promises";
 import { createStudyGroupService, type StudyGroupDeps, type StudyGroupService } from "../../modules/group-study/service";
-import { COURSE_MATERIAL_ABSENT, publishLiveKitData, readTutorKeys } from "../../modules/group-study/tutorAnswer";
+import { COURSE_MATERIAL_ABSENT, groundTutorReply, publishLiveKitData, readTutorKeys } from "../../modules/group-study/tutorAnswer";
 import { createStudyGroupRepository, type StudyGroupRepository } from "../../modules/group-study/repository";
 import { decryptTokenLogLine } from "../../modules/group-study/tokenLog";
 import { STUDY_GROUP_TUTOR_SYSTEM_PROMPT } from "../../modules/group-study/tutorPrompt";
@@ -729,6 +729,54 @@ test("a second delivery does not call the model while the first is still working
   assert.equal((await first)?.text, "The republic ended in 1933.");
   assert.equal(await second, null);
   assert.equal(calls, 2);
+});
+
+test("a reply that repeats a question word missing from the course context is not published", async () => {
+  const published: string[] = [];
+  const calls: string[] = [];
+  const local = serviceWith({
+    courseKnowledge: async () => "Friendship is central to security and happiness. Natural desires are part of that life.",
+    publishRoomChat: async ({ text }) => { published.push(text); },
+    tutorKeys: () => [{ id: "healthy", secret: "fake-key-healthy" }],
+    tutorCall: async () => {
+      calls.push("called");
+      return { outcome: "ok", latencyMs: 1, body: "Friendship is more than a petty trade because it is valued for itself." };
+    }
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "Ground", courseId: "course-1", about: "About the group." });
+  const session = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Ground", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4, aiTutorEnabled: true });
+  await local.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await local.startSession({ actorUserId: "host", sessionId: session.id });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "How does friendship relate to natural desires and a petty trade?", clientEventId: "evt-petty" });
+  const delivered = await local.deliverTutorAnswer({ sessionId: session.id });
+  assert.deepEqual(calls, ["called"]);
+  assert.deepEqual(published, [COURSE_MATERIAL_ABSENT]);
+  assert.equal(delivered?.text, COURSE_MATERIAL_ABSENT);
+  assert.equal(groundTutorReply("Why is friendship central?", "Friendship is central to security and happiness.", "Friendship is central to security and happiness."), "Friendship is central to security and happiness.");
+});
+
+test("a question whose content words are mostly absent does not call the model", async () => {
+  const published: string[] = [];
+  const calls: string[] = [];
+  const local = serviceWith({
+    courseKnowledge: async () => "Epicurus writes about pleasure, desire, and friendship.",
+    publishRoomChat: async ({ text }) => { published.push(text); },
+    tutorKeys: () => [{ id: "healthy", secret: "fake-key-healthy" }],
+    tutorCall: async () => {
+      calls.push("called");
+      return { outcome: "ok", latencyMs: 1, body: "The formula is C8H10N4O2, isolated in 1819." };
+    }
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "Formula", courseId: "course-1", about: "About the group." });
+  const session = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Formula", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4, aiTutorEnabled: true });
+  await local.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await local.startSession({ actorUserId: "host", sessionId: session.id });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What is the chemical formula of caffeine, and in which year did Epicurus publish that formula?", clientEventId: "evt-formula" });
+  const delivered = await local.deliverTutorAnswer({ sessionId: session.id });
+  assert.deepEqual(calls, []);
+  assert.deepEqual(published, [COURSE_MATERIAL_ABSENT]);
+  assert.equal(delivered?.text, COURSE_MATERIAL_ABSENT);
+  assert.equal(groundTutorReply("What ended in 1933?", "The republic ended in 1933.", `${COURSE_MATERIAL_ABSENT} It ended in 1819.`), COURSE_MATERIAL_ABSENT);
 });
 
 test("shared LiveKit publish has no private destination and no secret", async () => {
