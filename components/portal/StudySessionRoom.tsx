@@ -31,8 +31,10 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const [shareTrack, setShareTrack] = useState<AttachableTrack | null>(null);
   const [addressTutor, setAddressTutor] = useState(false);
   const shareVideo = useRef<HTMLVideoElement>(null);
+  const audioRoot = useRef<HTMLDivElement>(null);
   const groupRef = useRef<StudyGroupDetail | null>(null);
   const repaintRef = useRef<(() => void) | null>(null);
+  const roomRef = useRef<{ startAudio: () => Promise<void> } | null>(null);
   groupRef.current = group;
 
   async function load() {
@@ -92,14 +94,27 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     room.on(RoomEvent.ParticipantDisconnected, paint);
     room.on(RoomEvent.TrackMuted, () => { paint(); showShare(); });
     room.on(RoomEvent.TrackUnmuted, () => { paint(); showShare(); });
-    room.on(RoomEvent.TrackSubscribed, () => { paint(); showShare(); });
-    room.on(RoomEvent.TrackUnsubscribed, () => { paint(); showShare(); });
+    const attachRemoteAudio = (track: { kind: string; attach: () => HTMLMediaElement }) => {
+      if (track.kind !== "audio") return;
+      const element = track.attach();
+      element.autoplay = true;
+      if (audioRoot.current && element.parentElement !== audioRoot.current) audioRoot.current.appendChild(element);
+      void room.startAudio().catch(() => undefined);
+    };
+    room.on(RoomEvent.TrackSubscribed, (track) => { attachRemoteAudio(track); paint(); showShare(); });
+    room.on(RoomEvent.TrackUnsubscribed, (track) => {
+      if (track.kind === "audio") track.detach().forEach((element) => element.remove());
+      paint();
+      showShare();
+    });
     room.on(RoomEvent.LocalTrackPublished, () => { paint(); showShare(); });
     room.on(RoomEvent.LocalTrackUnpublished, () => { paint(); showShare(); });
     await room.connect(issued.data.liveKitUrl, issued.data.token);
+    roomRef.current = room;
     setRoomApi(room);
     setConnected(true);
     paint();
+    void room.startAudio().catch(() => undefined);
   }
 
   useEffect(() => {
@@ -126,6 +141,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   async function setMedia(kind: "mic" | "camera" | "share", enabled: boolean) {
     const local = roomApi?.localParticipant;
     if (!local) return;
+    await roomRef.current?.startAudio().catch(() => undefined);
     if (kind === "mic") await local.setMicrophoneEnabled(enabled);
     if (kind === "camera") await local.setCameraEnabled(enabled);
     if (kind === "share") await local.setScreenShareEnabled(enabled);
@@ -165,6 +181,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         <h1>{session.title}</h1>
         <p className={styles.meta}>{group?.courseTitle} · {copy.live}</p>
         {errorText ? <p className={styles.alert} role="alert">{errorText} <button className={styles.textButton} type="button" onClick={() => { setErrorCode(""); setConnected(false); }}>{roomCopy.reconnect}</button></p> : null}
+        <div ref={audioRoot} hidden />
         {shareTrack ? <video ref={shareVideo} className={styles.shareMain} autoPlay playsInline /> : null}
         <div className={styles.videos}>
           {tiles.length === 0 ? <div className={styles.tile}><span>{connected ? copy.loading : roomCopy.notConnected}</span></div> : tiles.map((tile) => (
