@@ -7,7 +7,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 import { sessionStateLabel, studyGroupPane } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
-import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, plannedMinutes, scheduleSessionFields, SESSION_TITLE_MAX, sessionNotStarted, sessionScheduleLabel, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, plannedMinutes, scheduleSessionFields, SESSION_TITLE_MAX, sessionDateLabel, sessionNotStarted, sessionScheduleLabel, sessionTimeLabel, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
 type CourseOption = { id: string; title: string; slug: string };
 
@@ -22,6 +22,14 @@ function earliestTime(date: string) {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+function FactIcon({ kind }: { kind: "date" | "time" | "duration" | "people" }) {
+  const props = { viewBox: "0 0 16 16", width: 14, height: 14, "aria-hidden": true as const, fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round" as const };
+  if (kind === "date") return <svg {...props}><rect x="2" y="3" width="12" height="11" rx="1.5" /><path d="M2 6.5h12M5 1.5v2M11 1.5v2" /></svg>;
+  if (kind === "time") return <svg {...props}><circle cx="8" cy="8" r="5.5" /><path d="M8 4.5V8l2.2 1.6" /></svg>;
+  if (kind === "duration") return <svg {...props}><circle cx="8" cy="8" r="5.5" /><path d="M8 5v3.2" /></svg>;
+  return <svg {...props}><circle cx="6" cy="5.5" r="2" /><path d="M2.5 13c.4-2 1.8-3 3.5-3s3.1 1 3.5 3" /></svg>;
 }
 
 function localDateTime(startsAt: string) {
@@ -465,8 +473,12 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                   <h3>{session.title}</h3>
                   {session.focus ? <p>{session.focus}</p> : null}
                   {session.relatedLessonId ? <p>{(selected.lessons || []).find((lesson) => lesson.id === session.relatedLessonId)?.title}</p> : null}
-                  <p className={styles.meta}>{sessionScheduleLabel(locale, session)} · {fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p>
-                  <p className={styles.meta}>{sessionNotStarted(session) ? copy.notStartedBody : <>{session.state === "completed" ? fill(copy.attended, { count: session.attendees.length }) : session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })} · {fill(copy.maximumLine, { count: session.maxParticipants })}</>}</p>
+                  <ul className={styles.factList}>
+                    <li><FactIcon kind="date" />{sessionDateLabel(locale, session.startsAt)}</li>
+                    <li><FactIcon kind="time" />{sessionTimeLabel(locale, session)}</li>
+                    <li><FactIcon kind="duration" />{fill(copy.plannedDuration, { count: plannedMinutes(session) })}</li>
+                    <li data-live={!sessionNotStarted(session) && (session.state === "live" || session.state === "starting_soon") ? "true" : undefined}><FactIcon kind="people" />{sessionNotStarted(session) ? copy.notStartedBody : session.state === "completed" ? <>{fill(copy.attended, { count: session.attendees.length })} · {fill(copy.maximumLine, { count: session.maxParticipants })}</> : session.state === "scheduled" ? <>{fill(copy.plannedCount, { count: session.plannedCount })} · {fill(copy.maximumLine, { count: session.maxParticipants })}</> : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</li>
+                  </ul>
                   {session.state === "scheduled" && (selected.role === "host" || session.viewerPlanned) ? <p className={styles.reminderHint}>{copy.reminderHint}</p> : null}
                   {session.attendees.length ? <p className={styles.avatarRow}>{session.attendees.slice(0, 4).map((person) => <span key={person.userId}>{person.displayName.slice(0, 1).toUpperCase()}</span>)}{session.attendees.length > 4 ? <span className={styles.avatarMore}>+{session.attendees.length - 4}</span> : null}</p> : null}
                   <div className={styles.row}>
