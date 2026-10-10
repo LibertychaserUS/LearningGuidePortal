@@ -483,6 +483,7 @@
     "createdTitle": "Study Group Created",
     "createdBody": "You're all set.",
     "openGroup": "Open Group",
+    "openStudyGroup": "Open Study Group",
     "arrangeLead": "Arrange a live study session for this Study Group",
     "selectLesson": "Select Lesson",
     "selectStartTime": "Select start time",
