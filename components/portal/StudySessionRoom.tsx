@@ -123,8 +123,8 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       })));
     };
     repaintRef.current = paint;
-    room.on(RoomEvent.ParticipantConnected, paint);
-    room.on(RoomEvent.ParticipantDisconnected, paint);
+    room.on(RoomEvent.ParticipantConnected, () => { paint(); window.setTimeout(() => void load(), 400); });
+    room.on(RoomEvent.ParticipantDisconnected, () => { paint(); window.setTimeout(() => void load(), 400); });
     room.on(RoomEvent.ActiveSpeakersChanged, paint);
     room.on(RoomEvent.TrackMuted, () => { paint(); showShare(); });
     room.on(RoomEvent.TrackUnmuted, () => { paint(); showShare(); });
@@ -274,6 +274,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   }
 
   const controls = sessionControls({ role: group?.role || "member", state: "live", occupancy: session.occupancy, maxParticipants: session.maxParticipants });
+  const present = connected && tiles.length > 0 ? tiles.length : session.occupancy;
   const roster = tiles.length
     ? tiles.map((tile) => ({
         key: tile.identity,
@@ -321,7 +322,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       </div>
       <aside className={styles.side} aria-label={roomCopy.participants}>
         <div>
-          <h2>{roomCopy.participants} {session.occupancy}/{session.maxParticipants}</h2>
+          <h2>{roomCopy.participants} {present}/{session.maxParticipants}</h2>
           <ul className={styles.roster}>
             {roster.map((person) => <li key={person.key}><span className={styles.rosterInitial}>{person.name.slice(0, 1)}</span><strong>{person.name}</strong>{person.detail ? <span>{person.detail}</span> : null}</li>)}
           </ul>
