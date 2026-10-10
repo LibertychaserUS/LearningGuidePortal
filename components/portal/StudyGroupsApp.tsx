@@ -7,7 +7,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 import { studyGroupPane } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
-import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, plannedMinutes, scheduleSessionFields, SESSION_TITLE_MAX, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, plannedMinutes, scheduleSessionFields, SESSION_TITLE_MAX, sessionScheduleLabel, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
 type CourseOption = { id: string; title: string; slug: string };
 
@@ -249,7 +249,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     }
     if (session.state === "live") router.push(`/${locale}/portal/study-groups/sessions/${session.id}`);
     else {
-      setWaitingSession(session);
+      setWaitingSession({ ...session, occupancy: result.data.occupancy });
       setDialog("waiting");
     }
   }
@@ -369,7 +369,14 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
         <dialog open className={styles.modal} aria-modal="true" aria-labelledby="study-group-dialog-title">
           <form method="dialog" onSubmit={(event) => { event.preventDefault(); const formElement = event.currentTarget; if (!formElement.reportValidity()) return; const form = new FormData(formElement); if (dialog === "edit") void submitEdit(form); if (dialog === "edit-session") void submitEditSession(form); if (dialog === "schedule") void submitSchedule(form); }}>
             <h2 id="study-group-dialog-title">{dialog === "schedule" ? copy.schedule : dialog === "waiting" ? copy.waiting : dialog === "attendees" ? copy.viewAttendees : dialog === "edit-session" ? copy.editSession : dialog === "edit" ? copy.editGroup : copy.create}</h2>
-            {dialog === "waiting" ? <p role="status">{copy.waiting}</p> : null}
+            {dialog === "waiting" && waitingSession ? (
+              <div role="status">
+                <p>{waitingSession.title}</p>
+                {waitingSession.focus ? <><h3>{copy.focus}</h3><p>{waitingSession.focus}</p></> : null}
+                <p>{sessionScheduleLabel(locale, waitingSession)} · {fill(copy.plannedDuration, { count: plannedMinutes(waitingSession) })}</p>
+                <p>{fill(copy.currentlyInSession, { count: waitingSession.occupancy, max: waitingSession.maxParticipants })}</p>
+              </div>
+            ) : null}
             {dialog === "attendees" ? <ul>{attendees.map((person) => <li key={person.userId}>{person.displayName}</li>)}</ul> : null}
             {dialog === "edit" ? (
               <>

@@ -4,7 +4,7 @@ import { participantStatus, raisedHands, sessionControls, studyGroupPane } from 
 import { readFileSync } from "node:fs";
 import en from "../../messages/en-GB.json";
 import zh from "../../messages/zh-CN.json";
-import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, scheduleSessionFields, SESSION_TITLE_MAX, sessionTitleCount, tutorQueueBody } from "../../components/portal/studyGroupClient";
+import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, scheduleSessionFields, SESSION_TITLE_MAX, sessionScheduleLabel, sessionTitleCount, tutorQueueBody } from "../../components/portal/studyGroupClient";
 
 test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", () => {
   assert.deepEqual([...DURATION_MINUTE_CHOICES], [30, 45, 60, 90]);
@@ -112,6 +112,23 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.match(room, /room\?\.disconnect\(\)/);
   assert.equal(en.studyGroupsPage.errors.connect_failed, "The Live Session could not connect. Check the connection and try again.");
   assert.equal(zh.studyGroupsPage.errors.connect_failed, "直播课无法连接。请检查连接后重试。");
+});
+
+test("a starting-soon Live Session shows its title, time, duration, and occupancy while waiting", () => {
+  const label = sessionScheduleLabel("en-GB", { startsAt: "2026-09-19T09:00:00.000Z", durationSeconds: 2700 });
+  assert.match(label, /2026/);
+  assert.match(label, /–/);
+  const start = new Date("2026-09-19T09:00:00.000Z");
+  const end = new Date(start.getTime() + 2700 * 1000);
+  const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
+  assert.equal(label, `${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(start)} · ${clock.format(start)} – ${clock.format(end)}`);
+  const app = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
+  assert.match(app, /waitingSession\.title/);
+  assert.match(app, /waitingSession\.focus/);
+  assert.match(app, /sessionScheduleLabel\(locale, waitingSession\)/);
+  const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
+  assert.match(room, /sessionScheduleLabel\(locale, session\)/);
+  assert.match(room, /copy\.currentlyInSession/);
 });
 
 test("the ended screen and live clock follow the Live Session frames", () => {
