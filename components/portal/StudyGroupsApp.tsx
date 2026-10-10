@@ -27,6 +27,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [mine, setMine] = useState<Card[]>([]);
   const [discover, setDiscover] = useState<Card[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [courseOptions, setCourseOptions] = useState<Array<{ id: string; title: string }>>([]);
   const [mineFilter, setMineFilter] = useState<"all" | "host">("all");
   const [courseFilter, setCourseFilter] = useState("");
   const [query, setQuery] = useState("");
@@ -63,6 +64,16 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     setMine(myResult.data);
     setDiscover(discoverResult.data);
     if (courseResult.ok) setCourses(courseResult.data);
+    const incoming = [
+      ...(courseResult.ok ? courseResult.data : []),
+      ...myResult.data.map((group) => ({ id: group.courseId, title: group.courseTitle })),
+      ...discoverResult.data.map((group) => ({ id: group.courseId, title: group.courseTitle }))
+    ];
+    setCourseOptions((current) => {
+      const next = new Map(current.map((item) => [item.id, item.title]));
+      for (const item of incoming) if (item.id && item.title) next.set(item.id, item.title);
+      return Array.from(next, ([id, title]) => ({ id, title }));
+    });
     setStatus("ready");
   }
 
@@ -261,7 +272,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
           <label>
             <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} aria-label={copy.allCourses}>
               <option value="">{copy.allCourses}</option>
-              {Array.from(new Map([...mine, ...discover].map((group) => [group.courseId, group.courseTitle])).entries()).map(([id, title]) => <option key={id} value={id}>{title}</option>)}
+              {courseOptions.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
             </select>
           </label>
           <label>
