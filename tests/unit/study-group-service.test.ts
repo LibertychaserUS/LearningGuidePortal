@@ -138,6 +138,25 @@ test("cancelling a group ends a live session and closes its one meeting", async 
   assert.equal(view.state, "completed");
 });
 
+test("a live attendee list hides people who left and the completed list keeps them", async () => {
+  access.add("attendee:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Attendees", courseId: "course-1", about: "About the attendees." });
+  await service.joinGroup({ actorUserId: "attendee", groupId: group.id });
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Present", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await service.enterSession({ actorUserId: "attendee", sessionId: session.id, requestedAt: "2026-09-19T02:00:01.000Z" });
+  await service.startSession({ actorUserId: "host", sessionId: session.id });
+  await service.leaveSession({ actorUserId: "attendee", sessionId: session.id });
+  const live = await service.getSession({ actorUserId: "host", sessionId: session.id });
+  assert.equal(live.state, "live");
+  assert.equal(live.occupancy, 1);
+  assert.deepEqual(live.attendees.map((item) => item.userId), ["host"]);
+  await service.leaveSession({ actorUserId: "host", sessionId: session.id });
+  const done = await service.getSession({ actorUserId: "host", sessionId: session.id });
+  assert.equal(done.state, "completed");
+  assert.deepEqual(done.attendees.map((item) => item.userId).sort(), ["attendee", "host"]);
+});
+
 test("session title stops at 20 characters and duration is one of four minute lengths stored as seconds", async () => {
   const group = await service.createGroup({ actorUserId: "host", title: "Duration group", courseId: "course-1", about: "Duration about." });
   const title = "12345678901234567890";
