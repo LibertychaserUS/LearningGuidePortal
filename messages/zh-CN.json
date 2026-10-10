@@ -587,6 +587,7 @@
     "attended": "{count} 人参加过",
     "maximumLine": "最多 {count} 人",
     "reminderHint": "开始前你会收到提醒",
+    "enterWindow": "开始前 10 分钟可以进入。",
     "completed": "已结束",
     "startingSoon": "即将开始",
     "upcoming": "即将到来",

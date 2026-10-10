@@ -111,6 +111,9 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.match(room, /sessions\/\$\{sessionId\}\/enter/);
   assert.match(room, /session\.state === "scheduled"/);
   assert.match(room, /copy\.errors\.session_not_open/);
+  assert.match(room, /copy\.enterWindow/);
+  assert.equal(en.studyGroupsPage.enterWindow, "You can enter from 10 minutes before the start.");
+  assert.equal(zh.studyGroupsPage.enterWindow, "开始前 10 分钟可以进入。");
   assert.match(room, /group\?\.role === "host" \? <button className=\{styles\.primary\} type="button"/);
   assert.match(room, /sessions\/\$\{sessionId\}\/start/);
   assert.match(room, /errorCode === "session_full"/);
