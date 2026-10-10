@@ -632,6 +632,7 @@
       "session_unavailable": "This Live Session has ended.",
       "unauthenticated": "Sign in is required.",
       "unavailable": "Live Session connection is not configured.",
+      "connect_failed": "The Live Session could not connect. Check the connection and try again.",
       "error": "Something went wrong. Try again."
     }
   },

@@ -627,6 +627,7 @@
       "session_unavailable": "这节直播课已结束。",
       "unauthenticated": "需要登录。",
       "unavailable": "直播课连接尚未配置。",
+      "connect_failed": "直播课无法连接。请检查连接后重试。",
       "error": "出了点问题。请重试。"
     }
   },
