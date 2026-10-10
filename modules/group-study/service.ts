@@ -715,8 +715,11 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       const due = await deps.repository.update((store) => dueJobs(store, true));
       for (const job of due) {
         const profile = await deps.userProfile(job.userId);
-        await deps.notify({ userId: job.userId, title: "Live Session reminder", body: `${job.sessionTitle} starts in 10 minutes.` });
-        if (profile?.email) await deps.sendMail({ to: profile.email, subject: "Live Session reminder", text: `${job.sessionTitle} starts in 10 minutes.`, locale: profile.locale });
+        const copy = profile?.locale === "zh-CN"
+          ? { subject: "直播课提醒", body: `${job.sessionTitle} 将在 10 分钟后开始。` }
+          : { subject: "Live Session reminder", body: `${job.sessionTitle} starts in 10 minutes.` };
+        await deps.notify({ userId: job.userId, title: "Live Session reminder", body: copy.body });
+        if (profile?.email) await deps.sendMail({ to: profile.email, subject: copy.subject, text: copy.body, locale: profile.locale });
       }
     },
 
