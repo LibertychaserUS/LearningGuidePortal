@@ -256,6 +256,8 @@ test("the ended screen and live clock follow the Live Session frames", () => {
   assert.match(room, /styles\.stageHead/);
   assert.match(room, /styles\.coursePill/);
   assert.match(room, /styles\.speakingPill/);
+  assert.match(room, /TileMic status=\{participantStatus\(tile\)\}/);
+  assert.match(room, /styles\.tileMic/);
   assert.match(room, /styles\.leaveControl/);
   assert.match(room, /styles\.endMark/);
   assert.match(room, /styles\.endTitle/);

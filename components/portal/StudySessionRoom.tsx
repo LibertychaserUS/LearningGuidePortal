@@ -24,6 +24,11 @@ function ControlIcon({ kind }: { kind: "mic" | "camera" | "share" | "people" | "
   return <svg {...props}><path d="M14 4h4v4M18 4l-7 7M10 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4" /></svg>;
 }
 
+function TileMic({ status, label }: { status: "muted" | "speaking" | "mic-on"; label: string }) {
+  const props = { viewBox: "0 0 24 24", width: 14, height: 14, "aria-hidden": true as const, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  return <span className={styles.tileMic} data-status={status} aria-label={label}>{status === "muted" ? <svg {...props}><path d="M9 10v2a3 3 0 0 0 5 2M15 11V6a3 3 0 0 0-5.5-1.5M5 5l14 14M12 17v3M8 11a4 4 0 0 0 .5 2" /></svg> : <svg {...props}><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M6 11a6 6 0 0 0 12 0M12 17v3" /></svg>}</span>;
+}
+
 function elapsedClock(startedAt: string | null) {
   if (!startedAt) return "00:00";
   const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(startedAt)) / 1000));
@@ -440,7 +445,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
             <div className={styles.tile} key={tile.identity}>
               <ParticipantCamera track={cameraTracks[tile.identity] ?? null} />
               {tile.speaking ? <span className={styles.speakingPill}>{roomCopy.speaking}</span> : null}
-              <span className={styles.tileCaption}>{tile.name}{tile.host ? ` · ${roomCopy.host}` : ""}{hands.includes(tile.identity) ? " · " + roomCopy.raiseHand : ""}{tile.speaking ? "" : " · " + tileStatus(roomCopy, tile)}</span>
+              <span className={styles.tileCaption}><span>{tile.name}{tile.host ? ` · ${roomCopy.host}` : ""}{hands.includes(tile.identity) ? " · " + roomCopy.raiseHand : ""}</span><TileMic status={participantStatus(tile)} label={tileStatus(roomCopy, tile)} /></span>
             </div>
           ))}
         </div>

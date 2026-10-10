@@ -141,7 +141,10 @@
 .coursePill { border-radius: 999px; background: #e8f1ff; color: #175cd3; font-size: 12px; font-weight: 600; padding: 4px 10px; white-space: nowrap; }
 .liveClock { margin: 0 0 0 auto; color: #111827; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .liveDot { color: #12b76a; margin-right: 6px; }
-.tileCaption { position: relative; z-index: 1; }
+.tileCaption { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+.tile .tileMic { width: 22px; height: 22px; display: grid; place-items: center; flex: none; border-radius: 11px; background: rgba(0, 0, 0, .35); }
+.tile .tileMic[data-status="speaking"], .tile .tileMic[data-status="mic-on"] { color: #12b76a; }
+.tile .tileMic[data-status="muted"] { color: #f04438; }
 .shareMain { width: 100%; min-height: 360px; max-height: 62vh; background: #101828; border-radius: 12px; object-fit: contain; }
 .videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .controls button[aria-pressed="true"] { background: #1d6bff; color: #fff; border-color: #1d6bff; }
