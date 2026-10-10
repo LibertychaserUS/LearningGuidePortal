@@ -16,7 +16,7 @@ import { signParticipantToken } from "./liveKitToken";
 import type { StudyGroupRepository } from "./repository";
 import { encryptTokenLogLine } from "./tokenLog";
 import { createTutorKeyPool, type TutorKeyOutcome } from "./tutorKeyPool";
-import { COURSE_MATERIAL_ABSENT, retrieveCourseKnowledge } from "./tutorAnswer";
+import { COURSE_MATERIAL_ABSENT, courseQuestionTerms, groundTutorReply, retrieveCourseKnowledge } from "./tutorAnswer";
 
 export type CourseSummary = { id: string; title: string; slug: string };
 export type UserProfile = { id: string; displayName: string; email: string | null; locale: "en-GB" | "zh-CN" };
@@ -654,21 +654,27 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
           const context = retrieveCourseKnowledge(corpus, item.text);
           let reply = COURSE_MATERIAL_ABSENT;
           if (context) {
-            const keys = deps.tutorKeys?.() ?? [];
-            if (!deps.tutorCall || keys.length === 0) {
-              await markAnswered(item.id, session.id);
-              continue;
+            const terms = courseQuestionTerms(item.text);
+            const missing = terms.filter((term) => !context.toLowerCase().includes(term.toLowerCase()));
+            if (terms.length > 0 && missing.length * 2 > terms.length) {
+              reply = COURSE_MATERIAL_ABSENT;
+            } else {
+              const keys = deps.tutorKeys?.() ?? [];
+              if (!deps.tutorCall || keys.length === 0) {
+                await markAnswered(item.id, session.id);
+                continue;
+              }
+              const pool = createTutorKeyPool({
+                keys,
+                call: (secret) => deps.tutorCall!({ secret, text: item.text, context })
+              });
+              const result = await pool.execute(item.text);
+              if (!result.keyId || !result.body || keys.some((key) => result.body?.includes(key.secret))) {
+                await markAnswered(item.id, session.id);
+                continue;
+              }
+              reply = groundTutorReply(item.text, context, result.body);
             }
-            const pool = createTutorKeyPool({
-              keys,
-              call: (secret) => deps.tutorCall!({ secret, text: item.text, context })
-            });
-            const result = await pool.execute(item.text);
-            if (!result.keyId || !result.body || keys.some((key) => result.body?.includes(key.secret))) {
-              await markAnswered(item.id, session.id);
-              continue;
-            }
-            reply = result.body;
           }
           if (deps.publishRoomChat) await deps.publishRoomChat({ room: session.id, text: reply });
           await markAnswered(item.id, session.id);

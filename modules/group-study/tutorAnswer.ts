@@ -4,13 +4,27 @@ import type { TutorKeyOutcome } from "./tutorKeyPool";
 
 export const COURSE_MATERIAL_ABSENT = "The course material does not contain the answer.";
 
-const STOP_WORDS = new Set(["what", "when", "where", "which", "that", "this", "with", "from", "have", "does", "about", "your", "into", "they", "them", "were", "been", "would", "could", "should", "their", "there"]);
+const STOP_WORDS = new Set(["what", "when", "where", "which", "that", "this", "with", "from", "have", "does", "about", "your", "into", "they", "them", "were", "been", "would", "could", "should", "their", "there", "again", "more", "than", "says", "said", "just", "only", "also", "very", "much", "many", "even", "still", "then", "here", "each", "both", "same", "most", "well", "back", "like", "over", "such", "some", "other", "why", "how"]);
 
-export function retrieveCourseKnowledge(corpus: string, question: string) {
-  const terms = [
+export function courseQuestionTerms(question: string) {
+  return [
     ...(question.toLowerCase().match(/[a-z0-9]{4,}/g) ?? []),
     ...(question.match(/[\u3400-\u9fff]{2,}/g) ?? [])
   ].filter((term, index, all) => !STOP_WORDS.has(term) && all.indexOf(term) === index);
+}
+
+export function groundTutorReply(question: string, context: string, reply: string) {
+  const text = reply.trim();
+  if (!text || text.includes(COURSE_MATERIAL_ABSENT)) return COURSE_MATERIAL_ABSENT;
+  const haystack = context.toLowerCase();
+  const replyText = text.toLowerCase();
+  const missing = courseQuestionTerms(question).filter((term) => !haystack.includes(term.toLowerCase()));
+  if (missing.some((term) => replyText.includes(term.toLowerCase()))) return COURSE_MATERIAL_ABSENT;
+  return text;
+}
+
+export function retrieveCourseKnowledge(corpus: string, question: string) {
+  const terms = courseQuestionTerms(question);
   if (!terms.length || !corpus.trim()) return "";
   const pieces = corpus.split(/\n\s*\n/).map((item) => item.trim()).filter((item) => item.length >= 12);
   const passages = pieces.length ? pieces : [corpus.trim()];
@@ -42,9 +56,13 @@ export function readTutorKeys(raw: string | undefined) {
 
 export async function openRouterTutorCall(input: { secret: string; model: string; system: string; context: string; text: string; url?: string }): Promise<{ outcome: TutorKeyOutcome; latencyMs: number; body?: string }> {
   const started = Date.now();
+  const missing = courseQuestionTerms(input.text).filter((term) => !input.context.toLowerCase().includes(term.toLowerCase()));
+  const limit = missing.length
+    ? `\n\nThese question words are not in the course context: ${missing.join(", ")}. Do not explain them. If the question needs one of them, reply with exactly: ${COURSE_MATERIAL_ABSENT}`
+    : "";
   const messages = [
     { role: "system", content: input.system },
-    { role: "user", content: `Course context:\n${input.context}\n\nParticipant text:\n${input.text}` }
+    { role: "user", content: `Course context:\n${input.context}\n\nParticipant text:\n${input.text}${limit}` }
   ];
   try {
     const compatibleUrl = input.url?.trim();
