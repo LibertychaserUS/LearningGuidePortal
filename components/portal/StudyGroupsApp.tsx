@@ -40,6 +40,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [editingSession, setEditingSession] = useState<StudySession | null>(null);
   const [waitingSession, setWaitingSession] = useState<StudySession | null>(null);
   const [attendees, setAttendees] = useState<StudySession["attendees"]>([]);
+  const [attendeeSessionId, setAttendeeSessionId] = useState<string | null>(null);
   const [sessionTitle, setSessionTitle] = useState("");
   const [sessionFocus, setSessionFocus] = useState("");
   const [sessionDate, setSessionDate] = useState("");
@@ -121,6 +122,12 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     const timer = window.setInterval(() => { void refreshOpenGroup(selectedId); }, 3000);
     return () => window.clearInterval(timer);
   }, [selectedId, signedIn]);
+
+  useEffect(() => {
+    if (dialog !== "attendees" || !attendeeSessionId) return;
+    const current = selected?.sessions?.find((item) => item.id === attendeeSessionId);
+    if (current) setAttendees(current.attendees);
+  }, [dialog, attendeeSessionId, selected]);
 
   useEffect(() => {
     void loadLists();
@@ -383,7 +390,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                     {(session.state === "scheduled" || session.state === "starting_soon") && session.viewerPlanned ? <><p className={styles.meta}>{copy.planning}</p><button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/cancel-attendance`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.cancelAttendance}</button></> : null}
                     {selected.role === "host" && (session.state === "scheduled" || session.state === "starting_soon") ? <button className={styles.ghost} type="button" onClick={() => openEditSession(session)}>{copy.editSession}</button> : null}
                     {selected.role === "host" && (session.state === "scheduled" || session.state === "starting_soon") ? <button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/cancel`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.cancelSession}</button> : null}
-                    <button className={styles.textButton} type="button" onClick={() => { setAttendees(session.attendees); setDialog("attendees"); }}>{copy.viewAttendees}</button>
+                    <button className={styles.textButton} type="button" onClick={() => { setAttendeeSessionId(session.id); setAttendees(session.attendees); setDialog("attendees"); }}>{copy.viewAttendees}</button>
                   </div>
                 </article>
               )) : null}
