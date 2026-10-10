@@ -320,6 +320,19 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
         for (const intent of current.intents) {
           if (intent.userId === input.actorUserId && sessionIds.has(intent.sessionId) && !intent.cancelledAt) intent.cancelledAt = now;
         }
+        for (const presence of current.presences) {
+          if (presence.userId !== input.actorUserId || presence.leftAt || !presence.enteredAt) continue;
+          const session = current.sessions.find((item) => item.id === presence.sessionId && item.groupId === input.groupId);
+          if (!session || session.status === "completed" || session.status === "removed") continue;
+          presence.leftAt = now;
+          if (session.status === "live" && occupancy(current, session.id) === 0) {
+            session.status = "completed";
+            session.completedAt = now;
+            session.updatedAt = now;
+            const meeting = current.meetings.find((item) => item.sessionId === session.id);
+            if (meeting && !meeting.endedAt) meeting.endedAt = now;
+          }
+        }
       });
     },
 

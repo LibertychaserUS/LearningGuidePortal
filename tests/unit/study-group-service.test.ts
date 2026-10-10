@@ -85,6 +85,24 @@ test("join is immediate for course access, duplicate join does not add a member,
   await assert.rejects(() => service.leaveGroup({ actorUserId: "host", groupId: group.id }), (error: unknown) => (error as { code: string }).code === "forbidden");
 });
 
+test("leaving a Study Group releases a waiting seat and ends a live session with nobody left", async () => {
+  access.add("waiter:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Waiting seat", courseId: "course-1", about: "About the waiting seat." });
+  await service.joinGroup({ actorUserId: "waiter", groupId: group.id });
+  const waiting = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Soon seat", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await service.enterSession({ actorUserId: "waiter", sessionId: waiting.id, requestedAt: NOW });
+  assert.equal((await service.getSession({ actorUserId: "host", sessionId: waiting.id })).occupancy, 1);
+  await service.leaveGroup({ actorUserId: "waiter", groupId: group.id });
+  assert.equal((await service.getSession({ actorUserId: "host", sessionId: waiting.id })).occupancy, 0);
+  await service.joinGroup({ actorUserId: "waiter", groupId: group.id });
+  const live = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Only waiter", startsAt: "2026-09-19T02:06:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await service.startSession({ actorUserId: "host", sessionId: live.id });
+  await service.enterSession({ actorUserId: "waiter", sessionId: live.id, requestedAt: NOW });
+  await service.leaveGroup({ actorUserId: "waiter", groupId: group.id });
+  assert.equal((await service.getSession({ actorUserId: "host", sessionId: live.id })).state, "completed");
+  assert.equal((await service.listDiscover({ actorUserId: "waiter" })).some((item) => item.id === group.id), true);
+});
+
 test("create rejects missing fields and a learner without course access", async () => {
   await assert.rejects(() => service.createGroup({ actorUserId: "host", title: "  ", courseId: "course-1", about: "About" }), (error: unknown) => (error as { code: string }).code === "validation");
   await assert.rejects(() => service.createGroup({ actorUserId: "host", title: "Title", courseId: "course-1", about: "" }), (error: unknown) => (error as { code: string }).code === "validation");
