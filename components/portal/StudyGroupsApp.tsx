@@ -416,7 +416,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                   <p className={styles.joinBanner}>{copy.joinBanner}</p>
                   <div className={styles.locked} aria-hidden="true"><span /><span /><span /></div>
                   <div className={styles.locked} aria-hidden="true"><span /><span /><span /></div>
-                  <p className={styles.joinNote}>{selected.canJoin ? copy.joinAccess : copy.getCourseAccess}</p>
+                  <p className={styles.joinNote}>{selected.canJoin ? copy.joinAccess : fill(copy.courseAccessRequired, { course: selected.courseTitle })}</p>
                   <div className={styles.joinAction}>{selected.canJoin ? <button className={styles.primary} type="button" onClick={async () => { const result = await studyGroupRequest(`/api/study-groups/${selected.id}/join`, { method: "POST", body: "{}" }); if (!result.ok) { setErrorCode(result.code); return; } await loadLists(); await openGroup(selected.id); }}>{copy.joinGroup}</button> : <a className={styles.primary} href={signedIn ? `/${locale}/portal/courses/${selected.courseSlug}` : `/${locale}/portal/sign-in`}>{signedIn ? copy.getCourseAccess : copy.signIn}</a>}</div>
                 </>
               ) : null}

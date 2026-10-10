@@ -520,6 +520,7 @@
     "leaveGroup": "Leave Study Group",
     "joinGroup": "Join Study Group",
     "getCourseAccess": "Get Course access",
+    "courseAccessRequired": "Course access required. You don't currently have access to {course}. Get Course access to join this Study Group.",
     "signInRequired": "Sign in to create or join a Study Group.",
     "signIn": "Sign in",
     "loading": "Loading Study Groups",
