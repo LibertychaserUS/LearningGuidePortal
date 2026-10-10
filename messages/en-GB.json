@@ -570,8 +570,10 @@
       "chatUnavailable": "Chat is available only while this browser is connected to the Live Session.",
       "notConnected": "The Live Session could not connect. Check the connection and try again.",
       "reconnect": "Reconnect",
+      "liveClock": "● Live {time}",
+      "groupStudy": "{count}-minute Group Study",
       "endedTitle": "Thanks for studying together",
-      "endedBody": "The Session has ended.",
+      "endedBody": "The Session has ended. You can return to the lesson and continue learning.",
       "returnToCourse": "Return to course",
       "youLeft": "You left the Live Session."
     },

@@ -5,7 +5,13 @@ import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 import { sessionControls } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
-import { studyGroupRequest, tutorQueueBody, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+import { fill, plannedMinutes, studyGroupRequest, tutorQueueBody, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+
+function elapsedClock(startedAt: string | null) {
+  if (!startedAt) return "00:00";
+  const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(startedAt)) / 1000));
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
 type ChatLine = { id: string; from: string; text: string };
 type Tile = { identity: string; name: string; host: boolean; mic: boolean };
@@ -43,6 +49,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const [shareTrack, setShareTrack] = useState<AttachableTrack | null>(null);
   const [cameraTracks, setCameraTracks] = useState<Record<string, AttachableTrack>>({});
   const [addressTutor, setAddressTutor] = useState(false);
+  const [clock, setClock] = useState("00:00");
   const shareVideo = useRef<HTMLVideoElement>(null);
   const audioRoot = useRef<HTMLDivElement>(null);
   const groupRef = useRef<StudyGroupDetail | null>(null);
@@ -148,6 +155,14 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   }, [session?.state, connected, left]);
 
   useEffect(() => {
+    if (session?.state !== "live") return;
+    const tick = () => setClock(elapsedClock(session.startedAt));
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [session?.state, session?.startedAt]);
+
+  useEffect(() => {
     repaintRef.current?.();
   }, [group]);
 
@@ -179,6 +194,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         <p>{session.title}</p>
         {session.focus ? <p>{session.focus}</p> : null}
         <p>{group?.courseTitle}</p>
+        <p>{fill(roomCopy.groupStudy, { count: plannedMinutes(session) })}</p>
         {ended ? <p>{roomCopy.endedBody}</p> : null}
         <a className={styles.primary} href={group ? `/${locale}/portal/courses/${group.courseSlug}` : `/${locale}/portal/study-groups`}>{roomCopy.returnToCourse}</a>
       </section>
@@ -200,7 +216,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     <section className={styles.room}>
       <div className={styles.stage}>
         <h1>{session.title}</h1>
-        <p className={styles.meta}>{group?.courseTitle} · {copy.live}</p>
+        <p className={styles.meta}>{group?.courseTitle} · {fill(roomCopy.liveClock, { time: clock })}</p>
         {session.focus ? <p>{session.focus}</p> : null}
         {errorText ? <p className={styles.alert} role="alert">{errorText} <button className={styles.textButton} type="button" onClick={() => { setErrorCode(""); setConnected(false); }}>{roomCopy.reconnect}</button></p> : null}
         <div ref={audioRoot} hidden />

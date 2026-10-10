@@ -565,8 +565,10 @@
       "chatUnavailable": "只有浏览器已连接到直播课时才能聊天。",
       "notConnected": "直播课无法连接。请检查连接后重试。",
       "reconnect": "重新连接",
+      "liveClock": "● 直播中 {time}",
+      "groupStudy": "{count} 分钟学习小组",
       "endedTitle": "感谢一起学习",
-      "endedBody": "本节已结束。",
+      "endedBody": "本节已结束。你可以返回课程继续学习。",
       "returnToCourse": "返回课程",
       "youLeft": "你已离开直播课。"
     },
