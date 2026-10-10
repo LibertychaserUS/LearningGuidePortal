@@ -157,6 +157,8 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   assert.match(app, /copy\.maximumLine/);
   assert.match(app, /view=reminders/);
   assert.match(app, /void refreshOpenGroup\(selectedId\)/);
+  assert.match(app, /dialog === "waiting" \? <button/);
+  assert.match(app, /sessions\/\$\{sessionId\}\/leave/);
   assert.match(app, /result\.code === "not_found"/);
   assert.match(app, /live: result\.data\.live/);
   assert.match(app, /styles\.reminders/);
