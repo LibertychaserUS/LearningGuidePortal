@@ -311,7 +311,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                 <article className={styles.session} key={session.id}>
                   <h3>{session.title}</h3>
                   <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p>
-                  <p className={styles.meta}>{session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
+                  <p className={styles.meta}>{session.state === "completed" ? copy.completed : session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
                   <div className={styles.row}>
                     {selected.role === "host" && session.state === "starting_soon" ? <button className={styles.primary} type="button" onClick={() => void startSession(session)}>{copy.start}</button> : null}
                     {session.state === "starting_soon" || session.state === "live" ? <button className={styles.primary} type="button" disabled={session.occupancy >= session.maxParticipants} onClick={() => void enter(session)}>{session.occupancy >= session.maxParticipants ? copy.sessionFull : copy.joinNow}</button> : null}
