@@ -121,6 +121,23 @@ test("host edits title and about, cannot change the course, and cancel keeps com
   assert.equal(stored.sessions.some((item) => item.id === session.id && item.status === "completed"), true);
 });
 
+test("cancelling a group ends a live session and closes its one meeting", async () => {
+  const group = await service.createGroup({ actorUserId: "host", title: "Live cancel", courseId: "course-1", about: "About the live cancel." });
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Open now", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await service.startSession({ actorUserId: "host", sessionId: session.id });
+  await service.cancelGroup({ actorUserId: "host", groupId: group.id });
+  const stored = await repository.read();
+  const ended = stored.sessions.find((item) => item.id === session.id);
+  const meetings = stored.meetings.filter((item) => item.sessionId === session.id);
+  assert.equal(ended?.status, "completed");
+  assert.equal(meetings.length, 1);
+  assert.equal(Boolean(meetings[0].endedAt), true);
+  assert.equal(stored.presences.some((item) => item.sessionId === session.id && !item.leftAt), false);
+  const view = await service.getSession({ actorUserId: "host", sessionId: session.id });
+  assert.equal(view.state, "completed");
+});
+
 test("session title stops at 20 characters and duration is one of four minute lengths stored as seconds", async () => {
   const group = await service.createGroup({ actorUserId: "host", title: "Duration group", courseId: "course-1", about: "Duration about." });
   const title = "12345678901234567890";
