@@ -93,6 +93,9 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.match(room, /styles\.roster/);
   assert.match(room, /ActiveSpeakersChanged/);
   assert.match(room, /person\.isSpeaking/);
+  assert.match(room, /triesLeft > 0/);
+  assert.equal(en.studyGroupsPage.errors.connect_failed, "The Live Session could not connect. Check the connection and try again.");
+  assert.equal(zh.studyGroupsPage.errors.connect_failed, "直播课无法连接。请检查连接后重试。");
 });
 
 test("the ended screen and live clock follow the Live Session frames", () => {

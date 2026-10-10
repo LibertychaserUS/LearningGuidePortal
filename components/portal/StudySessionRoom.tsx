@@ -62,6 +62,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const groupRef = useRef<StudyGroupDetail | null>(null);
   const repaintRef = useRef<(() => void) | null>(null);
   const roomRef = useRef<{ startAudio: () => Promise<void> } | null>(null);
+  const connectGeneration = useRef(0);
   groupRef.current = group;
 
   async function load() {
@@ -75,12 +76,9 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     if (detail.ok) setGroup(detail.data);
   }
 
-  async function connect() {
+  async function connect(generation: number) {
     const issued = await studyGroupRequest<{ token: string; liveKitUrl: string }>(`/api/study-groups/sessions/${sessionId}/token`, { method: "POST", body: "{}" });
-    if (!issued.ok || !issued.data.liveKitUrl) {
-      setErrorCode(issued.ok ? "unavailable" : issued.code);
-      return;
-    }
+    if (!issued.ok || !issued.data.liveKitUrl) throw new Error(issued.ok ? "unavailable" : issued.code);
     const { Room, RoomEvent } = await import("livekit-client");
     const room = new Room();
     const showShare = () => {
@@ -145,10 +143,20 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     });
     room.on(RoomEvent.LocalTrackPublished, () => { paint(); showShare(); });
     room.on(RoomEvent.LocalTrackUnpublished, () => { paint(); showShare(); });
-    await room.connect(issued.data.liveKitUrl, issued.data.token);
+    try {
+      await room.connect(issued.data.liveKitUrl, issued.data.token);
+    } catch (error) {
+      await room.disconnect().catch(() => undefined);
+      throw error;
+    }
+    if (connectGeneration.current !== generation) {
+      await room.disconnect().catch(() => undefined);
+      return;
+    }
     roomRef.current = room;
     setRoomApi(room);
     setConnected(true);
+    setErrorCode("");
     paint();
     void room.startAudio().catch(() => undefined);
   }
@@ -160,7 +168,26 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   }, [sessionId]);
 
   useEffect(() => {
-    if (session?.state === "live" && !connected && !left) void connect().catch(() => setErrorCode("unavailable"));
+    if (session?.state !== "live" || connected || left) return;
+    const generation = connectGeneration.current + 1;
+    connectGeneration.current = generation;
+    let timer = 0;
+    const run = (triesLeft: number) => {
+      void connect(generation).catch((error: unknown) => {
+        if (connectGeneration.current !== generation) return;
+        if (triesLeft > 0) {
+          timer = window.setTimeout(() => run(triesLeft - 1), 600);
+          return;
+        }
+        const code = error instanceof Error ? error.message : "";
+        setErrorCode(code in copy.errors ? code : "connect_failed");
+      });
+    };
+    run(2);
+    return () => {
+      connectGeneration.current += 1;
+      window.clearTimeout(timer);
+    };
   }, [session?.state, connected, left]);
 
   useEffect(() => {
