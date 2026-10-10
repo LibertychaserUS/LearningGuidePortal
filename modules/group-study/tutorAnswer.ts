@@ -4,7 +4,7 @@ import type { TutorKeyOutcome } from "./tutorKeyPool";
 
 export const COURSE_MATERIAL_ABSENT = "The course material does not contain the answer.";
 
-const STOP_WORDS = new Set(["what", "when", "where", "which", "that", "this", "with", "from", "have", "does", "about", "your", "into", "they", "them", "were", "been", "would", "could", "should", "their", "there", "again", "more", "than", "says", "said", "just", "only", "also", "very", "much", "many", "even", "still", "then", "here", "each", "both", "same", "most", "well", "back", "like", "over", "such", "some", "other", "why", "how"]);
+const STOP_WORDS = new Set(["what", "when", "where", "which", "that", "this", "with", "from", "have", "does", "about", "your", "into", "they", "them", "were", "been", "would", "could", "should", "their", "there", "again", "more", "than", "says", "said", "just", "only", "also", "very", "much", "many", "even", "still", "then", "here", "each", "both", "same", "most", "well", "back", "like", "over", "such", "some", "other", "why", "how", "relate", "related", "between"]);
 
 export function courseQuestionTerms(question: string) {
   return [
