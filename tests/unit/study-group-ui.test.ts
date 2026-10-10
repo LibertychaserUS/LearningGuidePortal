@@ -107,6 +107,7 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.match(room, /ActiveSpeakersChanged/);
   assert.match(room, /person\.isSpeaking/);
   assert.match(room, /type: "raise-hand", raised/);
+  assert.match(room, /raise-hand"\) \? <button type="button" aria-pressed=\{Boolean\(roomApi\?\.localParticipant\.identity && hands\.includes\(roomApi\.localParticipant\.identity\)\)\} disabled=\{!connected\}/);
   assert.match(room, /ParticipantDisconnected, \(\) => \{ paint\(\); window\.setTimeout\(\(\) => void load\(\), 400\); \}/);
   assert.match(room, /connected && tiles\.length > 0 \? tiles\.length : session\.occupancy/);
   assert.match(room, /controls\.includes\("participants"\)/);
