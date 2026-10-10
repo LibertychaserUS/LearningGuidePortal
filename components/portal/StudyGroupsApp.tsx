@@ -83,6 +83,12 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   }, [courseFilter, query, signedIn]);
 
   useEffect(() => {
+    if (!signedIn) return;
+    const timer = window.setInterval(() => { void loadLists(); }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [signedIn, courseFilter, query]);
+
+  useEffect(() => {
     if (!waitingSession || waitingSession.state === "live") return;
     const timer = window.setInterval(async () => {
       const result = await studyGroupRequest<StudySession>(`/api/study-groups/sessions/${waitingSession.id}`);
