@@ -193,6 +193,8 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   assert.equal(sessionStateLabel("scheduled"), "upcoming");
   assert.equal(sessionStateLabel("starting_soon"), "startingSoon");
   assert.equal(sessionStateLabel("live"), "live");
+  assert.equal(en.studyGroupsPage.liveNow, "Live now");
+  assert.equal(zh.studyGroupsPage.liveNow, "正在直播");
   assert.equal(sessionStateLabel("completed"), "completed");
   assert.equal(fill(en.studyGroupsPage.attended, { count: 4 }), "4 members attended");
   assert.equal(fill(en.studyGroupsPage.maximumLine, { count: 6 }), "Maximum 6 participants");
@@ -237,10 +239,15 @@ test("the ended screen and live clock follow the Live Session frames", () => {
   assert.match(room, /group\?\.title \|\| session\.title/);
   assert.match(room, /roomCopy\.groupStudy/);
   assert.match(room, /roomCopy\.liveClock/);
+  assert.match(room, /styles\.stageHead/);
+  assert.match(room, /styles\.coursePill/);
+  assert.match(room, /styles\.speakingPill/);
+  assert.match(room, /styles\.leaveControl/);
   assert.match(room, /roomCopy\.crumbHome/);
   assert.match(room, /study-groups\?group=/);
   assert.equal(en.studyGroupsPage.room.crumbHome, "Home");
   assert.equal(zh.studyGroupsPage.room.crumbGroups, "学习小组");
   const app = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
+  assert.match(app, /session\.state === "live" \? "liveNow"/);
   assert.match(app, /URLSearchParams\(window\.location\.search\)\.get\("group"\)/);
 });

@@ -461,7 +461,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
               {pane.kind === "sessions" && (selected.sessions || []).length === 0 ? <div className={styles.emptySessions}><p>{copy.noSessions}</p><Image src="/portal/study-groups/empty-sessions.png" width={150} height={113} alt="" /></div> : null}
               {pane.kind === "sessions" ? (selected.sessions || []).map((session) => (
                 <article className={styles.session} key={session.id}>
-                  <p className={styles.sessionState} data-state={sessionNotStarted(session) ? "missed" : session.state}>{sessionNotStarted(session) ? copy.notStarted : copy[sessionStateLabel(session.state)]}</p>
+                  <p className={styles.sessionState} data-state={sessionNotStarted(session) ? "missed" : session.state}>{sessionNotStarted(session) ? copy.notStarted : copy[session.state === "live" ? "liveNow" : sessionStateLabel(session.state)]}</p>
                   <h3>{session.title}</h3>
                   {session.focus ? <p>{session.focus}</p> : null}
                   {session.relatedLessonId ? <p>{(selected.lessons || []).find((lesson) => lesson.id === session.relatedLessonId)?.title}</p> : null}
