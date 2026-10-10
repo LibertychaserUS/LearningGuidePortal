@@ -125,6 +125,11 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.equal(en.studyGroupsPage.errors.start_in_past, "Start Time must be in the future.");
   assert.equal(zh.studyGroupsPage.errors.start_in_past, "开始时间必须还在将来。");
   assert.match(readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8"), /dialog !== "waiting" && dialog !== "attendees"/);
+  assert.equal(en.studyGroupsPage.courseAccessRequired, "Course access required. You don't currently have access to {course}. Get Course access to join this Study Group.");
+  assert.equal(fill(en.studyGroupsPage.courseAccessRequired, { course: "German History" }), "Course access required. You don't currently have access to German History. Get Course access to join this Study Group.");
+  assert.equal(zh.studyGroupsPage.courseAccessRequired, "需要课程访问权限。你目前没有{course}的访问权限。获取课程访问权限后才能加入这个学习小组。");
+  assert.match(readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8"), /copy\.courseAccessRequired/);
+  assert.equal(en.studyGroupsPage.getCourseAccess, "Get Course access");
   assert.equal(en.studyGroupsPage.enableAiTutor, "Enable AI Tutor for this session");
   assert.equal(zh.studyGroupsPage.enableAiTutor, "为本节启用 AI Tutor");
   assert.match(readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8"), /styles\.switchText\}>\{copy\.enableAiTutor\}/);
