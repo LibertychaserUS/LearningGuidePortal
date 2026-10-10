@@ -200,6 +200,7 @@ test("the ended screen and live clock follow the Live Session frames", () => {
   assert.equal(fill(zh.studyGroupsPage.room.liveClock, { time: "32:18" }), "● 直播中 32:18");
   const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
   assert.match(room, /elapsedClock\(session\.startedAt\)/);
+  assert.match(room, /group\?\.title \|\| session\.title/);
   assert.match(room, /roomCopy\.groupStudy/);
   assert.match(room, /roomCopy\.liveClock/);
   assert.match(room, /roomCopy\.crumbHome/);

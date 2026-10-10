@@ -310,10 +310,9 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       {path()}
       <section className={styles.empty}>
         <h1>{ended ? roomCopy.endedTitle : roomCopy.youLeft}</h1>
-        <p>{session.title}</p>
+        <p>{group?.title || session.title}</p>
         {session.focus ? <p>{session.focus}</p> : null}
-        <p>{group?.courseTitle}</p>
-        <p>{fill(roomCopy.groupStudy, { count: plannedMinutes(session) })}</p>
+        <p>{[group?.courseTitle, fill(roomCopy.groupStudy, { count: plannedMinutes(session) })].filter(Boolean).join(" · ")}</p>
         {ended ? <p>{roomCopy.endedBody}</p> : null}
         <a className={styles.primary} href={group ? `/${locale}/portal/courses/${group.courseSlug}` : `/${locale}/portal/study-groups`}>{roomCopy.returnToCourse}</a>
       </section>
