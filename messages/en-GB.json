@@ -553,6 +553,7 @@
     "attended": "{count} members attended",
     "maximumLine": "Maximum {count} participants",
     "reminderHint": "You'll get a reminder before it starts",
+    "enterWindow": "You can enter from 10 minutes before the start.",
     "completed": "Completed",
     "startingSoon": "Starting soon",
     "upcoming": "Upcoming",
