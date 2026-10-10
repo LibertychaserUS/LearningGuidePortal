@@ -177,6 +177,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       <section className={styles.empty}>
         <h1>{ended ? roomCopy.endedTitle : roomCopy.youLeft}</h1>
         <p>{session.title}</p>
+        {session.focus ? <p>{session.focus}</p> : null}
         <p>{group?.courseTitle}</p>
         {ended ? <p>{roomCopy.endedBody}</p> : null}
         <a className={styles.primary} href={group ? `/${locale}/portal/courses/${group.courseSlug}` : `/${locale}/portal/study-groups`}>{roomCopy.returnToCourse}</a>
@@ -200,6 +201,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       <div className={styles.stage}>
         <h1>{session.title}</h1>
         <p className={styles.meta}>{group?.courseTitle} · {copy.live}</p>
+        {session.focus ? <p>{session.focus}</p> : null}
         {errorText ? <p className={styles.alert} role="alert">{errorText} <button className={styles.textButton} type="button" onClick={() => { setErrorCode(""); setConnected(false); }}>{roomCopy.reconnect}</button></p> : null}
         <div ref={audioRoot} hidden />
         {shareTrack ? <video ref={shareVideo} className={styles.shareMain} autoPlay playsInline /> : null}
