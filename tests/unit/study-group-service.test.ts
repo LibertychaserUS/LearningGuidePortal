@@ -128,7 +128,7 @@ test("host edits title and about, cannot change the course, and cancel keeps com
     maxParticipants: 2
   });
   await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
-  await assert.rejects(() => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Too late", startsAt: "2026-09-19T01:00:00.000Z", durationSeconds: 1800, maxParticipants: 2 }), (error: unknown) => (error as { code: string }).code === "validation");
+  await assert.rejects(() => service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Too late", startsAt: "2026-09-19T01:00:00.000Z", durationSeconds: 1800, maxParticipants: 2 }), (error: unknown) => (error as { code: string }).code === "start_in_past");
   await service.startSession({ actorUserId: "host", sessionId: session.id });
   await service.leaveSession({ actorUserId: "host", sessionId: session.id });
   notes.length = 0;

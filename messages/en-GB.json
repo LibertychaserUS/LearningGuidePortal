@@ -627,6 +627,7 @@
     },
     "errors": {
       "validation": "Check the required fields and try again.",
+      "start_in_past": "Start Time must be in the future.",
       "course_access_required": "Valid Course access is required.",
       "forbidden": "You cannot do that.",
       "not_found": "That Study Group or Live Session was not found.",
