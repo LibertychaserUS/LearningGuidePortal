@@ -5,7 +5,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 import { participantStatus, raisedHands, sessionControls } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
-import { fill, plannedMinutes, studyGroupRequest, tutorQueueBody, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
+import { fill, plannedMinutes, sessionScheduleLabel, studyGroupRequest, tutorQueueBody, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
 function tileStatus(copy: { muted: string; speaking: string; micOn: string }, tile: { mic: boolean; speaking: boolean }) {
   const status = participantStatus(tile);
@@ -82,8 +82,8 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       setErrorCode(current.code);
       return;
     }
-    setSession(current.data);
     const detail = await studyGroupRequest<StudyGroupDetail>(`/api/study-groups/${current.data.groupId}`);
+    setSession(current.data);
     if (detail.ok) setGroup(detail.data);
   }
 
@@ -300,7 +300,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     return <>{path()}<section className={styles.empty} role="status"><h1>{copy.errors.session_not_open}</h1><p>{session.title}</p></section></>;
   }
   if (session.state !== "live") {
-    return <>{path()}<section className={styles.empty} role="status"><h1>{copy.waiting}</h1><p>{session.title}</p></section></>;
+    return <>{path()}<section className={styles.empty} role="status"><h1>{copy.waiting}</h1><p>{session.title}</p>{session.focus ? <><h2>{copy.focus}</h2><p>{session.focus}</p></> : null}<p>{sessionScheduleLabel(locale, session)}</p><p>{fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p><p>{fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p></section></>;
   }
 
   const controls = sessionControls({ role: group?.role || "member", state: "live", occupancy: session.occupancy, maxParticipants: session.maxParticipants });

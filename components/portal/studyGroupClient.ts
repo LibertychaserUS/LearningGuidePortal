@@ -55,6 +55,14 @@ export function plannedMinutes(session: { durationSeconds: number }) {
   return Math.round(session.durationSeconds / 60);
 }
 
+export function sessionScheduleLabel(locale: string, session: { startsAt: string; durationSeconds: number }) {
+  const start = new Date(session.startsAt);
+  const end = new Date(start.getTime() + session.durationSeconds * 1000);
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(start);
+  const clock = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" });
+  return `${date} · ${clock.format(start)} – ${clock.format(end)}`;
+}
+
 export function scheduleSessionFields(input: { title: FormDataEntryValue | null; startsAt: string; durationMinutes: number; maxParticipants: number; focus: FormDataEntryValue | null; aiTutorEnabled: boolean; relatedLessonId?: FormDataEntryValue | null }) {
   const lesson = typeof input.relatedLessonId === "string" ? input.relatedLessonId.trim() : "";
   return {
