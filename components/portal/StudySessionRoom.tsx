@@ -75,6 +75,13 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const repaintRef = useRef<(() => void) | null>(null);
   const roomRef = useRef<{ startAudio: () => Promise<void>; disconnect: () => Promise<void> } | null>(null);
   const connectGeneration = useRef(0);
+  const seatedRef = useRef(false);
+  const leftRef = useRef(false);
+  const releasedRef = useRef(false);
+  const sessionStateRef = useRef("");
+  seatedRef.current = seated;
+  leftRef.current = left;
+  sessionStateRef.current = session?.state || "";
   const [connectAttempt, setConnectAttempt] = useState(0);
   const [sideTab, setSideTab] = useState<"participants" | "chat">("participants");
   groupRef.current = group;
@@ -180,7 +187,20 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     void room.startAudio().catch(() => undefined);
   }
 
-  useEffect(() => () => { void roomRef.current?.disconnect().catch(() => undefined); }, []);
+  useEffect(() => {
+    const release = () => {
+      void roomRef.current?.disconnect().catch(() => undefined);
+      if (releasedRef.current || !seatedRef.current || leftRef.current) return;
+      if (sessionStateRef.current !== "live" && sessionStateRef.current !== "starting_soon") return;
+      releasedRef.current = true;
+      void fetch(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}", keepalive: true });
+    };
+    window.addEventListener("pagehide", release);
+    return () => {
+      window.removeEventListener("pagehide", release);
+      release();
+    };
+  }, [sessionId]);
 
   useEffect(() => {
     void load();
