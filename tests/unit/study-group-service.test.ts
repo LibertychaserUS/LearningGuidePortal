@@ -156,6 +156,25 @@ test("cancelling a group ends a live session and closes its one meeting", async 
   assert.equal(view.state, "completed");
 });
 
+test("a waiting entrant is listed without a plan, and a scheduled list stays with planners", async () => {
+  access.add("walker:course-1");
+  access.add("planner-only:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Who is waiting", courseId: "course-1", about: "Attendees follow the seat." });
+  await service.joinGroup({ actorUserId: "walker", groupId: group.id });
+  await service.joinGroup({ actorUserId: "planner-only", groupId: group.id });
+  const soon = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Soon list", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await service.enterSession({ actorUserId: "walker", sessionId: soon.id, requestedAt: NOW });
+  await service.planToAttend({ actorUserId: "planner-only", sessionId: soon.id });
+  const waiting = await service.getSession({ actorUserId: "host", sessionId: soon.id });
+  assert.equal(waiting.state, "starting_soon");
+  assert.deepEqual(waiting.attendees.map((item) => item.userId), ["walker"]);
+  const later = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Later list", startsAt: "2026-09-19T02:20:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await service.planToAttend({ actorUserId: "planner-only", sessionId: later.id });
+  const upcoming = await service.getSession({ actorUserId: "host", sessionId: later.id });
+  assert.equal(upcoming.state, "scheduled");
+  assert.deepEqual(upcoming.attendees.map((item) => item.userId), ["planner-only"]);
+});
+
 test("a live attendee list hides people who left and the completed list keeps them", async () => {
   access.add("attendee:course-1");
   const group = await service.createGroup({ actorUserId: "host", title: "Attendees", courseId: "course-1", about: "About the attendees." });

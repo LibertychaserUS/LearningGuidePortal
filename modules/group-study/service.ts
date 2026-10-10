@@ -137,7 +137,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
   async function sessionView(store: StudyGroupStore, session: LiveSessionRow, actorUserId: string) {
     const state = effectiveSessionState(session, deps.now());
     if (state === "removed") throw new StudyGroupError("not_found", "Live Session was not found.");
-    const showActual = state === "live" || state === "completed";
+    const showActual = state === "starting_soon" || state === "live" || state === "completed";
     const people = showActual
       ? store.presences.filter((item) => item.sessionId === session.id && item.enteredAt && (state === "completed" || !item.leftAt))
       : store.intents.filter((item) => item.sessionId === session.id && !item.cancelledAt);
