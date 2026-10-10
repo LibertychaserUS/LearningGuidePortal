@@ -122,6 +122,9 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
         openGroupId.current = null;
         setSelected(null);
         setSelectedId(null);
+        setDialog(null);
+        setWaitingSession(null);
+        setEditingSession(null);
         void loadLists();
       }
       return;
@@ -143,6 +146,14 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   }, [dialog, attendeeSessionId, selected]);
 
   useEffect(() => {
+    if (dialog !== "waiting" || !waitingSession || !selected?.sessions) return;
+    if (!selected.sessions.some((item) => item.id === waitingSession.id)) {
+      setDialog(null);
+      setWaitingSession(null);
+    }
+  }, [dialog, waitingSession, selected]);
+
+  useEffect(() => {
     void loadLists();
   }, [courseFilter, query, signedIn]);
 
@@ -161,7 +172,16 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     if (!waitingSession || waitingSession.state === "live") return;
     const timer = window.setInterval(async () => {
       const result = await studyGroupRequest<StudySession>(`/api/study-groups/sessions/${waitingSession.id}`);
-      if (!result.ok) return;
+      if (!result.ok) {
+        if (result.code === "not_found") {
+          setDialog(null);
+          setWaitingSession(null);
+          const groupId = openGroupId.current;
+          if (groupId) void openGroup(groupId);
+          void loadLists();
+        }
+        return;
+      }
       setWaitingSession(result.data);
       if (result.data.state === "live") router.push(`/${locale}/portal/study-groups/sessions/${result.data.id}`);
     }, 3000);

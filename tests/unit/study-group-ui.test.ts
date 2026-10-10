@@ -151,6 +151,10 @@ test("a starting-soon Live Session shows its title, time, duration, and occupanc
   const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
   assert.match(room, /sessionScheduleLabel\(locale, session\)/);
   assert.match(room, /copy\.currentlyInSession/);
+  assert.match(app, /setWaitingSession\(null\)/);
+  assert.match(app, /if \(result\.code === "not_found"\)/);
+  assert.match(room, /current\.code === "not_found"/);
+  assert.match(room, /setSession\(null\)/);
 });
 
 test("a Live Session card names its state, attendance, and the plan reminder", () => {

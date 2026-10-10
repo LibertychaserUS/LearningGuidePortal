@@ -103,6 +103,20 @@ test("leaving a Study Group releases a waiting seat and ends a live session with
   assert.equal((await service.listDiscover({ actorUserId: "waiter" })).some((item) => item.id === group.id), true);
 });
 
+test("cancelling an unstarted Live Session releases people who were waiting", async () => {
+  access.add("waiter:course-1");
+  const group = await service.createGroup({ actorUserId: "host", title: "Cancel wait", courseId: "course-1", about: "The host can cancel before start." });
+  await service.joinGroup({ actorUserId: "waiter", groupId: group.id });
+  const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Waiting cancel", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  await service.enterSession({ actorUserId: "waiter", sessionId: session.id, requestedAt: NOW });
+  assert.equal((await service.getSession({ actorUserId: "host", sessionId: session.id })).occupancy, 1);
+  await service.cancelSession({ actorUserId: "host", sessionId: session.id });
+  await assert.rejects(() => service.getSession({ actorUserId: "waiter", sessionId: session.id }), (error: unknown) => (error as { code: string }).code === "not_found");
+  const stored = await repository.read();
+  assert.equal(stored.presences.find((item) => item.sessionId === session.id && item.userId === "waiter")?.leftAt, NOW);
+  assert.equal((await service.getGroup({ actorUserId: "host", groupId: group.id })).sessions?.some((item) => item.id === session.id), false);
+});
+
 test("a Live Session that ended without anyone waiting cannot be entered or started", async () => {
   const group = await service.createGroup({ actorUserId: "host", title: "Missed", courseId: "course-1", about: "The slot passed." });
   const session = await service.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Missed slot", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
