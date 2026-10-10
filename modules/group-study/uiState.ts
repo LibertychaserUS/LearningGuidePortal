@@ -8,6 +8,12 @@ export function studyGroupPane(input: { status: PaneStatus; selected: { role: "h
   return { kind: "sessions" as const };
 }
 
+export function raisedHands(current: string[], identity: string, raised: boolean) {
+  if (!identity) return current;
+  if (raised) return current.includes(identity) ? current : [...current, identity];
+  return current.filter((item) => item !== identity);
+}
+
 export function participantStatus(input: { mic: boolean; speaking: boolean }) {
   if (!input.mic) return "muted" as const;
   if (input.speaking) return "speaking" as const;
