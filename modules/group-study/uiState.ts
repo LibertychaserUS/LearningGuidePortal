@@ -8,6 +8,12 @@ export function studyGroupPane(input: { status: PaneStatus; selected: { role: "h
   return { kind: "sessions" as const };
 }
 
+export function participantStatus(input: { mic: boolean; speaking: boolean }) {
+  if (!input.mic) return "muted" as const;
+  if (input.speaking) return "speaking" as const;
+  return "mic-on" as const;
+}
+
 export function sessionControls(input: { role: "host" | "member" | null; state: "scheduled" | "starting_soon" | "live" | "completed"; occupancy: number; maxParticipants: number }) {
   if (input.state === "live") return ["mic", "camera", "share", "participants", "raise-hand", "leave"];
   const actions: string[] = [];

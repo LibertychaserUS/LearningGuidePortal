@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { sessionControls, studyGroupPane } from "../../modules/group-study/uiState";
+import { participantStatus, sessionControls, studyGroupPane } from "../../modules/group-study/uiState";
 import { readFileSync } from "node:fs";
 import en from "../../messages/en-GB.json";
 import zh from "../../messages/zh-CN.json";
@@ -78,6 +78,20 @@ test("in-room controls stay the same for host and participant, and a full sessio
   assert.equal(sessionControls({ role: "host", state: "starting_soon", occupancy: 1, maxParticipants: 6 }).includes("start"), true);
   assert.equal(sessionControls({ role: "member", state: "starting_soon", occupancy: 1, maxParticipants: 6 }).includes("join"), true);
   assert.equal(sessionControls({ role: "member", state: "scheduled", occupancy: 0, maxParticipants: 6 }).includes("plan"), true);
+});
+
+test("a live tile says who is speaking, who has a microphone, and who is muted", () => {
+  assert.equal(participantStatus({ mic: false, speaking: true }), "muted");
+  assert.equal(participantStatus({ mic: true, speaking: true }), "speaking");
+  assert.equal(participantStatus({ mic: true, speaking: false }), "mic-on");
+  assert.equal(en.studyGroupsPage.room.muted, "Muted");
+  assert.equal(en.studyGroupsPage.room.speaking, "Speaking");
+  assert.equal(en.studyGroupsPage.room.micOn, "Mic on");
+  assert.equal(zh.studyGroupsPage.room.muted, "已静音");
+  assert.equal(zh.studyGroupsPage.room.speaking, "正在发言");
+  const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
+  assert.match(room, /ActiveSpeakersChanged/);
+  assert.match(room, /person\.isSpeaking/);
 });
 
 test("the ended screen and live clock follow the Live Session frames", () => {
