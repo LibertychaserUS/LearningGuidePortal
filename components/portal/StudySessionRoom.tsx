@@ -14,6 +14,16 @@ function tileStatus(copy: { muted: string; speaking: string; micOn: string }, ti
   return copy.micOn;
 }
 
+function ControlIcon({ kind }: { kind: "mic" | "camera" | "share" | "people" | "hand" | "leave" }) {
+  const props = { viewBox: "0 0 24 24", width: 18, height: 18, "aria-hidden": true as const, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (kind === "mic") return <svg {...props}><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M6 11a6 6 0 0 0 12 0M12 17v3" /></svg>;
+  if (kind === "camera") return <svg {...props}><path d="M3 8h11v9H3zM14 11l6-3v9l-6-3" /></svg>;
+  if (kind === "share") return <svg {...props}><rect x="4" y="5" width="16" height="12" rx="2" /><path d="M10 11h4M12 9v4" /></svg>;
+  if (kind === "people") return <svg {...props}><circle cx="9" cy="8" r="2.5" /><circle cx="16" cy="9" r="2" /><path d="M4 18c.6-2.4 2.4-3.5 5-3.5s4.4 1.1 5 3.5M14 14.5c1.6 0 3 .7 3.8 2.5" /></svg>;
+  if (kind === "hand") return <svg {...props}><path d="M8 11V6.5a1.5 1.5 0 0 1 3 0V11M11 8V5.5a1.5 1.5 0 0 1 3 0V12M14 9V7.5a1.5 1.5 0 0 1 3 0V14c0 3-2 5-5 5h-1c-2 0-3-.8-4-2l-2.5-3.5a1.5 1.5 0 0 1 2.2-2L8 13" /></svg>;
+  return <svg {...props}><path d="M14 4h4v4M18 4l-7 7M10 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4" /></svg>;
+}
+
 function elapsedClock(startedAt: string | null) {
   if (!startedAt) return "00:00";
   const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(startedAt)) / 1000));
@@ -393,12 +403,16 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     ? tiles.map((tile) => ({
         key: tile.identity,
         name: tile.name,
-        detail: [tile.host ? roomCopy.host : "", hands.includes(tile.identity) ? roomCopy.raiseHand : "", tileStatus(roomCopy, tile)].filter(Boolean).join(" · ")
+        host: tile.host,
+        hand: hands.includes(tile.identity),
+        status: participantStatus(tile)
       }))
     : session.attendees.map((person) => ({
         key: person.userId,
         name: person.displayName,
-        detail: group?.members?.some((member) => member.userId === person.userId && member.role === "host") ? roomCopy.host : ""
+        host: Boolean(group?.members?.some((member) => member.userId === person.userId && member.role === "host")),
+        hand: false,
+        status: "" as const
       }));
   const errorText = errorCode ? copy.errors[errorCode as keyof typeof copy.errors] || copy.errors.error : "";
 
@@ -431,24 +445,23 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           ))}
         </div>
         <div className={styles.controls}>
-          {controls.includes("mic") ? <button type="button" aria-pressed={micOn} disabled={!connected} onClick={() => void setMedia("mic", !micOn).catch(() => setMicOn(false))}>{roomCopy.mic}</button> : null}
-          {controls.includes("camera") ? <button type="button" aria-pressed={cameraOn} disabled={!connected} onClick={() => void setMedia("camera", !cameraOn).catch(() => setCameraOn(false))}>{roomCopy.camera}</button> : null}
-          {controls.includes("share") ? <button type="button" aria-pressed={sharing} disabled={!connected} onClick={() => void setMedia("share", !sharing).catch(() => setSharing(false))}>{roomCopy.share}</button> : null}
-          {controls.includes("participants") ? <button type="button" className={styles.participantCount} data-participants={present} aria-pressed={sideTab === "participants"} onClick={() => setSideTab("participants")}><strong>{present}</strong> {roomCopy.participants}</button> : null}
-          {controls.includes("raise-hand") ? <button type="button" aria-pressed={Boolean(roomApi?.localParticipant.identity && hands.includes(roomApi.localParticipant.identity))} disabled={!connected} onClick={() => { const identity = roomApi?.localParticipant.identity || ""; if (!identity) return; const raised = !hands.includes(identity); setHands((items) => raisedHands(items, identity, raised)); void publish({ type: "raise-hand", raised }); }}>{roomCopy.raiseHand}</button> : null}
-          {controls.includes("leave") ? <button className={styles.leaveControl} type="button" onClick={async () => { await releaseRoom(); await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
+          {controls.includes("mic") ? <button type="button" aria-pressed={micOn} disabled={!connected} onClick={() => void setMedia("mic", !micOn).catch(() => setMicOn(false))}><ControlIcon kind="mic" />{roomCopy.mic}</button> : null}
+          {controls.includes("camera") ? <button type="button" aria-pressed={cameraOn} disabled={!connected} onClick={() => void setMedia("camera", !cameraOn).catch(() => setCameraOn(false))}><ControlIcon kind="camera" />{roomCopy.camera}</button> : null}
+          {controls.includes("share") ? <button type="button" aria-pressed={sharing} disabled={!connected} onClick={() => void setMedia("share", !sharing).catch(() => setSharing(false))}><ControlIcon kind="share" />{roomCopy.share}</button> : null}
+          {controls.includes("participants") ? <button type="button" className={styles.participantCount} data-participants={present} aria-pressed={sideTab === "participants"} onClick={() => setSideTab("participants")}><ControlIcon kind="people" /><strong>{present}</strong> {roomCopy.participants}</button> : null}
+          {controls.includes("raise-hand") ? <button type="button" aria-pressed={Boolean(roomApi?.localParticipant.identity && hands.includes(roomApi.localParticipant.identity))} disabled={!connected} onClick={() => { const identity = roomApi?.localParticipant.identity || ""; if (!identity) return; const raised = !hands.includes(identity); setHands((items) => raisedHands(items, identity, raised)); void publish({ type: "raise-hand", raised }); }}><ControlIcon kind="hand" />{roomCopy.raiseHand}</button> : null}
+          {controls.includes("leave") ? <button className={styles.leaveControl} type="button" onClick={async () => { await releaseRoom(); await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}><ControlIcon kind="leave" />{roomCopy.leave}</button> : null}
         </div>
       </div>
       <aside className={styles.side} aria-label={sideTab === "participants" ? roomCopy.participants : roomCopy.chat}>
         <div className={styles.sideTabs} role="tablist">
-          <button type="button" role="tab" aria-selected={sideTab === "participants"} onClick={() => setSideTab("participants")}>{roomCopy.participants}</button>
+          <button type="button" role="tab" aria-selected={sideTab === "participants"} onClick={() => setSideTab("participants")}>{roomCopy.participants} <span className={styles.tabCount}>{present}/{session.maxParticipants}</span></button>
           <button type="button" role="tab" aria-selected={sideTab === "chat"} onClick={() => setSideTab("chat")}>{roomCopy.chat}</button>
         </div>
         {sideTab === "participants" ? (
           <div className={styles.sidePanel} role="tabpanel">
-            <h2>{roomCopy.participants} {present}/{session.maxParticipants}</h2>
             <ul className={styles.roster}>
-              {roster.map((person) => <li key={person.key}><span className={styles.rosterInitial}>{person.name.slice(0, 1)}</span><strong>{person.name}</strong>{person.detail ? <span>{person.detail}</span> : null}</li>)}
+              {roster.map((person) => <li key={person.key}><span className={styles.rosterInitial}>{person.name.slice(0, 1)}</span><strong>{person.name}</strong>{person.host ? <span className={styles.chatHost}>{roomCopy.host}</span> : null}{person.hand ? <span>{roomCopy.raiseHand}</span> : null}{person.status ? <span className={styles.rosterStatus} data-status={person.status}>{person.status === "muted" ? roomCopy.muted : person.status === "speaking" ? roomCopy.speaking : roomCopy.micOn}</span> : null}</li>)}
             </ul>
           </div>
         ) : (
