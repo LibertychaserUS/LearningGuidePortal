@@ -166,6 +166,11 @@ test("a starting-soon Live Session shows its title, time, duration, and occupanc
   const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
   assert.equal(label, `${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(start)} · ${clock.format(start)} – ${clock.format(end)}`);
   const app = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
+  assert.equal(en.studyGroupsPage.waiting, "Waiting for the host to start the session...");
+  assert.equal(fill(en.studyGroupsPage.upToParticipants, { count: 6 }), "Up to 6 participants");
+  assert.equal(zh.studyGroupsPage.waiting, "等待主持人开始本节...");
+  assert.equal(fill(zh.studyGroupsPage.upToParticipants, { count: 6 }), "最多 6 人");
+  assert.match(app, /copy\.upToParticipants/);
   assert.match(app, /waitingSession\.title/);
   assert.match(app, /waitingSession\.focus/);
   assert.match(app, /sessionScheduleLabel\(locale, waitingSession\)/);
