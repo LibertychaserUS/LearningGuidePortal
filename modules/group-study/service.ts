@@ -604,41 +604,48 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
     },
 
     async deliverTutorAnswer(input: { sessionId: string }) {
-      const snapshot = await deps.repository.read();
-      const session = snapshot.sessions.find((item) => item.id === input.sessionId && item.status !== "removed");
-      if (!session) return null;
-      const item = snapshot.tutorRequests
-        .filter((entry) => entry.sessionId === session.id && entry.inFlight && !entry.answeredAt)
-        .sort((left, right) => left.receivedAt.localeCompare(right.receivedAt) || left.id.localeCompare(right.id))[0];
-      if (!item) return null;
-      const group = snapshot.groups.find((entry) => entry.id === session.groupId);
-      const corpus = group && deps.courseKnowledge ? await deps.courseKnowledge(group.courseId) : "";
-      const context = retrieveCourseKnowledge(corpus, item.text);
-      let reply = COURSE_MATERIAL_ABSENT;
-      if (context) {
-        const keys = deps.tutorKeys?.() ?? [];
-        if (!deps.tutorCall || keys.length === 0) return null;
-        const pool = createTutorKeyPool({
-          keys,
-          call: (secret) => deps.tutorCall!({ secret, text: item.text, context })
+      const markAnswered = async (itemId: string, sessionId: string) => {
+        await deps.repository.update((store) => {
+          const row = store.tutorRequests.find((entry) => entry.id === itemId);
+          if (!row || row.answeredAt) return;
+          row.answeredAt = deps.now().toISOString();
+          row.inFlight = false;
+          const next = store.tutorRequests
+            .filter((entry) => entry.sessionId === sessionId && !entry.answeredAt)
+            .sort((left, right) => left.receivedAt.localeCompare(right.receivedAt) || left.id.localeCompare(right.id))[0];
+          if (next) next.inFlight = true;
         });
-        const result = await pool.execute(item.text);
-        if (!result.keyId || !result.body) return null;
-        if (keys.some((key) => result.body.includes(key.secret))) return null;
-        reply = result.body;
-      }
-      if (deps.publishRoomChat) await deps.publishRoomChat({ room: session.id, text: reply });
-      await deps.repository.update((store) => {
-        const row = store.tutorRequests.find((entry) => entry.id === item.id);
-        if (!row || row.answeredAt) return;
-        row.answeredAt = deps.now().toISOString();
-        row.inFlight = false;
-        const next = store.tutorRequests
-          .filter((entry) => entry.sessionId === session.id && !entry.answeredAt)
+      };
+      for (;;) {
+        const snapshot = await deps.repository.read();
+        const session = snapshot.sessions.find((item) => item.id === input.sessionId && item.status !== "removed");
+        if (!session) return null;
+        const item = snapshot.tutorRequests
+          .filter((entry) => entry.sessionId === session.id && entry.inFlight && !entry.answeredAt)
           .sort((left, right) => left.receivedAt.localeCompare(right.receivedAt) || left.id.localeCompare(right.id))[0];
-        if (next) next.inFlight = true;
-      });
-      return { text: reply };
+        if (!item) return null;
+        const group = snapshot.groups.find((entry) => entry.id === session.groupId);
+        const corpus = group && deps.courseKnowledge ? await deps.courseKnowledge(group.courseId) : "";
+        const context = retrieveCourseKnowledge(corpus, item.text);
+        let reply = COURSE_MATERIAL_ABSENT;
+        if (context) {
+          const keys = deps.tutorKeys?.() ?? [];
+          if (!deps.tutorCall || keys.length === 0) {
+            await markAnswered(item.id, session.id);
+            continue;
+          }
+          const pool = createTutorKeyPool({
+            keys,
+            call: (secret) => deps.tutorCall!({ secret, text: item.text, context })
+          });
+          const result = await pool.execute(item.text);
+          if (!result.keyId || !result.body || keys.some((key) => result.body?.includes(key.secret))) return null;
+          reply = result.body;
+        }
+        if (deps.publishRoomChat) await deps.publishRoomChat({ room: session.id, text: reply });
+        await markAnswered(item.id, session.id);
+        return { text: reply };
+      }
     },
 
     async dispatchDueReminders() {
