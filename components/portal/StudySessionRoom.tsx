@@ -105,7 +105,13 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     const issued = await studyGroupRequest<{ token: string; liveKitUrl: string }>(`/api/study-groups/sessions/${sessionId}/token`, { method: "POST", body: "{}" });
     if (!issued.ok || !issued.data.liveKitUrl) throw new Error(issued.ok ? "unavailable" : issued.code);
     const { Room, RoomEvent } = await import("livekit-client");
-    const room = new Room();
+    const room = new Room({
+      reconnectPolicy: {
+        nextRetryDelayInMs({ retryCount }) {
+          return retryCount < 1 ? 300 : null;
+        }
+      }
+    });
     const showShare = () => {
       const publications = [
         ...room.localParticipant.trackPublications.values(),
@@ -170,6 +176,17 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     });
     room.on(RoomEvent.LocalTrackPublished, () => { paint(); showShare(); });
     room.on(RoomEvent.LocalTrackUnpublished, () => { paint(); showShare(); });
+    room.on(RoomEvent.Disconnected, () => {
+      if (roomRef.current !== room || leftRef.current || releasedRef.current) return;
+      roomRef.current = null;
+      setRoomApi(null);
+      setConnected(false);
+      setMicOn(false);
+      setCameraOn(false);
+      setSharing(false);
+      setShareTrack(null);
+      setErrorCode("connect_failed");
+    });
     try {
       await room.connect(issued.data.liveKitUrl, issued.data.token);
     } catch (error) {
@@ -190,7 +207,9 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
 
   useEffect(() => {
     const release = () => {
-      void roomRef.current?.disconnect().catch(() => undefined);
+      const room = roomRef.current;
+      roomRef.current = null;
+      void room?.disconnect().catch(() => undefined);
       if (releasedRef.current || !seatedRef.current || leftRef.current) return;
       if (sessionStateRef.current !== "live" && sessionStateRef.current !== "starting_soon") return;
       releasedRef.current = true;
