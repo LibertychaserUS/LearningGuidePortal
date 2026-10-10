@@ -429,7 +429,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
               </>
             ) : null}
             <div className={styles.dialogActions}>
-              <button className={styles.ghost} type="button" onClick={() => setDialog(null)}>{copy.cancel}</button>
+              {dialog === "waiting" ? <button className={styles.danger} type="button" onClick={() => { const sessionId = waitingSession?.id; setDialog(null); setWaitingSession(null); if (!sessionId) return; void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }).then(() => { if (selected) void openGroup(selected.id); }); }}>{copy.room.leave}</button> : <button className={styles.ghost} type="button" onClick={() => setDialog(null)}>{copy.cancel}</button>}
               {dialog === "edit" || dialog === "edit-session" || dialog === "schedule" ? <button className={styles.primary} type="submit">{dialog === "schedule" ? copy.scheduleAction : copy.save}</button> : null}
             </div>
           </form>
