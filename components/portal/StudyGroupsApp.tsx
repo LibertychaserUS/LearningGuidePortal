@@ -67,6 +67,8 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [reminders, setReminders] = useState<Array<{ body: string; createdAt: string }>>([]);
   const listGeneration = useRef(0);
   const openGroupId = useRef<string | null>(null);
+  const waitingHoldRef = useRef<string | null>(null);
+  const waitingHandedOffRef = useRef(false);
 
   async function loadLists() {
     const generation = ++listGeneration.current;
@@ -166,6 +168,34 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   }, [dialog, waitingSession, selected]);
 
   useEffect(() => {
+    const release = () => {
+      if (waitingHandedOffRef.current) return;
+      const sessionId = waitingHoldRef.current;
+      if (!sessionId) return;
+      waitingHoldRef.current = null;
+      void fetch(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}", keepalive: true });
+    };
+    window.addEventListener("pagehide", release);
+    return () => {
+      window.removeEventListener("pagehide", release);
+      release();
+    };
+  }, []);
+
+  useEffect(() => {
+    const sessionId = dialog === "waiting" ? waitingSession?.id ?? null : null;
+    if (sessionId) {
+      waitingHoldRef.current = sessionId;
+      return;
+    }
+    if (waitingHandedOffRef.current) return;
+    const held = waitingHoldRef.current;
+    if (!held) return;
+    waitingHoldRef.current = null;
+    void fetch(`/api/study-groups/sessions/${held}/leave`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}", keepalive: true });
+  }, [dialog, waitingSession?.id]);
+
+  useEffect(() => {
     void loadLists();
   }, [courseFilter, query, signedIn]);
 
@@ -195,7 +225,11 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
         return;
       }
       setWaitingSession(result.data);
-      if (result.data.state === "live") router.push(`/${locale}/portal/study-groups/sessions/${result.data.id}`);
+      if (result.data.state === "live") {
+        waitingHandedOffRef.current = true;
+        waitingHoldRef.current = null;
+        router.push(`/${locale}/portal/study-groups/sessions/${result.data.id}`);
+      }
     }, 3000);
     return () => window.clearInterval(timer);
   }, [waitingSession, locale, router]);
@@ -324,6 +358,8 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
       return;
     }
     if (selected) await openGroup(selected.id);
+    waitingHandedOffRef.current = true;
+    waitingHoldRef.current = null;
     router.push(`/${locale}/portal/study-groups/sessions/${session.id}`);
   }
 
@@ -335,6 +371,8 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     }
     if (session.state === "live") router.push(`/${locale}/portal/study-groups/sessions/${session.id}`);
     else {
+      waitingHandedOffRef.current = false;
+      waitingHoldRef.current = session.id;
       setWaitingSession({ ...session, occupancy: result.data.occupancy });
       setDialog("waiting");
     }
