@@ -180,6 +180,10 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   }, [sessionId]);
 
   useEffect(() => {
+    if (session?.state === "completed") void releaseRoom();
+  }, [session?.state]);
+
+  useEffect(() => {
     if (session?.state !== "live" || connected || left) return;
     const generation = connectGeneration.current + 1;
     connectGeneration.current = generation;
