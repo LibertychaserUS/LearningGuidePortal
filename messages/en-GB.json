@@ -555,6 +555,8 @@
     "upcoming": "Upcoming",
     "close": "Close",
     "room": {
+      "crumbHome": "Home",
+      "crumbGroups": "Study Groups",
       "participants": "Participants",
       "chat": "Chat",
       "aiTutor": "@AI Tutor",

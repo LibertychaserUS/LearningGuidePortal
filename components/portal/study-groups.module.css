@@ -119,6 +119,9 @@
 .locked span:first-child { width: 42%; }
 .locked span:nth-child(2) { width: 68%; }
 .joinAction { display: flex; justify-content: center; margin-top: 8px; }
+.crumb { display: flex; align-items: center; gap: 10px; min-height: 55px; padding: 0 42px; background: #fff; border-bottom: 1px solid #e4e7ec; font-size: 14px; color: #4a5565; }
+.crumb button { border: 0; background: transparent; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.crumb [aria-current="page"] { color: #111827; font-weight: 600; }
 .room { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; padding: 24px; }
 .stage, .side { background: #fff; border: 1px solid #e4e7ec; border-radius: 16px; padding: 20px; }
 .shareMain { width: 100%; min-height: 360px; max-height: 62vh; background: #101828; border-radius: 12px; object-fit: contain; }

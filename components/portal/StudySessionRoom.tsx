@@ -194,10 +194,33 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     if (kind === "share") setSharing(enabled);
   }
 
+  async function exitTo(href: string) {
+    if (session && session.state === "live" && !left) {
+      await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" });
+    }
+    window.location.assign(href);
+  }
+
+  function path() {
+    if (!session) return null;
+    return (
+      <nav className={styles.crumb} aria-label={roomCopy.crumbGroups}>
+        <button type="button" onClick={() => void exitTo(`/${locale}/portal`)}>{roomCopy.crumbHome}</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" onClick={() => void exitTo(`/${locale}/portal/study-groups`)}>{roomCopy.crumbGroups}</button>
+        {group ? <><span aria-hidden="true">/</span><button type="button" onClick={() => void exitTo(`/${locale}/portal/study-groups?group=${group.id}`)}>{group.title}</button></> : null}
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{session.title}</span>
+      </nav>
+    );
+  }
+
   if (!session) return <p className={styles.panel} role="status">{errorCode ? copy.errors[errorCode as keyof typeof copy.errors] || copy.errors.error : copy.loading}</p>;
   if (session.state === "completed" || left) {
     const ended = session.state === "completed";
     return (
+      <>
+      {path()}
       <section className={styles.empty}>
         <h1>{ended ? roomCopy.endedTitle : roomCopy.youLeft}</h1>
         <p>{session.title}</p>
@@ -207,10 +230,11 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         {ended ? <p>{roomCopy.endedBody}</p> : null}
         <a className={styles.primary} href={group ? `/${locale}/portal/courses/${group.courseSlug}` : `/${locale}/portal/study-groups`}>{roomCopy.returnToCourse}</a>
       </section>
+      </>
     );
   }
   if (session.state !== "live") {
-    return <section className={styles.empty} role="status"><h1>{copy.waiting}</h1><p>{session.title}</p></section>;
+    return <>{path()}<section className={styles.empty} role="status"><h1>{copy.waiting}</h1><p>{session.title}</p></section></>;
   }
 
   const controls = sessionControls({ role: group?.role || "member", state: "live", occupancy: session.occupancy, maxParticipants: session.maxParticipants });
@@ -222,6 +246,8 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   }
 
   return (
+    <>
+    {path()}
     <section className={styles.room}>
       <div className={styles.stage}>
         <h1>{session.title}</h1>
@@ -275,5 +301,6 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         </form>
       </aside>
     </section>
+    </>
   );
 }
