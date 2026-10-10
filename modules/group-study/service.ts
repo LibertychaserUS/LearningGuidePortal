@@ -650,7 +650,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
 
     async dispatchDueReminders() {
       const now = deps.now();
-      const due = await deps.repository.update((store) => {
+      const dueJobs = (store: StudyGroupStore, record: boolean) => {
         const jobs: Array<{ userId: string; sessionTitle: string }> = [];
         for (const session of store.sessions) {
           if (session.status === "removed" || session.status === "completed") continue;
@@ -664,12 +664,14 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
           for (const userId of audience) {
             if (!activeMembership(store, group.id, userId)) continue;
             if (store.reminders.some((item) => item.sessionId === session.id && item.userId === userId)) continue;
-            store.reminders.push({ id: randomUUID(), sessionId: session.id, userId, sentAt: now.toISOString() });
+            if (record) store.reminders.push({ id: randomUUID(), sessionId: session.id, userId, sentAt: now.toISOString() });
             jobs.push({ userId, sessionTitle: session.title });
           }
         }
         return jobs;
-      });
+      };
+      if (dueJobs(await deps.repository.read(), false).length === 0) return;
+      const due = await deps.repository.update((store) => dueJobs(store, true));
       for (const job of due) {
         const profile = await deps.userProfile(job.userId);
         await deps.notify({ userId: job.userId, title: "Live Session reminder", body: `${job.sessionTitle} starts in 10 minutes.` });
