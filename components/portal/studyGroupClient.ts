@@ -8,6 +8,7 @@ export type StudySession = {
   maxParticipants: number;
   focus: string | null;
   aiTutorEnabled: boolean;
+  startedAt: string | null;
   state: "scheduled" | "starting_soon" | "live" | "completed";
   occupancy: number;
   plannedCount: number;

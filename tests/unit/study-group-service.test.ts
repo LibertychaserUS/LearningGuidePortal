@@ -257,7 +257,9 @@ test("host edits schedule fields before start and cannot shrink below the people
     () => service.editSession({ actorUserId: "host", groupId: group.id, sessionId: session.id, title: "Too late" }),
     (error: unknown) => (error as { code: string }).code === "forbidden"
   );
-  assert.equal((await service.getSession({ actorUserId: "host", sessionId: session.id })).title, "After edit");
+  const started = await service.getSession({ actorUserId: "host", sessionId: session.id });
+  assert.equal(started.title, "After edit");
+  assert.equal(started.startedAt, NOW);
 });
 
 test("session schedule, attendance, capacity, start and token follow the P0 rules", async () => {

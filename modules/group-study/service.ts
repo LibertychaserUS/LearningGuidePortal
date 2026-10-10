@@ -155,6 +155,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       maxParticipants: session.maxParticipants,
       focus: session.focus,
       aiTutorEnabled: session.aiTutorEnabled,
+      startedAt: session.startedAt,
       state: state as EffectiveSessionState,
       occupancy: occupancy(store, session.id),
       plannedCount: plannedCount(store, session.id),

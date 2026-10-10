@@ -79,3 +79,15 @@ test("in-room controls stay the same for host and participant, and a full sessio
   assert.equal(sessionControls({ role: "member", state: "starting_soon", occupancy: 1, maxParticipants: 6 }).includes("join"), true);
   assert.equal(sessionControls({ role: "member", state: "scheduled", occupancy: 0, maxParticipants: 6 }).includes("plan"), true);
 });
+
+test("the ended screen and live clock follow the Live Session frames", () => {
+  assert.equal(en.studyGroupsPage.room.endedBody, "The Session has ended. You can return to the lesson and continue learning.");
+  assert.equal(fill(en.studyGroupsPage.room.groupStudy, { count: 45 }), "45-minute Group Study");
+  assert.equal(fill(en.studyGroupsPage.room.liveClock, { time: "32:18" }), "● Live 32:18");
+  assert.equal(fill(zh.studyGroupsPage.room.groupStudy, { count: 45 }), "45 分钟学习小组");
+  assert.equal(fill(zh.studyGroupsPage.room.liveClock, { time: "32:18" }), "● 直播中 32:18");
+  const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
+  assert.match(room, /elapsedClock\(session\.startedAt\)/);
+  assert.match(room, /roomCopy\.groupStudy/);
+  assert.match(room, /roomCopy\.liveClock/);
+});
