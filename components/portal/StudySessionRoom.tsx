@@ -402,8 +402,11 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     {path()}
     <section className={styles.room}>
       <div className={styles.stage}>
-        <h1>{session.title}</h1>
-        <p className={styles.meta}>{group?.courseTitle} · {fill(roomCopy.liveClock, { time: clock })}</p>
+        <div className={styles.stageHead}>
+          <h1>{session.title}</h1>
+          {group?.courseTitle ? <span className={styles.coursePill}>{group.courseTitle}</span> : null}
+          <p className={styles.liveClock}><span className={styles.liveDot} aria-hidden="true">●</span> {fill(roomCopy.liveClock, { time: clock }).replace(/^●\s*/, "")}</p>
+        </div>
         {session.focus ? <p>{session.focus}</p> : null}
         {errorText ? <p className={styles.alert} role="alert">{errorText} <button className={styles.textButton} type="button" onClick={() => { setErrorCode(""); setConnected(false); setConnectAttempt((attempt) => attempt + 1); }}>{roomCopy.reconnect}</button></p> : null}
         <div ref={audioRoot} hidden />
@@ -412,7 +415,8 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           {tiles.length === 0 ? <div className={styles.tile}><span>{connected ? copy.loading : roomCopy.notConnected}</span></div> : tiles.map((tile) => (
             <div className={styles.tile} key={tile.identity}>
               <ParticipantCamera track={cameraTracks[tile.identity] ?? null} />
-              <span>{tile.name}{tile.host ? ` · ${roomCopy.host}` : ""}{hands.includes(tile.identity) ? " · " + roomCopy.raiseHand : ""}{" · " + tileStatus(roomCopy, tile)}</span>
+              {tile.speaking ? <span className={styles.speakingPill}>{roomCopy.speaking}</span> : null}
+              <span className={styles.tileCaption}>{tile.name}{tile.host ? ` · ${roomCopy.host}` : ""}{hands.includes(tile.identity) ? " · " + roomCopy.raiseHand : ""}{tile.speaking ? "" : " · " + tileStatus(roomCopy, tile)}</span>
             </div>
           ))}
         </div>
@@ -422,7 +426,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           {controls.includes("share") ? <button type="button" aria-pressed={sharing} disabled={!connected} onClick={() => void setMedia("share", !sharing).catch(() => setSharing(false))}>{roomCopy.share}</button> : null}
           {controls.includes("participants") ? <button type="button" className={styles.participantCount} data-participants={present} aria-pressed={sideTab === "participants"} onClick={() => setSideTab("participants")}><strong>{present}</strong> {roomCopy.participants}</button> : null}
           {controls.includes("raise-hand") ? <button type="button" aria-pressed={Boolean(roomApi?.localParticipant.identity && hands.includes(roomApi.localParticipant.identity))} disabled={!connected} onClick={() => { const identity = roomApi?.localParticipant.identity || ""; if (!identity) return; const raised = !hands.includes(identity); setHands((items) => raisedHands(items, identity, raised)); void publish({ type: "raise-hand", raised }); }}>{roomCopy.raiseHand}</button> : null}
-          {controls.includes("leave") ? <button type="button" onClick={async () => { await releaseRoom(); await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
+          {controls.includes("leave") ? <button className={styles.leaveControl} type="button" onClick={async () => { await releaseRoom(); await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
         </div>
       </div>
       <aside className={styles.side} aria-label={sideTab === "participants" ? roomCopy.participants : roomCopy.chat}>
