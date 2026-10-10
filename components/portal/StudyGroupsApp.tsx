@@ -316,6 +316,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
               {pane.kind === "sessions" ? (selected.sessions || []).map((session) => (
                 <article className={styles.session} key={session.id}>
                   <h3>{session.title}</h3>
+                  {session.focus ? <p>{session.focus}</p> : null}
                   <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p>
                   <p className={styles.meta}>{session.state === "completed" ? copy.completed : session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
                   <div className={styles.row}>
