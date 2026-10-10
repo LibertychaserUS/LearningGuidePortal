@@ -214,7 +214,11 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   assert.match(app, /copy\.attended/);
   assert.match(app, /session\.state === "scheduled" && \(selected\.role === "host" \|\| session\.viewerPlanned\)/);
   assert.match(app, /copy\.reminderHint/);
+  assert.match(app, /styles\.reminderHint/);
   assert.match(app, /copy\.planNote/);
+  assert.match(app, /styles\.planNote/);
+  assert.equal(en.studyGroupsPage.hostingNote, "You are hosting this Study Group.");
+  assert.equal(zh.studyGroupsPage.hostingNote, "你正在主持这个学习小组。");
   assert.match(app, /copy\.maximumLine/);
   assert.match(app, /view=reminders/);
   assert.match(app, /void refreshOpenGroup\(selectedId\)/);
