@@ -20,7 +20,13 @@ function elapsedClock(startedAt: string | null) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-type ChatLine = { id: string; from: string; text: string; at: string };
+type ChatLine = { id: string; from: string; text: string; at: string; host?: boolean; tutor?: boolean };
+
+function endedParts(body: string) {
+  const splitAt = body.search(/[.。]\s+\S/);
+  if (splitAt < 0) return [body];
+  return [body.slice(0, splitAt + 1), body.slice(splitAt + 1).trim()];
+}
 
 function chatStamp() {
   return new Date().toISOString();
@@ -126,12 +132,13 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     room.on(RoomEvent.DataReceived, (payload, participant) => {
       const message = JSON.parse(new TextDecoder().decode(payload)) as { type: string; text?: string; raised?: boolean };
       const from = participant?.name || participant?.identity || "participant";
+      const hostIds = new Set((groupRef.current?.members || []).filter((member) => member.role === "host").map((member) => member.userId));
       if (message.type === "tutor" && message.text) {
-        setChat((items) => [...items, { id: `tutor-${items.length}`, from: roomCopy.aiTutor, text: message.text || "", at: chatStamp() }]);
+        setChat((items) => [...items, { id: `tutor-${items.length}`, from: roomCopy.tutorName, text: message.text || "", at: chatStamp(), tutor: true }]);
         setSideTab("chat");
         return;
       }
-      if (message.type === "chat" && message.text) setChat((items) => [...items, { id: `${from}-${items.length}`, from, text: message.text || "", at: chatStamp() }]);
+      if (message.type === "chat" && message.text) setChat((items) => [...items, { id: `${from}-${items.length}`, from, text: message.text || "", at: chatStamp(), host: hostIds.has(participant?.identity || "") }]);
       if (message.type === "raise-hand") {
         const identity = participant?.identity || "";
         setHands((items) => raisedHands(items, identity, message.raised !== false));
@@ -351,12 +358,15 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       <>
       {path()}
       <section className={styles.empty}>
-        <h1>{ended ? roomCopy.endedTitle : roomCopy.youLeft}</h1>
-        <p>{group?.title || session.title}</p>
-        {session.focus ? <p>{session.focus}</p> : null}
-        <p>{[group?.courseTitle, fill(roomCopy.groupStudy, { count: plannedMinutes(session) })].filter(Boolean).join(" · ")}</p>
-        {ended ? <p>{roomCopy.endedBody}</p> : null}
-        <a className={styles.primary} href={group ? `/${locale}/portal/courses/${group.courseSlug}` : `/${locale}/portal/study-groups`}>{roomCopy.returnToCourse}</a>
+        <div className={styles.endCard}>
+          {ended ? <span className={styles.endMark} aria-hidden="true">✓</span> : null}
+          <h1>{ended ? roomCopy.endedTitle : roomCopy.youLeft}</h1>
+          <p className={styles.endTitle}>{group?.title || session.title}</p>
+          {session.focus ? <p>{session.focus}</p> : null}
+          <p className={styles.meta}>{[group?.courseTitle, fill(roomCopy.groupStudy, { count: plannedMinutes(session) })].filter(Boolean).join(" · ")}</p>
+          {ended ? endedParts(roomCopy.endedBody).map((line) => <p key={line}>{line}</p>) : null}
+          <a className={styles.primary} href={group ? `/${locale}/portal/courses/${group.courseSlug}` : `/${locale}/portal/study-groups`}>{roomCopy.returnToCourse}</a>
+        </div>
       </section>
       </>
     );
@@ -444,7 +454,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         ) : (
           <>
             <div className={styles.chatLog} role="tabpanel" aria-live="polite">
-              {chat.map((line) => <p key={line.id}><strong>{line.from}</strong> <time dateTime={line.at}>{chatLabel(line.at)}</time> {line.text.startsWith(`${roomCopy.aiTutor} `) ? <><span className={styles.tutorMention}>{roomCopy.aiTutor}</span>{line.text.slice(roomCopy.aiTutor.length)}</> : line.text}</p>)}
+              {chat.map((line) => <article className={styles.chatLine} key={line.id}><div className={styles.chatHead}>{line.tutor ? <span className={styles.tutorAvatar} aria-hidden="true">✦</span> : <span className={styles.rosterInitial}>{line.from.slice(0, 1)}</span>}<strong className={line.tutor ? styles.tutorName : undefined}>{line.from}</strong>{line.host ? <span className={styles.chatHost}>{roomCopy.host}</span> : null}<time dateTime={line.at}>{chatLabel(line.at)}</time></div><p className={styles.chatBody}>{line.text.startsWith(`${roomCopy.aiTutor} `) ? <><span className={styles.tutorMention}>{roomCopy.aiTutor}</span>{line.text.slice(roomCopy.aiTutor.length)}</> : line.text}</p></article>)}
               {!connected ? <p>{roomCopy.chatUnavailable}</p> : null}
             </div>
             <form className={styles.chatForm} onSubmit={(event) => {
@@ -454,7 +464,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
               const mention = addressTutor && session.aiTutorEnabled;
               const chatText = mention ? `${roomCopy.aiTutor} ${text}` : text;
               void publish({ type: "chat", text: chatText });
-              setChat((items) => [...items, { id: `local-${items.length}`, from: roomCopy.you, text: chatText, at: chatStamp() }]);
+              setChat((items) => [...items, { id: `local-${items.length}`, from: roomCopy.you, text: chatText, at: chatStamp(), host: group?.role === "host" }]);
               if (mention) {
                 void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/ai-tutor`, { method: "POST", body: JSON.stringify(tutorQueueBody(text)) }).then((queued) => {
                   if (!queued.ok) setErrorCode(queued.code);
@@ -464,8 +474,8 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
               setAddressTutor(false);
             }}>
               {session.aiTutorEnabled ? <button className={styles.tutorEntry} type="button" aria-pressed={addressTutor} onClick={() => setAddressTutor((on) => !on)}>{roomCopy.aiTutor}</button> : null}
-              <label className={styles.meta}>{roomCopy.chat}<input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={roomCopy.chatPlaceholder} disabled={!connected} /></label>
-              <button className={styles.primary} type="submit" disabled={!connected}>{roomCopy.send}</button>
+              <input aria-label={roomCopy.chat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={roomCopy.chatPlaceholder} disabled={!connected} />
+              <button className={styles.sendButton} type="submit" disabled={!connected} aria-label={roomCopy.send}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 8.5 14 2 9 14l-1.5-4.5L2 8.5Z" fill="currentColor" /></svg></button>
             </form>
           </>
         )}

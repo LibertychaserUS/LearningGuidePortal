@@ -230,6 +230,9 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
 
 test("the ended screen and live clock follow the Live Session frames", () => {
   assert.equal(en.studyGroupsPage.room.endedBody, "The Session has ended. You can return to the lesson and continue learning.");
+  assert.equal(en.studyGroupsPage.room.chatPlaceholder, "Type your message...");
+  assert.equal(zh.studyGroupsPage.room.chatPlaceholder, "输入消息...");
+  assert.equal(en.studyGroupsPage.room.tutorName, "AI Tutor");
   assert.equal(fill(en.studyGroupsPage.room.groupStudy, { count: 45 }), "45-minute Group Study");
   assert.equal(fill(en.studyGroupsPage.room.liveClock, { time: "32:18" }), "● Live 32:18");
   assert.equal(fill(zh.studyGroupsPage.room.groupStudy, { count: 45 }), "45 分钟学习小组");
@@ -243,6 +246,11 @@ test("the ended screen and live clock follow the Live Session frames", () => {
   assert.match(room, /styles\.coursePill/);
   assert.match(room, /styles\.speakingPill/);
   assert.match(room, /styles\.leaveControl/);
+  assert.match(room, /styles\.endMark/);
+  assert.match(room, /styles\.endTitle/);
+  assert.match(room, /styles\.chatHead/);
+  assert.match(room, /roomCopy\.tutorName/);
+  assert.match(room, /aria-label=\{roomCopy\.send\}/);
   assert.match(room, /roomCopy\.crumbHome/);
   assert.match(room, /study-groups\?group=/);
   assert.equal(en.studyGroupsPage.room.crumbHome, "Home");
