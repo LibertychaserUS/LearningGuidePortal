@@ -75,6 +75,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const repaintRef = useRef<(() => void) | null>(null);
   const roomRef = useRef<{ startAudio: () => Promise<void>; disconnect: () => Promise<void> } | null>(null);
   const connectGeneration = useRef(0);
+  const [connectAttempt, setConnectAttempt] = useState(0);
   groupRef.current = group;
 
   async function load() {
@@ -216,7 +217,14 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     connectGeneration.current = generation;
     let timer = 0;
     const run = (triesLeft: number) => {
-      void connect(generation).catch((error: unknown) => {
+      void (async () => {
+        await releaseRoom();
+        if (connectGeneration.current !== generation) return;
+        const entered = await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/enter`, { method: "POST", body: "{}" });
+        if (connectGeneration.current !== generation) return;
+        if (!entered.ok) throw new Error(entered.code);
+        await connect(generation);
+      })().catch((error: unknown) => {
         if (connectGeneration.current !== generation) return;
         if (triesLeft > 0) {
           timer = window.setTimeout(() => run(triesLeft - 1), 600);
@@ -231,7 +239,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       connectGeneration.current += 1;
       window.clearTimeout(timer);
     };
-  }, [session?.state, connected, left, seated]);
+  }, [session?.state, connected, left, seated, connectAttempt]);
 
   useEffect(() => {
     if (session?.state !== "live") return;
@@ -354,7 +362,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         <h1>{session.title}</h1>
         <p className={styles.meta}>{group?.courseTitle} · {fill(roomCopy.liveClock, { time: clock })}</p>
         {session.focus ? <p>{session.focus}</p> : null}
-        {errorText ? <p className={styles.alert} role="alert">{errorText} <button className={styles.textButton} type="button" onClick={() => { setErrorCode(""); setConnected(false); }}>{roomCopy.reconnect}</button></p> : null}
+        {errorText ? <p className={styles.alert} role="alert">{errorText} <button className={styles.textButton} type="button" onClick={() => { setErrorCode(""); setConnected(false); setConnectAttempt((attempt) => attempt + 1); }}>{roomCopy.reconnect}</button></p> : null}
         <div ref={audioRoot} hidden />
         {shareTrack ? <video ref={shareVideo} className={styles.shareMain} autoPlay playsInline /> : null}
         <div className={styles.videos}>
