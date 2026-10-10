@@ -537,7 +537,7 @@
     "focus": "Session Focus",
     "aiTutorLabel": "AI Tutor",
     "enableAiTutor": "Enable AI Tutor for this session",
-    "aiTutorStored": "When this stays on, live participants can send an @AI Tutor request from chat. The request is queued. This release does not show a tutor reply.",
+    "aiTutorStored": "When this stays on, a live participant can send an @AI Tutor request in the shared chat. The request is queued and does not call the model by itself. If the course material has no answer, the chat says so.",
     "plan": "Plan to Attend",
     "planning": "You are planning to attend. This does not reserve a place.",
     "cancelAttendance": "Cancel Attendance",
