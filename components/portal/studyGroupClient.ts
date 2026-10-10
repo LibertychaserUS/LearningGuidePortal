@@ -61,12 +61,19 @@ export function plannedMinutes(session: { durationSeconds: number }) {
   return Math.round(session.durationSeconds / 60);
 }
 
-export function sessionScheduleLabel(locale: string, session: { startsAt: string; durationSeconds: number }) {
+export function sessionDateLabel(locale: string, startsAt: string) {
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(startsAt));
+}
+
+export function sessionTimeLabel(locale: string, session: { startsAt: string; durationSeconds: number }) {
   const start = new Date(session.startsAt);
   const end = new Date(start.getTime() + session.durationSeconds * 1000);
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(start);
   const clock = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" });
-  return `${date} · ${clock.format(start)} – ${clock.format(end)}`;
+  return `${clock.format(start)} – ${clock.format(end)}`;
+}
+
+export function sessionScheduleLabel(locale: string, session: { startsAt: string; durationSeconds: number }) {
+  return `${sessionDateLabel(locale, session.startsAt)} · ${sessionTimeLabel(locale, session)}`;
 }
 
 export function scheduleSessionFields(input: { title: FormDataEntryValue | null; startsAt: string; durationMinutes: number; maxParticipants: number; focus: FormDataEntryValue | null; aiTutorEnabled: boolean; relatedLessonId?: FormDataEntryValue | null }) {
