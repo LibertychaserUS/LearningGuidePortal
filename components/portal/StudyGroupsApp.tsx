@@ -464,6 +464,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                 {waitingSession.focus ? <><h3>{copy.focus}</h3><p>{waitingSession.focus}</p></> : null}
                 <p>{sessionScheduleLabel(locale, waitingSession)} · {fill(copy.plannedDuration, { count: plannedMinutes(waitingSession) })}</p>
                 <p>{fill(copy.currentlyInSession, { count: waitingSession.occupancy, max: waitingSession.maxParticipants })}</p>
+                <p>{fill(copy.upToParticipants, { count: waitingSession.maxParticipants })}</p>
               </div>
             ) : null}
             {dialog === "attendees" ? <ul>{attendees.map((person) => <li key={person.userId}>{person.displayName}</li>)}</ul> : null}
