@@ -20,7 +20,17 @@ function elapsedClock(startedAt: string | null) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-type ChatLine = { id: string; from: string; text: string };
+type ChatLine = { id: string; from: string; text: string; at: string };
+
+function chatStamp() {
+  return new Date().toISOString();
+}
+
+function chatLabel(at: string) {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return at;
+  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(date);
+}
 type Tile = { identity: string; name: string; host: boolean; mic: boolean; speaking: boolean };
 type AttachableTrack = { attach: (element: HTMLMediaElement) => HTMLMediaElement; detach: (element: HTMLMediaElement) => HTMLMediaElement[] };
 type LocalMedia = { setMicrophoneEnabled: (on: boolean) => Promise<unknown>; setCameraEnabled: (on: boolean) => Promise<unknown>; setScreenShareEnabled: (on: boolean) => Promise<unknown>; publishData: (data: Uint8Array, options: { reliable: boolean }) => Promise<unknown>; identity?: string; isMicrophoneEnabled: boolean; isCameraEnabled: boolean };
@@ -96,10 +106,10 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       const message = JSON.parse(new TextDecoder().decode(payload)) as { type: string; text?: string; raised?: boolean };
       const from = participant?.name || participant?.identity || "participant";
       if (message.type === "tutor" && message.text) {
-        setChat((items) => [...items, { id: `tutor-${items.length}`, from: roomCopy.aiTutor, text: message.text || "" }]);
+        setChat((items) => [...items, { id: `tutor-${items.length}`, from: roomCopy.aiTutor, text: message.text || "", at: chatStamp() }]);
         return;
       }
-      if (message.type === "chat" && message.text) setChat((items) => [...items, { id: `${from}-${items.length}`, from, text: message.text || "" }]);
+      if (message.type === "chat" && message.text) setChat((items) => [...items, { id: `${from}-${items.length}`, from, text: message.text || "", at: chatStamp() }]);
       if (message.type === "raise-hand") {
         const identity = participant?.identity || "";
         setHands((items) => raisedHands(items, identity, message.raised !== false));
@@ -329,7 +339,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         </div>
         <div className={styles.chatLog} aria-live="polite">
           <h3>{roomCopy.chat}</h3>
-          {chat.map((line) => <p key={line.id}><strong>{line.from}</strong> {line.text.startsWith(`${roomCopy.aiTutor} `) ? <><span className={styles.tutorMention}>{roomCopy.aiTutor}</span>{line.text.slice(roomCopy.aiTutor.length)}</> : line.text}</p>)}
+          {chat.map((line) => <p key={line.id}><strong>{line.from}</strong> <time dateTime={line.at}>{chatLabel(line.at)}</time> {line.text.startsWith(`${roomCopy.aiTutor} `) ? <><span className={styles.tutorMention}>{roomCopy.aiTutor}</span>{line.text.slice(roomCopy.aiTutor.length)}</> : line.text}</p>)}
           {!connected ? <p>{roomCopy.chatUnavailable}</p> : null}
         </div>
         <form className={styles.chatForm} onSubmit={(event) => {
@@ -339,7 +349,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           const mention = addressTutor && session.aiTutorEnabled;
           const chatText = mention ? `${roomCopy.aiTutor} ${text}` : text;
           void publish({ type: "chat", text: chatText });
-          setChat((items) => [...items, { id: `local-${items.length}`, from: roomCopy.you, text: chatText }]);
+          setChat((items) => [...items, { id: `local-${items.length}`, from: roomCopy.you, text: chatText, at: chatStamp() }]);
           if (mention) {
             void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/ai-tutor`, { method: "POST", body: JSON.stringify(tutorQueueBody(text)) }).then((queued) => {
               if (!queued.ok) setErrorCode(queued.code);

@@ -138,6 +138,7 @@
 .rosterInitial { width: 28px; height: 28px; border-radius: 14px; background: #e8f1ff; color: #1660d8; display: grid; place-items: center; font-size: 12px; font-weight: 600; flex: none; }
 .roster li span:last-child { color: #6b7280; font-size: 12px; }
 .chatLog { overflow: auto; }
+.chatLog time { margin-left: 6px; color: #6b7280; font-size: 11px; font-weight: 500; }
 .chatForm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tutorEntry { border: 0; background: transparent; color: #1d6bff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
 .tutorEntry[aria-pressed="true"] { text-decoration: underline; }
