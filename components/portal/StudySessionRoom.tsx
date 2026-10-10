@@ -12,6 +12,18 @@ type Tile = { identity: string; name: string; host: boolean; mic: boolean };
 type AttachableTrack = { attach: (element: HTMLMediaElement) => HTMLMediaElement; detach: (element: HTMLMediaElement) => HTMLMediaElement[] };
 type LocalMedia = { setMicrophoneEnabled: (on: boolean) => Promise<unknown>; setCameraEnabled: (on: boolean) => Promise<unknown>; setScreenShareEnabled: (on: boolean) => Promise<unknown>; publishData: (data: Uint8Array, options: { reliable: boolean }) => Promise<unknown>; identity?: string; isMicrophoneEnabled: boolean; isCameraEnabled: boolean };
 
+function ParticipantCamera({ track }: { track: AttachableTrack | null }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!track || !element) return;
+    track.attach(element);
+    return () => { track.detach(element); };
+  }, [track]);
+  if (!track) return null;
+  return <video ref={ref} autoPlay playsInline muted />;
+}
+
 export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessionId: string }) {
   const copy = getMessages(locale).studyGroupsPage;
   const roomCopy = copy.room;
@@ -29,6 +41,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const [cameraOn, setCameraOn] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareTrack, setShareTrack] = useState<AttachableTrack | null>(null);
+  const [cameraTracks, setCameraTracks] = useState<Record<string, AttachableTrack>>({});
   const [addressTutor, setAddressTutor] = useState(false);
   const shareVideo = useRef<HTMLVideoElement>(null);
   const audioRoot = useRef<HTMLDivElement>(null);
@@ -82,7 +95,14 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     });
     const paint = () => {
       const hostIds = new Set((groupRef.current?.members || []).filter((member) => member.role === "host").map((member) => member.userId));
-      setTiles([room.localParticipant, ...Array.from(room.remoteParticipants.values())].map((person) => ({
+      const people = [room.localParticipant, ...Array.from(room.remoteParticipants.values())];
+      const nextCameras: Record<string, AttachableTrack> = {};
+      for (const person of people) {
+        const publication = [...person.trackPublications.values()].find((item) => item.source === "camera" && item.track);
+        if (publication?.track) nextCameras[person.identity] = publication.track;
+      }
+      setCameraTracks(nextCameras);
+      setTiles(people.map((person) => ({
         identity: person.identity,
         name: person.name || person.identity,
         host: hostIds.has(person.identity),
@@ -186,6 +206,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         <div className={styles.videos}>
           {tiles.length === 0 ? <div className={styles.tile}><span>{connected ? copy.loading : roomCopy.notConnected}</span></div> : tiles.map((tile) => (
             <div className={styles.tile} key={tile.identity}>
+              <ParticipantCamera track={cameraTracks[tile.identity] ?? null} />
               <span>{tile.name}{tile.host ? ` · ${roomCopy.host}` : ""}{hands.includes(tile.identity) ? " · " + roomCopy.raiseHand : ""}{tile.mic ? "" : " · " + roomCopy.mic}</span>
             </div>
           ))}
