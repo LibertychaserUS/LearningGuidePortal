@@ -5,6 +5,7 @@ import {
   StudyGroupError,
   TOKEN_TTL_SECONDS,
   effectiveSessionState,
+  missedUnstarted,
   type AttendanceIntentRow,
   type EffectiveSessionState,
   type GroupRole,
@@ -193,6 +194,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       if (state !== "starting_soon" && state !== "live") throw new StudyGroupError("session_not_open", "The Live Session is not open yet.");
       const existing = store.presences.find((item) => item.sessionId === session.id && item.userId === input.actorUserId);
       if (existing && !existing.leftAt) return { occupancy: occupancy(store, session.id) };
+      if (missedUnstarted(session, deps.now(), occupancy(store, session.id))) throw new StudyGroupError("session_not_open", "This Live Session was not started.");
       if (occupancy(store, session.id) >= session.maxParticipants) throw new StudyGroupError("session_full", "Session Full.");
       const enteredAt = deps.now().toISOString();
       if (existing) {
@@ -541,6 +543,7 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
         const state = effectiveSessionState(current, deps.now());
         if (state === "completed") throw new StudyGroupError("session_unavailable", "This Live Session has ended.");
         if (state === "scheduled") throw new StudyGroupError("session_not_open", "Start is available from 10 minutes before the scheduled time.");
+        if (missedUnstarted(current, deps.now(), occupancy(store, current.id))) throw new StudyGroupError("session_not_open", "This Live Session was not started.");
         if (current.status !== "live") {
           current.status = "live";
           current.startedAt = now;

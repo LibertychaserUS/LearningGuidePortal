@@ -590,6 +590,8 @@
     "enterWindow": "开始前 10 分钟可以进入。",
     "completed": "已结束",
     "startingSoon": "即将开始",
+    "notStarted": "未开始",
+    "notStartedBody": "这节直播课没有开始。",
     "upcoming": "即将到来",
     "close": "关闭",
     "room": {

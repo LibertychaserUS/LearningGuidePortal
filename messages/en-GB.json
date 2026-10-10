@@ -595,6 +595,8 @@
     "enterWindow": "You can enter from 10 minutes before the start.",
     "completed": "Completed",
     "startingSoon": "Starting soon",
+    "notStarted": "Not started",
+    "notStartedBody": "This Live Session was not started.",
     "upcoming": "Upcoming",
     "close": "Close",
     "room": {
