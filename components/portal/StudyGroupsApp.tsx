@@ -125,7 +125,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
 
   useEffect(() => {
     if (!signedIn) return;
-    const timer = window.setInterval(() => { void loadLists(); }, 30_000);
+    const timer = window.setInterval(() => { void loadLists(); }, 3_000);
     return () => window.clearInterval(timer);
   }, [signedIn, courseFilter, query]);
 
