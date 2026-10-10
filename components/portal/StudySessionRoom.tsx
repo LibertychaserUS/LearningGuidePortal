@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
-import { participantStatus, sessionControls } from "@/modules/group-study/uiState";
+import { participantStatus, raisedHands, sessionControls } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
 import { fill, plannedMinutes, studyGroupRequest, tutorQueueBody, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
@@ -93,7 +93,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       setCameraOn(room.localParticipant.isCameraEnabled);
     };
     room.on(RoomEvent.DataReceived, (payload, participant) => {
-      const message = JSON.parse(new TextDecoder().decode(payload)) as { type: string; text?: string };
+      const message = JSON.parse(new TextDecoder().decode(payload)) as { type: string; text?: string; raised?: boolean };
       const from = participant?.name || participant?.identity || "participant";
       if (message.type === "tutor" && message.text) {
         setChat((items) => [...items, { id: `tutor-${items.length}`, from: roomCopy.aiTutor, text: message.text || "" }]);
@@ -101,8 +101,8 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       }
       if (message.type === "chat" && message.text) setChat((items) => [...items, { id: `${from}-${items.length}`, from, text: message.text || "" }]);
       if (message.type === "raise-hand") {
-        const identity = participant?.identity || from;
-        setHands((items) => items.includes(identity) ? items : [...items, identity]);
+        const identity = participant?.identity || "";
+        setHands((items) => raisedHands(items, identity, message.raised !== false));
       }
     });
     const paint = () => {
@@ -287,7 +287,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       }));
   const errorText = errorCode ? copy.errors[errorCode as keyof typeof copy.errors] || copy.errors.error : "";
 
-  async function publish(message: { type: string; text?: string }) {
+  async function publish(message: { type: string; text?: string; raised?: boolean }) {
     if (!roomApi) return;
     await roomApi.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(message)), { reliable: true });
   }
@@ -315,7 +315,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           {controls.includes("mic") ? <button type="button" aria-pressed={micOn} onClick={() => void setMedia("mic", !micOn).catch(() => setMicOn(false))}>{roomCopy.mic}</button> : null}
           {controls.includes("camera") ? <button type="button" aria-pressed={cameraOn} onClick={() => void setMedia("camera", !cameraOn).catch(() => setCameraOn(false))}>{roomCopy.camera}</button> : null}
           {controls.includes("share") ? <button type="button" aria-pressed={sharing} onClick={() => void setMedia("share", !sharing).catch(() => setSharing(false))}>{roomCopy.share}</button> : null}
-          {controls.includes("raise-hand") ? <button type="button" onClick={() => { const identity = roomApi?.localParticipant.identity; if (identity) setHands((items) => items.includes(identity) ? items : [...items, identity]); void publish({ type: "raise-hand" }); }}>{roomCopy.raiseHand}</button> : null}
+          {controls.includes("raise-hand") ? <button type="button" aria-pressed={Boolean(roomApi?.localParticipant.identity && hands.includes(roomApi.localParticipant.identity))} onClick={() => { const identity = roomApi?.localParticipant.identity || ""; if (!identity) return; const raised = !hands.includes(identity); setHands((items) => raisedHands(items, identity, raised)); void publish({ type: "raise-hand", raised }); }}>{roomCopy.raiseHand}</button> : null}
           {controls.includes("leave") ? <button type="button" onClick={async () => { await releaseRoom(); await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
         </div>
       </div>

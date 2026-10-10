@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { participantStatus, sessionControls, studyGroupPane } from "../../modules/group-study/uiState";
+import { participantStatus, raisedHands, sessionControls, studyGroupPane } from "../../modules/group-study/uiState";
 import { readFileSync } from "node:fs";
 import en from "../../messages/en-GB.json";
 import zh from "../../messages/zh-CN.json";
@@ -84,6 +84,9 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.equal(participantStatus({ mic: false, speaking: true }), "muted");
   assert.equal(participantStatus({ mic: true, speaking: true }), "speaking");
   assert.equal(participantStatus({ mic: true, speaking: false }), "mic-on");
+  assert.deepEqual(raisedHands(["host"], "host", false), []);
+  assert.deepEqual(raisedHands([], "guest", true), ["guest"]);
+  assert.deepEqual(raisedHands(["guest"], "guest", true), ["guest"]);
   assert.equal(en.studyGroupsPage.room.muted, "Muted");
   assert.equal(en.studyGroupsPage.room.speaking, "Speaking");
   assert.equal(en.studyGroupsPage.room.micOn, "Mic on");
@@ -93,6 +96,7 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.match(room, /styles\.roster/);
   assert.match(room, /ActiveSpeakersChanged/);
   assert.match(room, /person\.isSpeaking/);
+  assert.match(room, /type: "raise-hand", raised/);
   assert.match(room, /triesLeft > 0/);
   assert.match(room, /releaseRoom\(\)/);
   assert.match(room, /room\?\.disconnect\(\)/);
