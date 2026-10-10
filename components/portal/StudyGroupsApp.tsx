@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n/config";
@@ -51,14 +51,17 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [createTitle, setCreateTitle] = useState("");
   const [createAbout, setCreateAbout] = useState("");
   const [reminders, setReminders] = useState<Array<{ body: string; createdAt: string }>>([]);
+  const listGeneration = useRef(0);
 
   async function loadLists() {
+    const generation = ++listGeneration.current;
     const [myResult, discoverResult, courseResult, reminderResult] = await Promise.all([
       signedIn ? studyGroupRequest<Card[]>("/api/study-groups?view=mine") : Promise.resolve({ ok: true, code: "ok", message: "", data: [] as Card[] }),
       studyGroupRequest<Card[]>(`/api/study-groups?view=discover&courseId=${encodeURIComponent(courseFilter)}&q=${encodeURIComponent(query)}`),
       signedIn ? studyGroupRequest<CourseOption[]>("/api/study-groups?view=courses") : Promise.resolve({ ok: true, code: "ok", message: "", data: [] as CourseOption[] }),
       signedIn ? studyGroupRequest<Array<{ body: string; createdAt: string }>>("/api/study-groups?view=reminders") : Promise.resolve({ ok: true, code: "ok", message: "", data: [] as Array<{ body: string; createdAt: string }> })
     ]);
+    if (generation !== listGeneration.current) return;
     if (!myResult.ok || !discoverResult.ok) {
       setStatus("error");
       setErrorCode(myResult.ok ? discoverResult.code : myResult.code);
