@@ -10,6 +10,15 @@ import styles from "./study-groups.module.css";
 import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, plannedMinutes, scheduleSessionFields, SESSION_TITLE_MAX, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
 type CourseOption = { id: string; title: string; slug: string };
+
+function localDateTime(startsAt: string) {
+  const date = new Date(startsAt);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return {
+    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`
+  };
+}
 type Card = { id: string; title: string; courseTitle: string; role: "host" | "member" | null; memberCount: number; live: boolean; courseId: string };
 
 export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn: boolean }) {
@@ -32,6 +41,11 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [attendees, setAttendees] = useState<StudySession["attendees"]>([]);
   const [sessionTitle, setSessionTitle] = useState("");
   const [sessionFocus, setSessionFocus] = useState("");
+  const [sessionDate, setSessionDate] = useState("");
+  const [sessionTime, setSessionTime] = useState("");
+  const [sessionDuration, setSessionDuration] = useState("");
+  const [sessionMax, setSessionMax] = useState("");
+  const [sessionTutor, setSessionTutor] = useState(true);
   const [createTitle, setCreateTitle] = useState("");
   const [createAbout, setCreateAbout] = useState("");
 
@@ -97,6 +111,30 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     await loadLists();
   }
 
+  function openSchedule() {
+    setSessionTitle("");
+    setSessionFocus("");
+    setSessionDate("");
+    setSessionTime("");
+    setSessionDuration("");
+    setSessionMax("");
+    setSessionTutor(true);
+    setDialog("schedule");
+  }
+
+  function openEditSession(session: StudySession) {
+    const local = localDateTime(session.startsAt);
+    setEditingSession(session);
+    setSessionTitle(session.title.slice(0, SESSION_TITLE_MAX));
+    setSessionFocus(session.focus || "");
+    setSessionDate(local.date);
+    setSessionTime(local.time);
+    setSessionDuration(String(plannedMinutes(session)));
+    setSessionMax(String(session.maxParticipants));
+    setSessionTutor(session.aiTutorEnabled);
+    setDialog("edit-session");
+  }
+
   async function submitEdit(form: FormData) {
     if (!selected) return;
     const result = await studyGroupRequest<StudyGroupDetail>(`/api/study-groups/${selected.id}`, {
@@ -136,9 +174,20 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
 
   async function submitEditSession(form: FormData) {
     if (!selected || !editingSession) return;
+    const startsAt = new Date(`${form.get("date")}T${form.get("time")}`).toISOString();
     const result = await studyGroupRequest<StudySession>(`/api/study-groups/sessions/${editingSession.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ groupId: selected.id, title: form.get("title") })
+      body: JSON.stringify({
+        groupId: selected.id,
+        ...scheduleSessionFields({
+          title: form.get("title"),
+          startsAt,
+          durationMinutes: Number(form.get("durationMinutes")),
+          maxParticipants: Number(form.get("maxParticipants")),
+          focus: form.get("focus"),
+          aiTutorEnabled: form.get("aiTutor") === "on"
+        })
+      })
     });
     if (!result.ok) {
       setErrorCode(result.code);
@@ -161,6 +210,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
       if (selected) await openGroup(selected.id);
       return;
     }
+    if (selected) await openGroup(selected.id);
     router.push(`/${locale}/portal/study-groups/sessions/${session.id}`);
   }
 
@@ -267,7 +317,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                     {session.state === "starting_soon" || session.state === "live" ? <button className={styles.primary} type="button" disabled={session.occupancy >= session.maxParticipants} onClick={() => void enter(session)}>{session.occupancy >= session.maxParticipants ? copy.sessionFull : copy.joinNow}</button> : null}
                     {session.state === "scheduled" && selected.role === "member" && !session.viewerPlanned ? <button className={styles.primary} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/plan`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.plan}</button> : null}
                     {session.state === "scheduled" && session.viewerPlanned ? <><p className={styles.meta}>{copy.planning}</p><button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/cancel-attendance`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.cancelAttendance}</button></> : null}
-                    {selected.role === "host" && (session.state === "scheduled" || session.state === "starting_soon") ? <button className={styles.ghost} type="button" onClick={() => { setEditingSession(session); setSessionTitle(session.title.slice(0, SESSION_TITLE_MAX)); setDialog("edit-session"); }}>{copy.editSession}</button> : null}
+                    {selected.role === "host" && (session.state === "scheduled" || session.state === "starting_soon") ? <button className={styles.ghost} type="button" onClick={() => openEditSession(session)}>{copy.editSession}</button> : null}
                     {selected.role === "host" && (session.state === "scheduled" || session.state === "starting_soon") ? <button className={styles.danger} type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${session.id}/cancel`, { method: "POST", body: "{}" }); await openGroup(selected.id); }}>{copy.cancelSession}</button> : null}
                     <button className={styles.textButton} type="button" onClick={() => { setAttendees(session.attendees); setDialog("attendees"); }}>{copy.viewAttendees}</button>
                   </div>
@@ -281,7 +331,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
               <ul className={styles.memberList}>
                 {(selected.members || []).map((member) => <li key={member.userId}><span className={styles.memberAvatar}>{member.displayName.slice(0, 1)}</span><span>{member.displayName}</span>{member.role === "host" ? <span className={styles.hostTag}>{copy.room.host}</span> : null}</li>)}
               </ul>
-              {selected.role === "host" ? <div className={styles.hostFoot}><p>{copy.hostingNote}</p><button className={styles.primary} type="button" onClick={() => { setSessionTitle(""); setSessionFocus(""); setDialog("schedule"); }}>{copy.schedule}</button><button className={styles.ghost} type="button" onClick={() => setDialog("edit")}>{copy.editGroup}</button><button className={styles.danger} type="button" onClick={async () => { if (!window.confirm(copy.confirmCancelGroup)) return; await studyGroupRequest(`/api/study-groups/${selected.id}/cancel`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.cancelGroup}</button></div> : null}
+              {selected.role === "host" ? <div className={styles.hostFoot}><p>{copy.hostingNote}</p><button className={styles.primary} type="button" onClick={openSchedule}>{copy.schedule}</button><button className={styles.ghost} type="button" onClick={() => setDialog("edit")}>{copy.editGroup}</button><button className={styles.danger} type="button" onClick={async () => { if (!window.confirm(copy.confirmCancelGroup)) return; await studyGroupRequest(`/api/study-groups/${selected.id}/cancel`, { method: "POST", body: "{}" }); setSelected(null); setSelectedId(null); await loadLists(); }}>{copy.cancelGroup}</button></div> : null}
             </aside>
           </div>
         ) : null}
@@ -299,23 +349,20 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                 <label>{copy.about}<textarea name="about" required maxLength={200} defaultValue={selected?.about} /></label>
               </>
             ) : null}
-            {dialog === "edit-session" ? (
-              <label className={styles.field}>{copy.sessionTitle} <span className={styles.req}>*</span><input name="title" required maxLength={SESSION_TITLE_MAX} value={sessionTitle} onChange={(event) => setSessionTitle(event.target.value.slice(0, SESSION_TITLE_MAX))} /><span className={styles.counter}>{sessionTitleCount(sessionTitle)}</span></label>
-            ) : null}
-            {dialog === "schedule" ? (
+            {dialog === "schedule" || dialog === "edit-session" ? (
               <>
                 <p className={styles.lead}>{copy.arrangeLead}</p>
                 <div className={styles.contextCard}><strong>{selected?.title}</strong><span>{selected?.about}</span></div>
                 <label className={styles.field}><span>{copy.sessionTitle} <span className={styles.req}>*</span></span><span className={styles.fieldBox}><input name="title" required maxLength={SESSION_TITLE_MAX} value={sessionTitle} onChange={(event) => setSessionTitle(event.target.value.slice(0, SESSION_TITLE_MAX))} /><span className={styles.counter}>{sessionTitleCount(sessionTitle)}</span></span></label>
                 <label className={styles.field}>{copy.selectLesson}<select name="lesson" defaultValue=""><option value="">{copy.selectLesson}</option></select></label>
                 <div className={styles.pair}>
-                  <label className={styles.field}><span>{copy.date} <span className={styles.req}>*</span></span><input name="date" type="date" required /></label>
-                  <label className={styles.field}><span>{copy.startTime} <span className={styles.req}>*</span></span><input name="time" type="time" required /></label>
-                  <label className={styles.field}><span>{copy.duration} <span className={styles.req}>*</span></span><select name="durationMinutes" required defaultValue=""><option value="">{copy.selectDuration}</option>{DURATION_MINUTE_CHOICES.map((minutes) => <option key={minutes} value={minutes}>{fill(copy.plannedDuration, { count: minutes })}</option>)}</select></label>
-                  <label className={styles.field}><span>{copy.maxParticipants} <span className={styles.req}>*</span> <span className={styles.hint}>{copy.maximumSix}</span></span><select name="maxParticipants" required defaultValue=""><option value="">{copy.selectMaximum}</option>{[2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
+                  <label className={styles.field}><span>{copy.date} <span className={styles.req}>*</span></span><input name="date" type="date" required value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} /></label>
+                  <label className={styles.field}><span>{copy.startTime} <span className={styles.req}>*</span></span><input name="time" type="time" required value={sessionTime} onChange={(event) => setSessionTime(event.target.value)} /></label>
+                  <label className={styles.field}><span>{copy.duration} <span className={styles.req}>*</span></span><select name="durationMinutes" required value={sessionDuration} onChange={(event) => setSessionDuration(event.target.value)}><option value="">{copy.selectDuration}</option>{DURATION_MINUTE_CHOICES.map((minutes) => <option key={minutes} value={minutes}>{fill(copy.plannedDuration, { count: minutes })}</option>)}</select></label>
+                  <label className={styles.field}><span>{copy.maxParticipants} <span className={styles.req}>*</span> <span className={styles.hint}>{copy.maximumSix}</span></span><select name="maxParticipants" required value={sessionMax} onChange={(event) => setSessionMax(event.target.value)}><option value="">{copy.selectMaximum}</option>{[2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
                 </div>
                 <label className={styles.field}>{copy.focus}<span className={`${styles.fieldBox} ${styles.focusBox}`}><textarea name="focus" maxLength={50} placeholder={copy.enterDescription} value={sessionFocus} onChange={(event) => setSessionFocus(event.target.value.slice(0, 50))} /><span className={styles.counter}>{sessionFocus.length}/50</span></span></label>
-                <label className={styles.switch}><span>{copy.aiTutorLabel} <span className={styles.hint}>{copy.enableAiTutor}</span></span><input name="aiTutor" type="checkbox" defaultChecked /></label>
+                <label className={styles.switch}><span>{copy.aiTutorLabel} <span className={styles.hint}>{copy.enableAiTutor}</span></span><input name="aiTutor" type="checkbox" checked={sessionTutor} onChange={(event) => setSessionTutor(event.target.checked)} /></label>
               </>
             ) : null}
             <div className={styles.dialogActions}>
