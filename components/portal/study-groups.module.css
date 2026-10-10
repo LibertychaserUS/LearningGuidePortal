@@ -111,6 +111,7 @@
 .contextCard strong { display: block; font-size: 14px; font-weight: 600; }
 .contextCard span { display: block; margin-top: 6px; color: #6b7280; font-size: 12px; }
 .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 18px; font-size: 12px; font-weight: 600; }
+.switchText { font-size: 12px; font-weight: 400; }
 .switch input { appearance: none; width: 32px; height: 16px; margin: 0; border-radius: 999px; background: #d0d5dd; position: relative; cursor: pointer; }
 .switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
 .switch input:checked { background: #1d6bff; }
