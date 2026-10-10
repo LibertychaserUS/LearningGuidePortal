@@ -116,7 +116,7 @@ test("host edits title and about, cannot change the course, and cancel keeps com
   await service.cancelGroup({ actorUserId: "host", groupId: group.id });
   assert.equal((await service.listMine("host")).some((item) => item.id === group.id), false);
   assert.equal((await service.listDiscover({ actorUserId: "member" })).some((item) => item.id === group.id), false);
-  assert.equal(notes.some((item) => item.userId === "member"), true);
+  assert.equal(notes.find((item) => item.userId === "member")?.body, "This Study Group is no longer available.");
   const stored = await repository.read();
   assert.equal(stored.sessions.some((item) => item.id === session.id && item.status === "completed"), true);
 });
@@ -547,6 +547,20 @@ test("a zh-CN reminder uses the Chinese sentence", async () => {
   await zh.dispatchDueReminders();
   assert.equal(localNotes.find((item) => item.body.includes("中文课"))?.body, "中文课 将在 10 分钟后开始。");
   assert.equal(localMails.find((item) => item.text.includes("中文课"))?.subject, "直播课提醒");
+});
+
+test("a zh-CN member is told in Chinese that the Study Group was cancelled", async () => {
+  const localNotes: Array<{ userId: string; body: string }> = [];
+  access.add("host-zh-cancel:course-1");
+  access.add("member-zh-cancel:course-1");
+  const zh = serviceWith({
+    notify: async (input) => { localNotes.push(input); },
+    userProfile: async (userId) => ({ id: userId, displayName: userId, email: `${userId}@example.test`, locale: "zh-CN" })
+  });
+  const group = await zh.createGroup({ actorUserId: "host-zh-cancel", title: "取消组", courseId: "course-1", about: "Cancel in Chinese." });
+  await zh.joinGroup({ actorUserId: "member-zh-cancel", groupId: group.id });
+  await zh.cancelGroup({ actorUserId: "host-zh-cancel", groupId: group.id });
+  assert.equal(localNotes.find((item) => item.userId === "member-zh-cancel")?.body, "这个学习小组已经不再可用。");
 });
 
 test("a live participant queues their own text and the response has no tutor answer", async () => {

@@ -387,7 +387,11 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
         }
         return store.memberships.filter((item) => item.groupId === row.id && !item.leftAt).map((item) => item.userId);
       });
-      await Promise.all(notified.map((userId) => deps.notify({ userId, title: "Study Group cancelled", body: "This Study Group is no longer available." })));
+      await Promise.all(notified.map(async (userId) => {
+        const profile = await deps.userProfile(userId);
+        const body = profile?.locale === "zh-CN" ? "这个学习小组已经不再可用。" : "This Study Group is no longer available.";
+        await deps.notify({ userId, title: "Study Group cancelled", body });
+      }));
     },
 
     async scheduleSession(input: { actorUserId: string; groupId: string; title: string; startsAt: string; durationSeconds: number; maxParticipants: number; relatedLessonId?: string | null; focus?: string | null; aiTutorEnabled?: boolean }) {
