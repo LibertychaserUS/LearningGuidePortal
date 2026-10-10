@@ -431,6 +431,10 @@ test("a failed token issuance does not keep the seat", async () => {
   const stillSeated = (await repository.read()).presences.filter((item) => item.sessionId === session.id && item.enteredAt && !item.leftAt);
   assert.deepEqual(stillSeated.map((item) => item.userId), []);
   assert.equal((await repository.read()).meetings.some((item) => item.sessionId === session.id), false);
+  await service.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  const restored = await service.issueToken({ actorUserId: "host", sessionId: session.id });
+  assert.equal(restored.liveKitUrl, "wss://livekit.example.test");
+  assert.equal((await repository.read()).presences.some((item) => item.sessionId === session.id && item.userId === "host" && item.enteredAt && !item.leftAt), true);
 });
 
 test("an AI Tutor request is queued for the live session without a model, a seat change, or a token", async () => {
