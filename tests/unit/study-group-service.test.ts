@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { readFile } from "node:fs/promises";
 import { createStudyGroupService, type StudyGroupDeps, type StudyGroupService } from "../../modules/group-study/service";
-import { COURSE_MATERIAL_ABSENT, groundTutorReply, publishLiveKitData, readTutorKeys } from "../../modules/group-study/tutorAnswer";
+import { COURSE_MATERIAL_ABSENT, courseQuestionTerms, groundTutorReply, publishLiveKitData, readTutorKeys } from "../../modules/group-study/tutorAnswer";
 import { createStudyGroupRepository, type StudyGroupRepository } from "../../modules/group-study/repository";
 import { decryptTokenLogLine } from "../../modules/group-study/tokenLog";
 import { STUDY_GROUP_TUTOR_SYSTEM_PROMPT } from "../../modules/group-study/tutorPrompt";
@@ -782,6 +782,7 @@ test("a reply that repeats a question word missing from the course context is no
   assert.deepEqual(published, [COURSE_MATERIAL_ABSENT]);
   assert.equal(delivered?.text, COURSE_MATERIAL_ABSENT);
   assert.equal(groundTutorReply("Why is friendship central?", "Friendship is central to security and happiness.", "Friendship is central to security and happiness."), "Friendship is central to security and happiness.");
+  assert.deepEqual(courseQuestionTerms("How does friendship relate to happiness?"), ["friendship", "happiness"]);
 });
 
 test("a question whose content words are mostly absent does not call the model", async () => {
