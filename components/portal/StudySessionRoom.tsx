@@ -54,6 +54,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const [group, setGroup] = useState<StudyGroupDetail | null>(null);
   const [errorCode, setErrorCode] = useState("");
   const [connected, setConnected] = useState(false);
+  const [seated, setSeated] = useState(false);
   const [left, setLeft] = useState(false);
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [chat, setChat] = useState<ChatLine[]>([]);
@@ -184,7 +185,19 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   }, [session?.state]);
 
   useEffect(() => {
-    if (session?.state !== "live" || connected || left) return;
+    if (!session || left) return;
+    if (session.state !== "starting_soon" && session.state !== "live") return;
+    let cancelled = false;
+    void studyGroupRequest(`/api/study-groups/sessions/${sessionId}/enter`, { method: "POST", body: "{}" }).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setSeated(true);
+      else if (result.code !== "session_not_open") setErrorCode(result.code);
+    });
+    return () => { cancelled = true; };
+  }, [session?.state, sessionId, left]);
+
+  useEffect(() => {
+    if (session?.state !== "live" || connected || left || !seated) return;
     const generation = connectGeneration.current + 1;
     connectGeneration.current = generation;
     let timer = 0;
@@ -204,7 +217,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       connectGeneration.current += 1;
       window.clearTimeout(timer);
     };
-  }, [session?.state, connected, left]);
+  }, [session?.state, connected, left, seated]);
 
   useEffect(() => {
     if (session?.state !== "live") return;
