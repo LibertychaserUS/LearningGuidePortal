@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
-import { studyGroupPane } from "@/modules/group-study/uiState";
+import { sessionStateLabel, studyGroupPane } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
 import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, plannedMinutes, scheduleSessionFields, SESSION_TITLE_MAX, sessionScheduleLabel, sessionTitleCount, studyGroupRequest, type StudyGroupDetail, type StudySession } from "./studyGroupClient";
 
@@ -336,11 +336,13 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
               {pane.kind === "sessions" && (selected.sessions || []).length === 0 ? <div className={styles.emptySessions}><p>{copy.noSessions}</p><Image src="/portal/study-groups/empty-sessions.png" width={150} height={113} alt="" /></div> : null}
               {pane.kind === "sessions" ? (selected.sessions || []).map((session) => (
                 <article className={styles.session} key={session.id}>
+                  <p className={styles.sessionState} data-state={session.state}>{copy[sessionStateLabel(session.state)]}</p>
                   <h3>{session.title}</h3>
                   {session.focus ? <p>{session.focus}</p> : null}
                   {session.relatedLessonId ? <p>{(selected.lessons || []).find((lesson) => lesson.id === session.relatedLessonId)?.title}</p> : null}
-                  <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p>
-                  <p className={styles.meta}>{session.state === "completed" ? copy.completed : session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
+                  <p className={styles.meta}>{sessionScheduleLabel(locale, session)} · {fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p>
+                  <p className={styles.meta}>{session.state === "completed" ? fill(copy.attended, { count: session.attendees.length }) : session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })} · {fill(copy.maximumLine, { count: session.maxParticipants })}</p>
+                  {session.state === "scheduled" && selected.role === "member" ? <p className={styles.meta}>{copy.reminderHint}</p> : null}
                   <div className={styles.row}>
                     {selected.role === "host" && session.state === "starting_soon" ? <button className={styles.primary} type="button" onClick={() => void startSession(session)}>{copy.start}</button> : null}
                     {session.state === "starting_soon" || session.state === "live" ? <button className={styles.primary} type="button" disabled={session.occupancy >= session.maxParticipants} onClick={() => void enter(session)}>{session.occupancy >= session.maxParticipants ? copy.sessionFull : copy.joinNow}</button> : null}

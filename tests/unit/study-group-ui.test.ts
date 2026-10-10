@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { participantStatus, raisedHands, sessionControls, studyGroupPane } from "../../modules/group-study/uiState";
+import { participantStatus, raisedHands, sessionControls, sessionStateLabel, studyGroupPane } from "../../modules/group-study/uiState";
 import { readFileSync } from "node:fs";
 import en from "../../messages/en-GB.json";
 import zh from "../../messages/zh-CN.json";
@@ -129,6 +129,23 @@ test("a starting-soon Live Session shows its title, time, duration, and occupanc
   const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
   assert.match(room, /sessionScheduleLabel\(locale, session\)/);
   assert.match(room, /copy\.currentlyInSession/);
+});
+
+test("a Live Session card names its state, attendance, and the plan reminder", () => {
+  assert.equal(sessionStateLabel("scheduled"), "upcoming");
+  assert.equal(sessionStateLabel("starting_soon"), "startingSoon");
+  assert.equal(sessionStateLabel("live"), "live");
+  assert.equal(sessionStateLabel("completed"), "completed");
+  assert.equal(fill(en.studyGroupsPage.attended, { count: 4 }), "4 members attended");
+  assert.equal(fill(en.studyGroupsPage.maximumLine, { count: 6 }), "Maximum 6 participants");
+  assert.equal(en.studyGroupsPage.reminderHint, "You'll get a reminder before it starts");
+  assert.equal(fill(zh.studyGroupsPage.attended, { count: 4 }), "4 人参加过");
+  assert.equal(zh.studyGroupsPage.reminderHint, "开始前你会收到提醒");
+  const app = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
+  assert.match(app, /sessionStateLabel\(session\.state\)/);
+  assert.match(app, /copy\.attended/);
+  assert.match(app, /copy\.reminderHint/);
+  assert.match(app, /copy\.maximumLine/);
 });
 
 test("the ended screen and live clock follow the Live Session frames", () => {

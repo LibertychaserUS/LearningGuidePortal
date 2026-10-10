@@ -20,6 +20,13 @@ export function participantStatus(input: { mic: boolean; speaking: boolean }) {
   return "mic-on" as const;
 }
 
+export function sessionStateLabel(state: "scheduled" | "starting_soon" | "live" | "completed") {
+  if (state === "scheduled") return "upcoming" as const;
+  if (state === "starting_soon") return "startingSoon" as const;
+  if (state === "live") return "live" as const;
+  return "completed" as const;
+}
+
 export function sessionControls(input: { role: "host" | "member" | null; state: "scheduled" | "starting_soon" | "live" | "completed"; occupancy: number; maxParticipants: number }) {
   if (input.state === "live") return ["mic", "camera", "share", "participants", "raise-hand", "leave"];
   const actions: string[] = [];
