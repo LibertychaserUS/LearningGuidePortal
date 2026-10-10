@@ -1984,7 +1984,7 @@ export async function saveConversation(conversation: ProductConversation) {
 export async function listStudyGroupReminders(userId: string) {
   const data = await readProductAggregate();
   return data.notifications
-    .filter((item) => item.userId === userId && item.title === "Live Session reminder")
+    .filter((item) => item.userId === userId && (item.title === "Live Session reminder" || item.title === "Study Group cancelled"))
     .slice(0, 5)
     .map((item) => ({ body: item.body, createdAt: item.createdAt }));
 }
