@@ -296,6 +296,9 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       </>
     );
   }
+  if (session.state === "scheduled") {
+    return <>{path()}<section className={styles.empty} role="status"><h1>{copy.errors.session_not_open}</h1><p>{session.title}</p></section></>;
+  }
   if (session.state !== "live") {
     return <>{path()}<section className={styles.empty} role="status"><h1>{copy.waiting}</h1><p>{session.title}</p></section></>;
   }
