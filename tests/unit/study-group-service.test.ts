@@ -557,6 +557,27 @@ test("empty course knowledge refuses without a model call", async () => {
   assert.equal(stored.includes("fake-key-healthy"), false);
 });
 
+test("a question with no usable tutor key does not block the material-absent reply", async () => {
+  const calls: string[] = [];
+  const published: string[] = [];
+  const local = serviceWith({
+    courseKnowledge: async () => "The Weimar republic ended in 1933.",
+    publishRoomChat: async ({ text }) => { published.push(text); },
+    tutorKeys: () => [],
+    tutorCall: async () => { calls.push("called"); return { outcome: "ok", latencyMs: 1, body: "invented" }; }
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "No key", courseId: "course-1", about: "About the group." });
+  const session = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "No key", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4, aiTutorEnabled: true });
+  await local.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await local.startSession({ actorUserId: "host", sessionId: session.id });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933?", clientEventId: "evt-matched" });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "qqqqzzzz", clientEventId: "evt-absent" });
+  const delivered = await local.deliverTutorAnswer({ sessionId: session.id });
+  assert.equal(delivered?.text, COURSE_MATERIAL_ABSENT);
+  assert.deepEqual(published, [COURSE_MATERIAL_ABSENT]);
+  assert.deepEqual(calls, []);
+});
+
 test("a rate-limited tutor key fails over to the next healthy key", async () => {
   const secrets: string[] = [];
   const published: string[] = [];

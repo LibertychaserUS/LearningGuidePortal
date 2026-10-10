@@ -70,7 +70,10 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         return;
       }
       if (message.type === "chat" && message.text) setChat((items) => [...items, { id: `${from}-${items.length}`, from, text: message.text || "" }]);
-      if (message.type === "raise-hand") setHands((items) => items.includes(from) ? items : [...items, from]);
+      if (message.type === "raise-hand") {
+        const identity = participant?.identity || from;
+        setHands((items) => items.includes(identity) ? items : [...items, identity]);
+      }
     });
     const paint = () => {
       const hostIds = new Set((group?.members || []).filter((member) => member.role === "host").map((member) => member.userId));
@@ -125,12 +128,13 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
 
   if (!session) return <p className={styles.panel} role="status">{errorCode ? copy.errors[errorCode as keyof typeof copy.errors] || copy.errors.error : copy.loading}</p>;
   if (session.state === "completed" || left) {
+    const ended = session.state === "completed";
     return (
       <section className={styles.empty}>
-        <h1>{left && session.state !== "completed" ? roomCopy.youLeft : roomCopy.endedTitle}</h1>
+        <h1>{ended ? roomCopy.endedTitle : roomCopy.youLeft}</h1>
         <p>{session.title}</p>
         <p>{group?.courseTitle}</p>
-        <p>{roomCopy.endedBody}</p>
+        {ended ? <p>{roomCopy.endedBody}</p> : null}
         <a className={styles.primary} href={group ? `/${locale}/portal/courses/${group.courseSlug}` : `/${locale}/portal/study-groups`}>{roomCopy.returnToCourse}</a>
       </section>
     );
@@ -165,7 +169,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           {controls.includes("mic") ? <button type="button" aria-pressed={micOn} onClick={() => void setMedia("mic", !micOn).catch(() => setMicOn(false))}>{roomCopy.mic}</button> : null}
           {controls.includes("camera") ? <button type="button" aria-pressed={cameraOn} onClick={() => void setMedia("camera", !cameraOn).catch(() => setCameraOn(false))}>{roomCopy.camera}</button> : null}
           {controls.includes("share") ? <button type="button" aria-pressed={sharing} onClick={() => void setMedia("share", !sharing).catch(() => setSharing(false))}>{roomCopy.share}</button> : null}
-          {controls.includes("raise-hand") ? <button type="button" onClick={() => void publish({ type: "raise-hand" })}>{roomCopy.raiseHand}</button> : null}
+          {controls.includes("raise-hand") ? <button type="button" onClick={() => { const identity = roomApi?.localParticipant.identity; if (identity) setHands((items) => items.includes(identity) ? items : [...items, identity]); void publish({ type: "raise-hand" }); }}>{roomCopy.raiseHand}</button> : null}
           {controls.includes("leave") ? <button type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
         </div>
       </div>
