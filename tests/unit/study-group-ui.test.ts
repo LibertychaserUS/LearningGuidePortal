@@ -100,6 +100,10 @@ test("a live tile says who is speaking, who has a microphone, and who is muted",
   assert.equal(zh.studyGroupsPage.room.speaking, "正在发言");
   const room = readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8");
   assert.match(room, /styles\.roster/);
+  assert.match(room, /role="tablist"/);
+  assert.match(room, /setSideTab\("participants"\)/);
+  assert.match(room, /setSideTab\("chat"\)/);
+  assert.match(room, /sideTab === "participants"/);
   assert.match(room, /ActiveSpeakersChanged/);
   assert.match(room, /person\.isSpeaking/);
   assert.match(room, /type: "raise-hand", raised/);
