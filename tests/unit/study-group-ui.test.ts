@@ -190,6 +190,10 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   assert.equal(sessionStateLabel("completed"), "completed");
   assert.equal(fill(en.studyGroupsPage.attended, { count: 4 }), "4 members attended");
   assert.equal(fill(en.studyGroupsPage.maximumLine, { count: 6 }), "Maximum 6 participants");
+  assert.equal(en.studyGroupsPage.planNote, "Planning to attend does not reserve a place.");
+  assert.equal(en.studyGroupsPage.planning, "You are planning to attend this session.");
+  assert.equal(zh.studyGroupsPage.planNote, "计划参加不保留座位。");
+  assert.equal(zh.studyGroupsPage.planning, "你已计划参加本节。");
   assert.equal(en.studyGroupsPage.reminderHint, "You'll get a reminder before it starts");
   assert.equal(fill(zh.studyGroupsPage.attended, { count: 4 }), "4 人参加过");
   assert.equal(zh.studyGroupsPage.reminderHint, "开始前你会收到提醒");
@@ -197,6 +201,7 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   assert.match(app, /sessionStateLabel\(session\.state\)/);
   assert.match(app, /copy\.attended/);
   assert.match(app, /copy\.reminderHint/);
+  assert.match(app, /copy\.planNote/);
   assert.match(app, /copy\.maximumLine/);
   assert.match(app, /view=reminders/);
   assert.match(app, /void refreshOpenGroup\(selectedId\)/);
