@@ -26,6 +26,7 @@ export type StudyGroupDeps = {
   now: () => Date;
   hasCourseAccess: (userId: string, courseId: string) => Promise<boolean>;
   courseSummary: (courseId: string) => Promise<CourseSummary | null>;
+  courseLessons?: (courseId: string) => Promise<Array<{ id: string; title: string }>>;
   accessibleCourses: (userId: string) => Promise<CourseSummary[]>;
   userProfile: (userId: string) => Promise<UserProfile | null>;
   notify: (input: { userId: string; title: string; body: string }) => Promise<void>;
@@ -277,7 +278,8 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
       const view = await toView(group, store, active.length, mine?.role || null);
       const sessions = mine ? await Promise.all(store.sessions.filter((item) => item.groupId === group.id && item.status !== "removed").map((item) => sessionView(store, item, input.actorUserId || ""))) : null;
       const canJoin = !mine && Boolean(input.actorUserId) && await deps.hasCourseAccess(input.actorUserId || "", group.courseId);
-      return { ...view, members, sessions, canJoin };
+      const lessons = deps.courseLessons ? await deps.courseLessons(group.courseId) : [];
+      return { ...view, members, sessions, canJoin, lessons };
     },
 
     async joinGroup(input: { actorUserId: string; groupId: string }) {

@@ -781,6 +781,19 @@ test("a question whose content words are mostly absent does not call the model",
   assert.equal(groundTutorReply("What ended in 1933?", "The republic ended in 1933.", `${COURSE_MATERIAL_ABSENT} It ended in 1819.`), COURSE_MATERIAL_ABSENT);
 });
 
+test("a blank related lesson still schedules and a chosen lesson id is stored", async () => {
+  const local = serviceWith({
+    courseLessons: async () => [{ id: "lesson-1", title: "Pleasure and the Good Life" }]
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "Lesson group", courseId: "course-1", about: "About the lesson group." });
+  const blank = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "No lesson", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4 });
+  const chosen = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "With lesson", startsAt: "2026-09-19T02:20:00.000Z", durationSeconds: 2700, maxParticipants: 4, relatedLessonId: "lesson-1" });
+  assert.equal(blank.relatedLessonId, null);
+  assert.equal(chosen.relatedLessonId, "lesson-1");
+  const detail = await local.getGroup({ actorUserId: "host", groupId: group.id });
+  assert.deepEqual(detail.lessons, [{ id: "lesson-1", title: "Pleasure and the Good Life" }]);
+});
+
 test("shared LiveKit publish has no private destination and no secret", async () => {
   assert.deepEqual(readTutorKeys(undefined), []);
   assert.deepEqual(readTutorKeys("not-json"), []);

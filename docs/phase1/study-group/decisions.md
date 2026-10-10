@@ -24,6 +24,10 @@ One question is in flight per Live Session. Later questions wait. Order is the s
 
 The Join control for a Study Group reads "Join Study Group". The Hosting chip is shown only when the current user is the Host. A Live Session does not reserve a Host seat. The maximum of 6 includes the Host. A full session refuses another entry, including the Host.
 
+## Related Lesson
+
+The schedule control lists the titles of that course's lessons. The choice is optional. A blank choice stores no lesson id. Discover cards do not show it. The group sheet can show the stored lesson title.
+
 ## Duration
 
 The Host chooses 30, 45, 60, or 90 minutes. Those choices are stored as 1800, 2700, 3600, and 5400 seconds. No other duration is accepted. The session title is at most 20 characters.

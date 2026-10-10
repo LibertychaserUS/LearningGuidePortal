@@ -44,6 +44,13 @@ export function studyGroupService() {
       const course = await getProductCourse(courseId);
       return course && course.status === "published" ? { id: course.id, title: course.title, slug: course.slug } : null;
     },
+    courseLessons: async (courseId) => {
+      const course = await getProductCourse(courseId);
+      return (course?.sections ?? []).flatMap((section) => section.lessons).flatMap((lesson) => {
+        const title = lesson.title.trim();
+        return title ? [{ id: lesson.id, title }] : [];
+      });
+    },
     accessibleCourses: async (userId) => {
       const courses = await listPublishedCourses();
       const allowed = [];
