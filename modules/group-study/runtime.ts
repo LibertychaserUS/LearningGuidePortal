@@ -99,5 +99,14 @@ export function studyGroupService() {
     }
   });
   services.set(directory, service);
+  const timers = globalThis as typeof globalThis & { __lgStudyGroupReminderTimers?: Set<string> };
+  timers.__lgStudyGroupReminderTimers ??= new Set();
+  if (!timers.__lgStudyGroupReminderTimers.has(directory)) {
+    timers.__lgStudyGroupReminderTimers.add(directory);
+    const timer = setInterval(() => {
+      void service.dispatchDueReminders().catch(() => undefined);
+    }, 30_000);
+    timer.unref();
+  }
   return service;
 }
