@@ -49,6 +49,8 @@ test("host start opens the room only after entry succeeds", () => {
   const css = readFileSync(new URL("../../components/portal/study-groups.module.css", import.meta.url), "utf8");
   assert.match(css, /\.memberList[\s\S]*overflow-y: auto/);
   assert.match(css, /\.shareMain/);
+  assert.match(readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8"), /styles\.shareMain\} autoPlay playsInline muted/);
+  assert.match(readFileSync(new URL("../../components/portal/StudySessionRoom.tsx", import.meta.url), "utf8"), /TrackUnpublished/);
 });
 
 test("session title counter matches the 20 character Figma limit", () => {

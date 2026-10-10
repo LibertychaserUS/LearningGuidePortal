@@ -111,7 +111,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         ...room.localParticipant.trackPublications.values(),
         ...Array.from(room.remoteParticipants.values()).flatMap((person) => [...person.trackPublications.values()])
       ];
-      const shared = publications.find((item) => item.source === "screen_share" && item.track);
+      const shared = publications.find((item) => item.source === "screen_share" && item.track && item.track.mediaStreamTrack?.readyState !== "ended" && item.isMuted !== true);
       setShareTrack(shared?.track ?? null);
       setSharing([...room.localParticipant.trackPublications.values()].some((item) => item.source === "screen_share" && item.track));
       setMicOn(room.localParticipant.isMicrophoneEnabled);
@@ -162,6 +162,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
       void room.startAudio().catch(() => undefined);
     };
     room.on(RoomEvent.TrackSubscribed, (track) => { attachRemoteAudio(track); paint(); showShare(); });
+    room.on(RoomEvent.TrackUnpublished, () => { paint(); showShare(); });
     room.on(RoomEvent.TrackUnsubscribed, (track) => {
       if (track.kind === "audio") track.detach().forEach((element) => element.remove());
       paint();
@@ -385,7 +386,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
         {session.focus ? <p>{session.focus}</p> : null}
         {errorText ? <p className={styles.alert} role="alert">{errorText} <button className={styles.textButton} type="button" onClick={() => { setErrorCode(""); setConnected(false); setConnectAttempt((attempt) => attempt + 1); }}>{roomCopy.reconnect}</button></p> : null}
         <div ref={audioRoot} hidden />
-        {shareTrack ? <video ref={shareVideo} className={styles.shareMain} autoPlay playsInline /> : null}
+        {shareTrack ? <video ref={shareVideo} className={styles.shareMain} autoPlay playsInline muted /> : null}
         <div className={styles.videos}>
           {tiles.length === 0 ? <div className={styles.tile}><span>{connected ? copy.loading : roomCopy.notConnected}</span></div> : tiles.map((tile) => (
             <div className={styles.tile} key={tile.identity}>
