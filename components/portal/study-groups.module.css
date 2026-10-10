@@ -106,6 +106,9 @@
 .avatarRow { display: flex; align-items: center; margin: 8px 0; }
 .avatarRow span { width: 26px; height: 26px; margin-right: -8px; border: 2px solid #fff; border-radius: 13px; background: #e8f1ff; color: #175cd3; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
 .avatarRow .avatarMore { background: #f2f4f7; color: #344054; }
+.reminderHint { margin: 8px 0; color: #b54708; font-size: 13px; }
+.reminderHint::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 4px; background: #f79009; }
+.planNote { margin: 0; max-width: 180px; color: #667085; font-size: 12px; line-height: 16px; }
 .danger { height: 37px; border-radius: 8px; border: 1px solid #fda29b; background: #fff; color: #f54649; font: inherit; font-weight: 600; padding: 0 16px; cursor: pointer; }
 .alert { color: #f54649; }
 .modal { position: fixed; inset: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; border: 0; padding: 24px; background: rgba(16, 24, 40, .45); display: grid; place-items: center; }
