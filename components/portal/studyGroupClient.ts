@@ -9,6 +9,7 @@ export type StudySession = {
   focus: string | null;
   aiTutorEnabled: boolean;
   startedAt: string | null;
+  relatedLessonId: string | null;
   state: "scheduled" | "starting_soon" | "live" | "completed";
   occupancy: number;
   plannedCount: number;
@@ -28,6 +29,7 @@ export type StudyGroupDetail = {
   canJoin?: boolean;
   members?: StudyGroupMember[];
   sessions?: StudySession[] | null;
+  lessons?: Array<{ id: string; title: string }>;
 };
 
 export type StudyGroupResponse<T> = { ok: boolean; code: string; message: string; data: T };
@@ -53,14 +55,16 @@ export function plannedMinutes(session: { durationSeconds: number }) {
   return Math.round(session.durationSeconds / 60);
 }
 
-export function scheduleSessionFields(input: { title: FormDataEntryValue | null; startsAt: string; durationMinutes: number; maxParticipants: number; focus: FormDataEntryValue | null; aiTutorEnabled: boolean }) {
+export function scheduleSessionFields(input: { title: FormDataEntryValue | null; startsAt: string; durationMinutes: number; maxParticipants: number; focus: FormDataEntryValue | null; aiTutorEnabled: boolean; relatedLessonId?: FormDataEntryValue | null }) {
+  const lesson = typeof input.relatedLessonId === "string" ? input.relatedLessonId.trim() : "";
   return {
     title: input.title,
     startsAt: input.startsAt,
     durationSeconds: input.durationMinutes * 60,
     maxParticipants: input.maxParticipants,
     focus: input.focus,
-    aiTutorEnabled: input.aiTutorEnabled
+    aiTutorEnabled: input.aiTutorEnabled,
+    relatedLessonId: lesson || null
   };
 }
 

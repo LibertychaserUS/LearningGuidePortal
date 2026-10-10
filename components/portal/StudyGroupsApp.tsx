@@ -47,6 +47,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   const [sessionDuration, setSessionDuration] = useState("");
   const [sessionMax, setSessionMax] = useState("");
   const [sessionTutor, setSessionTutor] = useState(true);
+  const [sessionLesson, setSessionLesson] = useState("");
   const [createTitle, setCreateTitle] = useState("");
   const [createAbout, setCreateAbout] = useState("");
 
@@ -141,6 +142,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     setSessionDuration("");
     setSessionMax("");
     setSessionTutor(true);
+    setSessionLesson("");
     setDialog("schedule");
   }
 
@@ -154,6 +156,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     setSessionDuration(String(plannedMinutes(session)));
     setSessionMax(String(session.maxParticipants));
     setSessionTutor(session.aiTutorEnabled);
+    setSessionLesson(session.relatedLessonId || "");
     setDialog("edit-session");
   }
 
@@ -183,7 +186,8 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
         durationMinutes: Number(form.get("durationMinutes")),
         maxParticipants: Number(form.get("maxParticipants")),
         focus: form.get("focus"),
-        aiTutorEnabled: form.get("aiTutor") === "on"
+        aiTutorEnabled: form.get("aiTutor") === "on",
+        relatedLessonId: form.get("lesson")
       }))
     });
     if (!result.ok) {
@@ -207,7 +211,8 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
           durationMinutes: Number(form.get("durationMinutes")),
           maxParticipants: Number(form.get("maxParticipants")),
           focus: form.get("focus"),
-          aiTutorEnabled: form.get("aiTutor") === "on"
+          aiTutorEnabled: form.get("aiTutor") === "on",
+          relatedLessonId: form.get("lesson")
         })
       })
     });
@@ -333,6 +338,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                 <article className={styles.session} key={session.id}>
                   <h3>{session.title}</h3>
                   {session.focus ? <p>{session.focus}</p> : null}
+                  {session.relatedLessonId ? <p>{(selected.lessons || []).find((lesson) => lesson.id === session.relatedLessonId)?.title}</p> : null}
                   <p className={styles.meta}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.startsAt))} · {fill(copy.plannedDuration, { count: plannedMinutes(session) })}</p>
                   <p className={styles.meta}>{session.state === "completed" ? copy.completed : session.state === "scheduled" ? fill(copy.plannedCount, { count: session.plannedCount }) : fill(copy.currentlyInSession, { count: session.occupancy, max: session.maxParticipants })}</p>
                   <div className={styles.row}>
@@ -377,7 +383,7 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
                 <p className={styles.lead}>{copy.arrangeLead}</p>
                 <div className={styles.contextCard}><strong>{selected?.title}</strong><span>{selected?.about}</span></div>
                 <label className={styles.field}><span>{copy.sessionTitle} <span className={styles.req}>*</span></span><span className={styles.fieldBox}><input name="title" required maxLength={SESSION_TITLE_MAX} value={sessionTitle} onChange={(event) => setSessionTitle(event.target.value.slice(0, SESSION_TITLE_MAX))} /><span className={styles.counter}>{sessionTitleCount(sessionTitle)}</span></span></label>
-                <label className={styles.field}>{copy.selectLesson}<select name="lesson" defaultValue=""><option value="">{copy.selectLesson}</option></select></label>
+                <label className={styles.field}>{copy.selectLesson}<select name="lesson" value={sessionLesson} onChange={(event) => setSessionLesson(event.target.value)}><option value="">{copy.selectLesson}</option>{(selected?.lessons || []).map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.title}</option>)}</select></label>
                 <div className={styles.pair}>
                   <label className={styles.field}><span>{copy.date} <span className={styles.req}>*</span></span><input name="date" type="date" required value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} /></label>
                   <label className={styles.field}><span>{copy.startTime} <span className={styles.req}>*</span></span><input name="time" type="time" required value={sessionTime} onChange={(event) => setSessionTime(event.target.value)} /></label>

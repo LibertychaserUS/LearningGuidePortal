@@ -4,7 +4,7 @@ import { participantStatus, raisedHands, sessionControls, studyGroupPane } from 
 import { readFileSync } from "node:fs";
 import en from "../../messages/en-GB.json";
 import zh from "../../messages/zh-CN.json";
-import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, SESSION_TITLE_MAX, sessionTitleCount, tutorQueueBody } from "../../components/portal/studyGroupClient";
+import { DURATION_MINUTE_CHOICES, fill, hostMayOpenRoom, scheduleSessionFields, SESSION_TITLE_MAX, sessionTitleCount, tutorQueueBody } from "../../components/portal/studyGroupClient";
 
 test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", () => {
   assert.deepEqual([...DURATION_MINUTE_CHOICES], [30, 45, 60, 90]);
@@ -15,6 +15,9 @@ test("schedule duration is a required dropdown of 30, 45, 60, and 90 minutes", (
   const source = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
   assert.match(source, /select name="durationMinutes" required/);
   assert.match(source, /DURATION_MINUTE_CHOICES\.map/);
+  assert.match(source, /\(selected\?\.lessons \|\| \[\]\)\.map/);
+  assert.equal(scheduleSessionFields({ title: "Road", startsAt: "2026-09-19T02:05:00.000Z", durationMinutes: 45, maxParticipants: 4, focus: null, aiTutorEnabled: true, relatedLessonId: "lesson-1" }).relatedLessonId, "lesson-1");
+  assert.equal(scheduleSessionFields({ title: "Road", startsAt: "2026-09-19T02:05:00.000Z", durationMinutes: 45, maxParticipants: 4, focus: null, aiTutorEnabled: true, relatedLessonId: "" }).relatedLessonId, null);
   assert.equal(source.includes("durationSeconds"), false);
   assert.equal(source.includes('type="number"'), false);
 });
