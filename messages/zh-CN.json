@@ -589,6 +589,8 @@
     "upcoming": "即将到来",
     "close": "关闭",
     "room": {
+      "crumbHome": "首页",
+      "crumbGroups": "学习小组",
       "participants": "参与者",
       "chat": "聊天",
       "aiTutor": "@AI Tutor",

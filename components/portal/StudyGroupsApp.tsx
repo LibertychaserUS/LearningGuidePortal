@@ -94,6 +94,11 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   }, [courseFilter, query, signedIn]);
 
   useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("group");
+    if (id) void openGroup(id);
+  }, []);
+
+  useEffect(() => {
     if (!signedIn) return;
     const timer = window.setInterval(() => { void loadLists(); }, 30_000);
     return () => window.clearInterval(timer);

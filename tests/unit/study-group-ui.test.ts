@@ -104,4 +104,10 @@ test("the ended screen and live clock follow the Live Session frames", () => {
   assert.match(room, /elapsedClock\(session\.startedAt\)/);
   assert.match(room, /roomCopy\.groupStudy/);
   assert.match(room, /roomCopy\.liveClock/);
+  assert.match(room, /roomCopy\.crumbHome/);
+  assert.match(room, /study-groups\?group=/);
+  assert.equal(en.studyGroupsPage.room.crumbHome, "Home");
+  assert.equal(zh.studyGroupsPage.room.crumbGroups, "学习小组");
+  const app = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
+  assert.match(app, /URLSearchParams\(window\.location\.search\)\.get\("group"\)/);
 });
