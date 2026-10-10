@@ -566,7 +566,7 @@
     "retry": "Try again",
     "cancel": "Cancel",
     "save": "Save",
-    "confirmCancelGroup": "Cancel this Study Group? Upcoming Live Sessions will be removed and members will be notified.",
+    "confirmCancelGroup": "Cancel this Study Group? Upcoming Live Sessions will be removed, a Live Session that is already open will end, and members will be notified.",
     "sessionTitle": "Session Title",
     "date": "Date",
     "startTime": "Start Time",

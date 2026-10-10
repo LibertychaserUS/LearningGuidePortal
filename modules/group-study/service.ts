@@ -365,9 +365,20 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
         row.status = "cancelled";
         row.updatedAt = now;
         for (const session of store.sessions) {
-          if (session.groupId === row.id && session.status === "scheduled") {
+          if (session.groupId !== row.id) continue;
+          if (session.status === "scheduled") {
             session.status = "removed";
             session.updatedAt = now;
+          }
+          if (session.status === "live") {
+            session.status = "completed";
+            session.completedAt = now;
+            session.updatedAt = now;
+            const meeting = store.meetings.find((item) => item.sessionId === session.id);
+            if (meeting && !meeting.endedAt) meeting.endedAt = now;
+            for (const presence of store.presences) {
+              if (presence.sessionId === session.id && presence.enteredAt && !presence.leftAt) presence.leftAt = now;
+            }
           }
         }
         return store.memberships.filter((item) => item.groupId === row.id && !item.leftAt).map((item) => item.userId);
@@ -453,7 +464,11 @@ export function createStudyGroupService(deps: StudyGroupDeps) {
 
     async getSession(input: { actorUserId: string; sessionId: string }) {
       const store = await deps.repository.read();
-      const { session } = requireOpenSession(store, input.sessionId, input.actorUserId);
+      const session = store.sessions.find((item) => item.id === input.sessionId);
+      if (!session || session.status === "removed") throw new StudyGroupError("not_found", "Live Session was not found.");
+      const group = store.groups.find((item) => item.id === session.groupId);
+      if (!group || !activeMembership(store, group.id, input.actorUserId)) throw new StudyGroupError(group ? "forbidden" : "not_found", group ? "Join the Study Group first." : "Study Group was not found.");
+      if (group.status !== "active" && session.status !== "completed") throw new StudyGroupError("not_found", "Study Group was not found.");
       return sessionView(store, session, input.actorUserId);
     },
 
