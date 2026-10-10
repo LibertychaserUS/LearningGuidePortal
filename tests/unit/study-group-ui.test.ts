@@ -200,6 +200,7 @@ test("a Live Session card names its state, attendance, and the plan reminder", (
   const app = readFileSync(new URL("../../components/portal/StudyGroupsApp.tsx", import.meta.url), "utf8");
   assert.match(app, /sessionStateLabel\(session\.state\)/);
   assert.match(app, /copy\.attended/);
+  assert.match(app, /session\.state === "scheduled" && \(selected\.role === "host" \|\| session\.viewerPlanned\)/);
   assert.match(app, /copy\.reminderHint/);
   assert.match(app, /copy\.planNote/);
   assert.match(app, /copy\.maximumLine/);
