@@ -40,19 +40,28 @@ export function readTutorKeys(raw: string | undefined) {
   }
 }
 
-export async function openRouterTutorCall(input: { secret: string; model: string; system: string; context: string; text: string }): Promise<{ outcome: TutorKeyOutcome; latencyMs: number; body?: string }> {
+export async function openRouterTutorCall(input: { secret: string; model: string; system: string; context: string; text: string; url?: string }): Promise<{ outcome: TutorKeyOutcome; latencyMs: number; body?: string }> {
   const started = Date.now();
+  const messages = [
+    { role: "system", content: input.system },
+    { role: "user", content: `Course context:\n${input.context}\n\nParticipant text:\n${input.text}` }
+  ];
   try {
-    const response = await fetchOpenRouter(input.secret, {
+    const compatibleUrl = input.url?.trim();
+    const response = compatibleUrl && !compatibleUrl.includes("openrouter.ai")
+      ? await fetch(compatibleUrl, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${input.secret}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: input.model, temperature: 0.2, max_tokens: 600, stream: false, messages }),
+        signal: AbortSignal.timeout(45_000)
+      })
+      : await fetchOpenRouter(input.secret, {
       model: input.model,
       temperature: 0.2,
       max_tokens: 600,
       stream: false,
-      messages: [
-        { role: "system", content: input.system },
-        { role: "user", content: `Course context:\n${input.context}\n\nParticipant text:\n${input.text}` }
-      ]
-    }, { timeoutMs: 20_000, attempts: 1 });
+      messages
+    }, { timeoutMs: 45_000, attempts: 1 });
     const latencyMs = Date.now() - started;
     const raw = await response.text();
     if (response.status === 401 || response.status === 403) return { outcome: "failed", latencyMs };

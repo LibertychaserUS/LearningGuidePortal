@@ -642,6 +642,95 @@ test("a rate-limited tutor key fails over to the next healthy key", async () => 
   assert.equal(stored.includes("fake-key-healthy"), false);
 });
 
+test("one delivery answers every waiting question in receipt order", async () => {
+  const published: string[] = [];
+  const calls: string[] = [];
+  let tick = 0;
+  const local = serviceWith({
+    now: () => new Date(Date.parse(NOW) + tick++),
+    courseKnowledge: async () => "The Weimar republic ended in 1933.",
+    publishRoomChat: async ({ text }) => { published.push(text); },
+    tutorKeys: () => [{ id: "healthy", secret: "fake-key-healthy" }],
+    tutorCall: async ({ text }) => {
+      calls.push(text);
+      return { outcome: "ok", latencyMs: 1, body: `Answer: ${text}` };
+    }
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "Drain", courseId: "course-1", about: "About the group." });
+  const session = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Drain", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4, aiTutorEnabled: true });
+  await local.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await local.startSession({ actorUserId: "host", sessionId: session.id });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933?", clientEventId: "evt-drain-1" });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933 again?", clientEventId: "evt-drain-2" });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "qqqqzzzz", clientEventId: "evt-drain-3" });
+  const delivered = await local.deliverTutorAnswer({ sessionId: session.id });
+  assert.deepEqual(calls, ["What ended in 1933?", "What ended in 1933 again?"]);
+  assert.deepEqual(published, ["Answer: What ended in 1933?", "Answer: What ended in 1933 again?", COURSE_MATERIAL_ABSENT]);
+  assert.equal(delivered?.text, COURSE_MATERIAL_ABSENT);
+  const items = (await repository.read()).tutorRequests.filter((item) => item.sessionId === session.id);
+  assert.equal(items.every((item) => item.answeredAt && !item.inFlight), true);
+});
+
+test("a failed tutor call does not leave the next question waiting", async () => {
+  const published: string[] = [];
+  const local = serviceWith({
+    courseKnowledge: async () => "The Weimar republic ended in 1933.",
+    publishRoomChat: async ({ text }) => { published.push(text); },
+    tutorKeys: () => [{ id: "healthy", secret: "fake-key-healthy" }],
+    tutorCall: async ({ text }) => text.includes("fail")
+      ? { outcome: "failed", latencyMs: 1 }
+      : { outcome: "ok", latencyMs: 1, body: "The republic ended in 1933." }
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "Fail over queue", courseId: "course-1", about: "About the group." });
+  const session = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "Fail queue", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4, aiTutorEnabled: true });
+  await local.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await local.startSession({ actorUserId: "host", sessionId: session.id });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933 fail", clientEventId: "evt-fail" });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933?", clientEventId: "evt-after-fail" });
+  const delivered = await local.deliverTutorAnswer({ sessionId: session.id });
+  assert.deepEqual(published, ["The republic ended in 1933."]);
+  assert.equal(delivered?.text, "The republic ended in 1933.");
+  const items = (await repository.read()).tutorRequests.filter((item) => item.sessionId === session.id);
+  assert.equal(items.every((item) => item.answeredAt && !item.inFlight), true);
+  assert.equal(JSON.stringify(items).includes("The course material does not contain the answer."), false);
+});
+
+test("a second delivery does not call the model while the first is still working", async () => {
+  let releaseFirst: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  let calls = 0;
+  const local = serviceWith({
+    courseKnowledge: async () => "The Weimar republic ended in 1933.",
+    publishRoomChat: async () => undefined,
+    tutorKeys: () => [{ id: "healthy", secret: "fake-key-healthy" }],
+    tutorCall: async () => {
+      calls += 1;
+      if (calls === 1) await gate;
+      return { outcome: "ok", latencyMs: 1, body: "The republic ended in 1933." };
+    }
+  });
+  const group = await local.createGroup({ actorUserId: "host", title: "One drain", courseId: "course-1", about: "About the group." });
+  const session = await local.scheduleSession({ actorUserId: "host", groupId: group.id, title: "One drain", startsAt: "2026-09-19T02:05:00.000Z", durationSeconds: 1800, maxParticipants: 4, aiTutorEnabled: true });
+  await local.enterSession({ actorUserId: "host", sessionId: session.id, requestedAt: NOW });
+  await local.startSession({ actorUserId: "host", sessionId: session.id });
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933?", clientEventId: "evt-lock-1" });
+  const first = local.deliverTutorAnswer({ sessionId: session.id });
+  while (calls < 1) await new Promise((resolve) => setTimeout(resolve, 0));
+  await local.enqueueTutor({ actorUserId: "host", sessionId: session.id, text: "What ended in 1933 again?", clientEventId: "evt-lock-2" });
+  let secondFinished = false;
+  const second = local.deliverTutorAnswer({ sessionId: session.id }).then((result) => {
+    secondFinished = true;
+    return result;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(secondFinished, false);
+  assert.equal(calls, 1);
+  releaseFirst();
+  assert.equal((await first)?.text, "The republic ended in 1933.");
+  assert.equal(await second, null);
+  assert.equal(calls, 2);
+});
+
 test("shared LiveKit publish has no private destination and no secret", async () => {
   assert.deepEqual(readTutorKeys(undefined), []);
   assert.deepEqual(readTutorKeys("not-json"), []);

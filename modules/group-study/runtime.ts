@@ -77,10 +77,11 @@ export function studyGroupService() {
     tutorKeys: () => readTutorKeys(process.env.STUDY_GROUP_TUTOR_KEYS),
     tutorCall: (input) => openRouterTutorCall({
       secret: input.secret,
-      model: process.env.OPENROUTER_MODEL?.trim() || "openrouter/auto",
+      model: process.env.STUDY_GROUP_TUTOR_MODEL?.trim() || process.env.OPENROUTER_MODEL?.trim() || "openrouter/auto",
       system: STUDY_GROUP_TUTOR_SYSTEM_PROMPT,
       context: input.context,
-      text: input.text
+      text: input.text,
+      url: process.env.STUDY_GROUP_TUTOR_URL?.trim() || undefined
     }),
     publishRoomChat: async ({ room, text }) => {
       const apiKey = process.env.LIVEKIT_API_KEY?.trim() || "";

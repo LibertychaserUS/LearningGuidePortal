@@ -10,11 +10,11 @@ The tutor is the Related Course tutor, shared in the Live Session chat. It is no
 
 Answers are grounded by lexical retrieval over Course Knowledge text that already exists for that course: published lesson text, and the Course Knowledge files the course tutor already reads (`knowledge-pack.json`, `canon-excerpts.md`, `sources.md`). No new knowledge base, table, or import is added. A piece of knowledge is that stored text. If retrieval returns nothing, the shared chat says: "The course material does not contain the answer." The model is not called in that case.
 
-The model call is a direct OpenRouter chat completion through `fetchOpenRouter`, the same client the course tutor uses. The model id is `OPENROUTER_MODEL`. No agent framework is added.
+The model call is a direct chat completion. The default is OpenRouter through `fetchOpenRouter`, the same client the course tutor uses. An empty `STUDY_GROUP_TUTOR_URL` keeps that path. When that variable is an OpenAI-compatible chat completions URL, the Study Group tutor posts the same messages there and does not send OpenRouter-only fields. The model id is `STUDY_GROUP_TUTOR_MODEL`, then `OPENROUTER_MODEL`. No agent framework is added.
 
 The answer is published into the shared LiveKit room as one data message every current participant can read. The packet has no destination list. Screen, video, and exhibit pixels are not sent.
 
-One question is in flight per Live Session. Later questions wait. Order is the server receipt time. The asker and the original text stay on the queue item. Enqueue writes that item and does not call the model.
+One question is in flight per Live Session. Later questions wait. Order is the server receipt time. The asker and the original text stay on the queue item. Enqueue writes that item and does not call the model. The delivery that starts for that session keeps going until every waiting question has been handled. A second delivery for the same session does not start a second model call. If every key fails, or the reply is empty or contains a key secret, that item is marked answered and nothing is published, so the next question is not left waiting. That failure does not publish the material-absent sentence.
 
 ## API keys
 
