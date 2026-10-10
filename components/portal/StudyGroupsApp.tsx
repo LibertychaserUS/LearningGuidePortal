@@ -140,10 +140,22 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
   }, [selectedId, signedIn]);
 
   useEffect(() => {
-    if (dialog !== "attendees" || !attendeeSessionId) return;
-    const current = selected?.sessions?.find((item) => item.id === attendeeSessionId);
+    if (dialog !== "attendees" || !attendeeSessionId || !selected?.sessions) return;
+    const current = selected.sessions.find((item) => item.id === attendeeSessionId);
     if (current) setAttendees(current.attendees);
+    else {
+      setDialog(null);
+      setAttendeeSessionId(null);
+    }
   }, [dialog, attendeeSessionId, selected]);
+
+  useEffect(() => {
+    if (dialog !== "edit-session" || !editingSession || !selected?.sessions) return;
+    if (!selected.sessions.some((item) => item.id === editingSession.id)) {
+      setDialog(null);
+      setEditingSession(null);
+    }
+  }, [dialog, editingSession, selected]);
 
   useEffect(() => {
     if (dialog !== "waiting" || !waitingSession || !selected?.sessions) return;
