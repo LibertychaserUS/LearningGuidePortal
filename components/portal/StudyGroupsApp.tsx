@@ -94,9 +94,23 @@ export function StudyGroupsApp({ locale, signedIn }: { locale: Locale; signedIn:
     setStatus("ready");
   }
 
+  async function refreshOpenGroup(id: string) {
+    const result = await studyGroupRequest<StudyGroupDetail>(`/api/study-groups/${id}`);
+    if (!result.ok) {
+      if (result.code === "not_found") {
+        setSelected(null);
+        setSelectedId(null);
+        void loadLists();
+      }
+      return;
+    }
+    setSelected(result.data);
+    setMine((current) => current.map((group) => group.id === result.data.id ? { ...group, live: result.data.live, memberCount: result.data.memberCount } : group));
+  }
+
   useEffect(() => {
     if (!selectedId || !signedIn) return;
-    const timer = window.setInterval(() => { void openGroup(selectedId); }, 3000);
+    const timer = window.setInterval(() => { void refreshOpenGroup(selectedId); }, 3000);
     return () => window.clearInterval(timer);
   }, [selectedId, signedIn]);
 
