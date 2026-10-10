@@ -61,7 +61,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
   const audioRoot = useRef<HTMLDivElement>(null);
   const groupRef = useRef<StudyGroupDetail | null>(null);
   const repaintRef = useRef<(() => void) | null>(null);
-  const roomRef = useRef<{ startAudio: () => Promise<void> } | null>(null);
+  const roomRef = useRef<{ startAudio: () => Promise<void>; disconnect: () => Promise<void> } | null>(null);
   const connectGeneration = useRef(0);
   groupRef.current = group;
 
@@ -161,6 +161,8 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     void room.startAudio().catch(() => undefined);
   }
 
+  useEffect(() => () => { void roomRef.current?.disconnect().catch(() => undefined); }, []);
+
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => void load(), 3000);
@@ -221,8 +223,15 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
     if (kind === "share") setSharing(enabled);
   }
 
+  async function releaseRoom() {
+    const room = roomRef.current;
+    roomRef.current = null;
+    await room?.disconnect().catch(() => undefined);
+  }
+
   async function exitTo(href: string) {
     if (session && session.state === "live" && !left) {
+      await releaseRoom();
       await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" });
     }
     window.location.assign(href);
@@ -307,7 +316,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
           {controls.includes("camera") ? <button type="button" aria-pressed={cameraOn} onClick={() => void setMedia("camera", !cameraOn).catch(() => setCameraOn(false))}>{roomCopy.camera}</button> : null}
           {controls.includes("share") ? <button type="button" aria-pressed={sharing} onClick={() => void setMedia("share", !sharing).catch(() => setSharing(false))}>{roomCopy.share}</button> : null}
           {controls.includes("raise-hand") ? <button type="button" onClick={() => { const identity = roomApi?.localParticipant.identity; if (identity) setHands((items) => items.includes(identity) ? items : [...items, identity]); void publish({ type: "raise-hand" }); }}>{roomCopy.raiseHand}</button> : null}
-          {controls.includes("leave") ? <button type="button" onClick={async () => { await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
+          {controls.includes("leave") ? <button type="button" onClick={async () => { await releaseRoom(); await studyGroupRequest(`/api/study-groups/sessions/${sessionId}/leave`, { method: "POST", body: "{}" }); setLeft(true); await load(); }}>{roomCopy.leave}</button> : null}
         </div>
       </div>
       <aside className={styles.side} aria-label={roomCopy.participants}>
