@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolveReleaseEnvironment } from "./release/environments.mjs";
 import { runLiveSmoke } from "./release/liveSmoke.mjs";
 import { notifyRelease } from "./release/notify.mjs";
@@ -60,6 +61,16 @@ if (process.env.SKIP_PLAYWRIGHT !== "1") {
     smoke.failures.push("playwright live-release failed");
   }
 }
+
+// The reusable verify workflow retains every environment's acceptance evidence
+// with if-no-files-found: error. Write one redacted record per run so the
+// retention step means "the smoke ran", not "a browser artefact happened to exist".
+mkdirSync("test-results", { recursive: true });
+writeFileSync(
+  "test-results/live-acceptance.json",
+  `${JSON.stringify({ environment: environment.name, sha, origin, ok: smoke.ok, checkedAt: new Date().toISOString(), failures: smoke.failures }, null, 2)}\n`,
+  "utf8"
+);
 
 if (smoke.ok) {
   await notifyRelease({ environment: environment.name, sha, previousSha, status: "success", origin, catalogue: smoke.catalogue });
