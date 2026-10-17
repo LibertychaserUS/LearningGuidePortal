@@ -20,6 +20,13 @@ test("checkout origin permits only same-origin loopback in DEV and configured or
         }
       }
       assert.equal(checkoutRequestOrigin(new Request("http://internal:8080/api/purchase/checkout", { headers: { origin: "https://payment.example.test" } })), "https://payment.example.test");
+      // next dev reports request.url as localhost even when bound to 127.0.0.1.
+      const aliased = new Request("http://localhost:3013/api/trial", { headers: { origin: "http://127.0.0.1:3013" } });
+      if (environment === "DEV") assert.equal(checkoutRequestOrigin(aliased), "http://127.0.0.1:3013");
+      else assert.throws(() => checkoutRequestOrigin(aliased), { code: "origin_mismatch" });
+      for (const origin of ["http://127.0.0.1:3014", "https://127.0.0.1:3013", "http://127.0.0.1:3013/x"]) {
+        assert.throws(() => checkoutRequestOrigin(new Request(aliased.url, { headers: { origin } })), { code: "origin_mismatch" });
+      }
     }
     for (const locale of ["en-GB", "zh-CN"] as const) {
       const origin = paymentFailure(new PaymentError("origin_mismatch", 403), locale);

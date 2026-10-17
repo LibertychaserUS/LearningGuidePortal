@@ -29,9 +29,25 @@ export function checkoutRequestOrigin(request: Request) {
   // the actual request origin; never trust forwarded hosts or arbitrary Origin.
   const local = appEnvironment() === "DEV" && target.protocol === "http:"
     && ["localhost", "127.0.0.1", "[::1]"].includes(target.hostname);
-  const origin = local ? target.origin : configured;
-  if (request.headers.get("origin") !== origin) throw new PaymentError("origin_mismatch", 403);
-  return origin;
+  if (local) {
+    // `next dev --hostname 127.0.0.1` still reports request.url as localhost,
+    // so accept any loopback alias on the same port as the same origin.
+    const header = loopbackOrigin(request.headers.get("origin"));
+    if (!header || header.port !== target.port) throw new PaymentError("origin_mismatch", 403);
+    return header.origin;
+  }
+  if (request.headers.get("origin") !== configured) throw new PaymentError("origin_mismatch", 403);
+  return configured;
+}
+
+function loopbackOrigin(value: string | null) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) && url.origin === value ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function startPayment(user: ProductUser, body: CheckoutRequest, request: Request, trial = false) {
