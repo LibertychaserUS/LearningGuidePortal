@@ -2,6 +2,8 @@
 
 Design for the Study Group production core on the product's existing RDS PostgreSQL, replacing the container-local `study-group.json` store (`modules/group-study/repository.ts`) before the feature may be enabled in any managed environment. This document is design only; no code changes accompany it.
 
+> Status (2026-10-17): slice 1 is implemented on `dev` (`db/migrations/012_study_group_persistence.sql`, `repositories/studyGroupRepository.ts`, runtime store selection in `modules/group-study/runtime.ts`), and slice 2 is in `production-persistence-slice2-design.md`. Line references below are to the code as it stood when this design was written.
+
 Sources this design is built from and must stay consistent with:
 
 - The work handoff's "Completion criteria for the next delivery" and "Phase C — implement the production safety core" sections (the handoff is kept outside the repository; its requirements are restated below).

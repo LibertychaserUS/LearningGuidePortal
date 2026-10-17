@@ -3,9 +3,9 @@ id: study-group
 kind: prd
 readiness: not-ready
 source:
-  repo: LibertychaserUS/LearningGuidePortal
-  path: docs/phase1/study-group-ai-tutor-plan.md
-  ref: d0da33c27bd3ac7b20a9dc90c776955f69d34ae5
+  repo: First-Light-TechHK/LearningGuidePortal
+  path: docs/phase1/source-prd/Learning_Guide_Study_Group_PRD_v0.10_EN.docx
+  ref: bb353aae76b8aea05d0aec3ae17ebf337a3b234a
 packages:
   - modules/group-study
 locale: en-GB
@@ -21,10 +21,11 @@ Study Group P0. A learner with Course access creates a public Group and becomes 
 - SG-02 Join, leave, and discover.
 - SG-03 Live Session capacity, start, and participant token.
 - SG-04 LiveKit operational readiness and credential boundary.
+- SG-05 Shared AI Tutor in the Live Session: queued questions answered from the whole Course Knowledge, tagged course or general, never refused (owner decision 2026-10-13, see `docs/phase1/study-group/decisions.md`).
+- SG-06 PostgreSQL persistence (migration 012) and the signed LiveKit webhook with reconciliation.
 
 # Out of scope
 
-- AI Tutor runtime.
 - Persisting chat.
 - A token audit table.
 - Hitting production ilovelearningguide.com.

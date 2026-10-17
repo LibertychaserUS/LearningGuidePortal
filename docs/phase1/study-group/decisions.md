@@ -1,6 +1,6 @@
 # Study Group decisions
 
-PRD v0.10 section 8.1 lists the records and fields. Target production architecture (release gate, not yet implemented): Production Study Group must use the product's selected RDS PostgreSQL store, as required by `AGENTS.md` and the release runbook. Current implementation status: the code still uses the file repository in `modules/group-study/repository.ts` in every environment. It is temporary local/test compatibility only; it is not a production deployment option, and production Study Group stays disabled until the RDS repository and the remaining release-gate items exist. When implemented, that repository will enforce the same idempotency facts with database constraints and transactions — a second join does not add a member, the same client event id returns the original tutor item, and a session has one meeting row; none of those constraints exist in the file repository today.
+PRD v0.10 section 8.1 lists the records and fields. Production Study Group uses the product's RDS PostgreSQL store, as required by `AGENTS.md` and the release runbook. That store is implemented: migration `db/migrations/012_study_group_persistence.sql` and `repositories/studyGroupRepository.ts` enforce the idempotency facts with database constraints and transactions — a second join does not add a member, the same client event id returns the original tutor item, a session has one meeting row, seat admission is atomic, and tutor delivery is a leased claim with an outbox. `modules/group-study/runtime.ts` selects PostgreSQL whenever `DATABASE_URL` is set or the environment is managed, and refuses `STUDY_GROUP_STORE=file` there. The file repository in `modules/group-study/repository.ts` is local DEV/test compatibility only and has none of those guarantees across processes. Production Study Group stays disabled until each environment has applied migration 012 and passes the remaining release-gate items (`npm run preflight:production`, release runbook § Study Group / LiveKit release gate).
 
 Where `study-group-architecture.md`, `study-group-tech-selection.md`, or `study-group-ai-tutor-plan.md` left a point open, this file is the choice.
 
@@ -30,7 +30,7 @@ The schedule control lists the titles of that course's lessons. The choice is op
 
 ## Duration
 
-The Host chooses 30, 45, 60, or 90 minutes. Those choices are stored as 1800, 2700, 3600, and 5400 seconds. No other duration is accepted. The session title is at most 20 characters.
+The Host chooses 30, 45, 60, or 90 minutes. Those choices are stored as 1800, 2700, 3600, and 5400 seconds. No other duration is accepted. The session title is at most 50 characters, the same as the Study Group title (owner ruling 2026-10-15, BUG-0128; it replaced the earlier 20-character limit taken from the Figma counter).
 
 ## Schedule dialog
 

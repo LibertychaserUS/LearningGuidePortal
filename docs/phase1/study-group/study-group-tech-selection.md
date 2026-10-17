@@ -20,9 +20,9 @@ Rejected:
 
 Group, membership, Live Session, attendance intent, presence, the one meeting row, and reminder rows are product records. They belong in the same RDS PostgreSQL database as the rest of Learning Guide. DEV, SIT, UAT, and PPE/PROD already use that database. App Runner instances do not keep a private disk.
 
-The logical tables are `study_groups`, `study_group_memberships`, `live_sessions`, `study_group_attendance_intents`, `study_group_presences`, `study_group_meetings`, `study_group_reminders`, and `study_group_tutor_queue`. The tutor queue is session-scoped. A row is user id, session id, text, client idempotency key, server receipt time, an `inFlight` flag and `answeredAt`. The service enqueues and drains those rows in process today; the durable lease shape is target design gated on the RDS phase (see `decisions.md`). Chat is not one of these tables. `live_sessions.duration_seconds` is only 1800, 2700, 3600, or 5400, the stored form of the choices 30, 45, 60, and 90 minutes. The Figma session card shows `45 mins`. Seat grant and its release, and the single meeting insert, run inside a database transaction. External idempotency for a repeated Host Start is the unique meeting row for that Live Session.
+The logical tables are `study_groups`, `study_group_memberships`, `live_sessions`, `study_group_attendance_intents`, `study_group_presences`, `study_group_meetings`, `study_group_reminders`, and `study_group_tutor_queue`. The tutor queue is session-scoped. A row is user id, session id, text, client idempotency key, server receipt time, an `inFlight` flag and `answeredAt`. The PostgreSQL repository claims those rows with a lease, bounded attempts, dead-letter state and a publish outbox (migration 012). Chat is not one of these tables. `live_sessions.duration_seconds` is only 1800, 2700, 3600, or 5400, the stored form of the choices 30, 45, 60, and 90 minutes. The Figma session card shows `45 mins`. Seat grant and its release, and the single meeting insert, run inside a database transaction. External idempotency for a repeated Host Start is the unique meeting row for that Live Session.
 
-The branch does not do this yet. `modules/group-study/repository.ts` reads and writes one JSON file, `study-group.json`, and appends `token-issuance.log` beside it. The in-process queue serializes writers only inside one process.
+This is implemented in `repositories/studyGroupRepository.ts` with migration `012_study_group_persistence.sql`; `runtime.ts` uses it whenever `DATABASE_URL` is set or the environment is managed. `modules/group-study/repository.ts` (one JSON file, `study-group.json`, plus `token-issuance.log`) remains for local DEV and tests only.
 
 Rejected:
 
@@ -61,7 +61,7 @@ Rejected:
 
 The Study Group tutor uses a direct model call. No agent framework is added. `package.json` on `main` has none. The call layer is a lightweight distributed service, not a heavy platform. It keeps a pool of API keys. On auth failure, rate limit, or quota, it uses another key. It records request count, errors, and latency per key, and sends traffic only to healthy keys. Raw keys are never logged, never committed, and never sent to the browser.
 
-`decisions.md` closed these points: the model is OpenRouter through the existing client, or the configured OpenAI-compatible URL; the reply re-enters the room as one shared LiveKit data message; and Course context is lexical retrieval over existing Course Knowledge text. The queue remains per Live Session. This note adds no schema, table, or sample content for that base.
+`decisions.md` closed these points: the model is OpenRouter through the existing client, or the configured OpenAI-compatible URL; the reply re-enters the room as one shared LiveKit data message; and Course context is the whole existing Course Knowledge text, matched by the model itself (owner decision 2026-10-13, replacing lexical retrieval). The queue remains per Live Session. This note adds no schema, table, or sample content for that base.
 
 Not used:
 

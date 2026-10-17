@@ -2,7 +2,7 @@
 
 Diagrams for PRD v0.10, the locked decisions, and branch `cursor/study-group-backend-7481` at `18a1046ec71853f77d1b73eda545526c58964826`. Layer names match the architecture note.
 
-Session Title is required and is at most 20 characters. That limit is the Figma counter `7/20`. It is not drawn below, because none of these sequences edit the title string.
+Session Title is required and is at most 50 characters (owner ruling 2026-10-15, BUG-0128; earlier 20 from the Figma counter `7/20`). It is not drawn below, because none of these sequences edit the title string.
 
 ## Class diagram
 
@@ -189,7 +189,7 @@ Chat and Raise Hand after connect are LiveKit data messages. They do not call th
 
 ## AI Tutor queue
 
-The queue belongs to one Live Session. The service appends an item, then one delivery drains the Session in process: it takes the next unserved item in receipt order, retrieves only existing course text, calls the model, and publishes a grounded answer as a shared LiveKit data message. The append does not read occupancy and does not sign a token. Chat remains a LiveKit data message and does not become this item.
+The queue belongs to one Live Session. The service appends an item, then one delivery drains the Session in process: it takes the next unserved item in receipt order, passes the whole existing course text to the model, and publishes the answer with its `course` or `general` mode as a shared LiveKit data message. The append does not read occupancy and does not sign a token. Chat remains a LiveKit data message and does not become this item.
 
 ```mermaid
 sequenceDiagram
@@ -199,7 +199,7 @@ sequenceDiagram
   Service->>Repo: append item userId, sessionId, text, server receipt time
   Repo-->>Service: item stored
   Service->>Repo: read the next unserved item
-  Service->>Service: retrieve existing course text, call the model
+  Service->>Service: pass whole course text, call the model
   Service->>LiveKit: publish the answer as one shared data message
   Service->>Repo: settle the item and advance the next
   Note over Service: no screen parse

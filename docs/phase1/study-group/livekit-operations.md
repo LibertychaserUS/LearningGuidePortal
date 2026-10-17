@@ -2,7 +2,7 @@
 
 ## Scope and ownership
 
-Learning Guide owns course entitlement, Study Group membership, seats, session lifecycle and tutor queue state. Storing those records in the product RDS PostgreSQL database is a release gate (see the release runbook's Study Group gate), not the current implementation: today the code persists them through the container-local file repository, and production remains disabled until the RDS-backed implementation exists. LiveKit Cloud owns real-time rooms and transport. The application selects one LiveKit project for each new Live Session and persists that assignment; it does not move active rooms between projects.
+Learning Guide owns course entitlement, Study Group membership, seats, session lifecycle and tutor queue state. Those records are stored in the product RDS PostgreSQL database (migration 012, `repositories/studyGroupRepository.ts`); the container-local file repository is local DEV only. Production remains disabled until each environment applies the migration and passes the release runbook's Study Group gate. LiveKit Cloud owns real-time rooms and transport. The application selects one LiveKit project for each new Live Session and persists that assignment; it does not move active rooms between projects.
 
 The operator maintains a registry of projects. A project contains a stable id, websocket endpoint, optional region, weight, lifecycle state and references to Secrets Manager credentials. It never contains a raw key in source, browser state or ordinary logs.
 
