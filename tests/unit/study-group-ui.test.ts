@@ -38,6 +38,9 @@ test("the chat control queues the user's text and does not carry a system prompt
   // The Tutor entry button toggles addressing; the "@AI Tutor " prefix still works.
   assert.match(room, /session\.aiTutorEnabled \? <button className=\{styles\.tutorEntry\}/);
   assert.match(room, /<input ref=\{chatInputRef\}/);
+  // The entry renders as blue text, never a browser-default grey button.
+  const roomCss = readFileSync(new URL("../../components/portal/study-groups.module.css", import.meta.url), "utf8");
+  assert.match(roomCss, /(^|\n)\.tutorEntry \{[^}]*border: 0;[^}]*background: transparent;[^}]*color: #1d6bff;[^}]*\}/);
   assert.equal(room.includes("/api/ai-tutor"), false);
   assert.equal(room.includes("prompts/"), false);
   assert.equal(room.includes("You are"), false);
@@ -482,7 +485,8 @@ test("the live stage is a 2x2 tile grid and the chat follows 599:1276 with tutor
   assert.match(room, /index === 0\s*\?\s*<span key="lead" className=\{styles\.tutorLead\}>\{row\}<\/span>/);
   assert.doesNotMatch(room, /<strong key="lead"/);
   assert.match(room, /<span key=\{index\} className=\{styles\.tutorRow\}>\{row\}<\/span>/);
-  assert.match(room, /line\.text\.split\("\\n"\)\.filter\(\(row\) => row\.trim\(\)\)/);
+  // plainTutorReply drops empty lines as well as the markdown (QA M22).
+  assert.match(room, /plainTutorReply\(line\.text\)\.split\("\\n"\)/);
 
   assert.equal(en.studyGroupsPage.room.tutorUnavailable, "AI Tutor is temporarily unavailable. Please try again.");
   assert.equal(zh.studyGroupsPage.room.tutorUnavailable, "AI Tutor 暂时不可用，请稍后重试。");

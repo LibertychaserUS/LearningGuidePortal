@@ -360,6 +360,11 @@
 .chatForm input { padding: 0; font-size: 13px; }
 .chatForm input:focus { box-shadow: none; }
 .chatForm input::placeholder { color: rgba(0, 0, 0, .2); }
+/* The @AI Tutor entry is blue 12px text, not a browser-default button: its own
+   rule was dropped on 2026-10-23 while the entry stayed in the room. */
+.tutorEntry { border: 0; background: transparent; color: #1d6bff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+.tutorEntry[aria-pressed="true"] { text-decoration: underline; }
+.tutorEntry:disabled { color: #98a2b3; cursor: not-allowed; }
 .chatForm .tutorEntry { align-self: flex-start; margin-top: auto; }
 .chatForm .tutorOffline { margin: 6px 0 0; color: #344054; }
 @media (max-width: 800px) {

@@ -79,6 +79,12 @@ test("live room: Session Focus is labelled, closing the screen picker is silent,
     const input = await pageA.getByRole("textbox", { name: "Chat" }).boundingBox();
     const tutor = await pageA.getByRole("button", { name: "@AI Tutor", exact: true }).boundingBox();
     expect(tutor!.y).toBeGreaterThan(input!.y + input!.height);
+    // It reads as blue text, not a browser-default grey button.
+    const entry = await pageA.getByRole("button", { name: "@AI Tutor", exact: true }).evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { color: style.color, background: style.backgroundColor, border: style.borderTopWidth };
+    });
+    expect(entry).toEqual({ color: "rgb(29, 107, 255)", background: "rgba(0, 0, 0, 0)", border: "0px" });
 
     // BUG-0198: many lines scroll inside the panel; the page does not grow.
     const side = pageA.getByRole("complementary", { name: "Chat" });
