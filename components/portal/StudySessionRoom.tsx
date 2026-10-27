@@ -7,6 +7,7 @@ import { liveKitDisconnectReasonName, liveKitDisconnectStep, transitionLiveKitCl
 import type { LiveKitIncident } from "@/modules/group-study/liveKitIncident";
 import { chatLabel, parseRoomDataMessage, ROOM_CHAT_MAX_LENGTH, roomDataPacket, roomDataSenderName } from "@/modules/group-study/roomData";
 import { createSeatIntents, deadlineSignal } from "@/modules/group-study/seatIntents";
+import { plainTutorReply } from "@/modules/group-study/tutorReplyText";
 import { participantStatus, raisedHands, roomPageRestoreAction, seatRefusalOffer, sessionControls } from "@/modules/group-study/uiState";
 import styles from "./study-groups.module.css";
 import { PortalDialog } from "./PortalDialog";
@@ -1159,7 +1160,7 @@ export function StudySessionRoom({ locale, sessionId }: { locale: Locale; sessio
                         return <span className={styles.tutorRow} role="status">{pending.state === "queued" ? (pending.ahead > 0 ? fill(roomCopy.tutorQueued, { count: String(pending.ahead) }) : roomCopy.tutorNext) : roomCopy.tutorAnswering}{pending.withdrawable ? <> <button className={styles.textButton} type="button" onClick={() => void withdrawTutor(line.id)}>{roomCopy.tutorWithdraw}</button></> : null}</span>;
                       })()
                     : <>
-                        {line.text.split("\n").filter((row) => row.trim()).map((row, index) => index === 0
+                        {plainTutorReply(line.text).split("\n").map((row, index) => index === 0
                           ? <span key="lead" className={styles.tutorLead}>{row}</span>
                           : <span key={index} className={styles.tutorRow}>{row}</span>)}
                       </>}

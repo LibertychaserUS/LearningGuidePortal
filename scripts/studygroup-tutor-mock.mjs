@@ -22,6 +22,8 @@ const HOST = "127.0.0.1";
 const REPLY = "COURSE\nMock tutor reply: the course text explains this topic.";
 const MARKDOWN_REPLY = "COURSE\nUse x_1 and snake_case_name; 2*3*4 = 24 is the **key** point.";
 const SLOW_MS = Number(process.env.STUDYGROUP_TUTOR_MOCK_SLOW_MS || 8000);
+// Courses (by slug) whose KS AI Tutor is Online.
+const KS_COURSES = ["epicureanism"];
 const GONE_MODEL = process.env.STUDYGROUP_TUTOR_MOCK_GONE_MODEL || "anthropic/claude-haiku-5.5";
 
 // The participant's own text and the room context out of the server's user
@@ -87,6 +89,41 @@ const server = createServer((request, response) => {
         reply = `COURSE\nTool reply: the room history has ${Array.isArray(history) ? history.length : 0} exchange(s), first "${history[0]?.question ?? ""}".`;
       }
       setTimeout(() => answer(response, reply), question.includes("[slow]") ? SLOW_MS : 0);
+    });
+    return;
+  }
+  // KnowledgeSystem surface (services/ksTutorClient.ts, 2026-10-23): the room
+  // Tutor's Online state and its answers come from KS, so the mock serves the
+  // course list and the SSE chat stream as well. The same question markers
+  // apply; the mode tag line is not part of a KS answer.
+  if (request.method === "GET" && url.pathname === "/api/user/ai-tutors") {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ data: KS_COURSES.map((externalId) => ({ externalId, available: true })) }));
+    return;
+  }
+  if (request.method === "POST" && url.pathname === "/api/user/ai/chat-stream") {
+    let body = "";
+    request.on("data", (chunk) => { body += chunk; });
+    request.on("end", () => {
+      let parsed = {};
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        parsed = {};
+      }
+      const question = String(parsed.message || "");
+      console.log(`studygroup-tutor-mock: POST /api/user/ai/chat-stream course=${JSON.stringify(parsed.externalCourseId)} question=${JSON.stringify(question.slice(0, 160))}`);
+      if (question.includes("[fail]")) {
+        response.writeHead(500, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: { code: "MOCK_FAILURE", message: "mock model failure" } }));
+        return;
+      }
+      const reply = (question.includes("[markdown]") ? MARKDOWN_REPLY : REPLY).split("\n").slice(1).join("\n");
+      setTimeout(() => {
+        response.writeHead(200, { "content-type": "text/event-stream" });
+        response.write(`data: ${JSON.stringify({ delta: reply })}\n\n`);
+        response.end(`data: ${JSON.stringify({ done: true })}\n\n`);
+      }, question.includes("[slow]") ? SLOW_MS : 0);
     });
     return;
   }
