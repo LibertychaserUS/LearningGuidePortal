@@ -1,20 +1,26 @@
 import { BOARD, WHITEBOARD_COLORS, type BoardOp } from "./domain";
+import { parseBoardKey, type Stage } from "./stage";
 
 // Two LiveKit data topics. The room's chat, hands and AI Tutor stay on the
 // default topic, so none of the parsers ever sees another's packets.
-//  - lg.whiteboard: committed ops, sent by the server only (reliable).
+//  - lg.whiteboard: the stage and committed ops, sent by the server only
+//    (RoomService.SendData, reliable).
 //  - lg.whiteboard.ink: ink still being drawn, sent member to member
 //    (lossy). Shown as a fading preview, never stored, never trusted as board.
 export const WHITEBOARD_TOPIC = "lg.whiteboard";
 export const WHITEBOARD_INK_TOPIC = "lg.whiteboard.ink";
 
-export type InkPreview = { strokeId: string; color: string; width: number; points: ReadonlyArray<readonly [number, number]>; done?: boolean };
+export type WhiteboardMessage =
+  | { kind: "stage"; stage: Stage }
+  | { kind: "op"; board: string; op: BoardOp };
+
+export type InkPreview = { board: string; strokeId: string; color: string; width: number; points: ReadonlyArray<readonly [number, number]>; done?: boolean };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export function encodeBoardOp(op: BoardOp) {
-  return encoder.encode(JSON.stringify(op));
+export function encodeWhiteboardMessage(message: WhiteboardMessage) {
+  return encoder.encode(JSON.stringify(message));
 }
 
 export function encodeInk(ink: InkPreview) {
@@ -30,6 +36,15 @@ function json(raw: Uint8Array): Record<string, unknown> | null {
   }
 }
 
+function boardOf(value: unknown) {
+  try {
+    parseBoardKey(value);
+    return value as string;
+  } catch {
+    return null;
+  }
+}
+
 // Picks whiteboard packets out of the raw engine stream the room already
 // watches (group-study/roomData.ts roomDataPacket). The sender stamp is empty
 // only for RoomService.SendData, i.e. the server.
@@ -40,16 +55,26 @@ export function whiteboardPacket(packet: { participantIdentity?: string; value?:
   return { topic: user.topic, payload: user.payload, senderIdentity: typeof packet.participantIdentity === "string" ? packet.participantIdentity : "" };
 }
 
-// Trust boundary: a committed op is accepted from the server only. Any member
-// can publish on any topic, so an op with a sender identity is a forgery.
-export function parseBoardOp(raw: Uint8Array, senderIdentity: string): BoardOp | null {
+// Trust boundary: the stage and committed ops are accepted from the server
+// only. Any member can publish on any topic, so a packet with a sender
+// identity is a forgery.
+export function parseWhiteboardMessage(raw: Uint8Array, senderIdentity: string): WhiteboardMessage | null {
   if (senderIdentity) return null;
-  const op = json(raw);
-  if (!op || !Number.isInteger(op.seq) || (op.seq as number) < 1) return null;
-  if (op.kind === "stroke" && op.stroke && typeof op.stroke === "object") return op as unknown as BoardOp;
-  if (op.kind === "erase" && typeof op.strokeId === "string") return op as unknown as BoardOp;
-  if (op.kind === "clear") return op as unknown as BoardOp;
-  if (op.kind === "mode" && (op.mode === "host" || op.mode === "everyone")) return op as unknown as BoardOp;
+  const message = json(raw);
+  if (!message) return null;
+  if (message.kind === "stage") {
+    const stage = message.stage as Record<string, unknown> | undefined;
+    if (!stage || typeof stage.sessionId !== "string" || !Number.isInteger(stage.version) || !Number.isInteger(stage.page) || !Array.isArray(stage.pens)) return null;
+    return { kind: "stage", stage: stage as unknown as Stage };
+  }
+  if (message.kind === "op") {
+    const board = boardOf(message.board);
+    const op = message.op as Record<string, unknown> | undefined;
+    if (!board || !op || !Number.isInteger(op.seq) || (op.seq as number) < 1) return null;
+    if ((op.kind === "stroke" && op.stroke && typeof op.stroke === "object") || (op.kind === "erase" && typeof op.strokeId === "string") || op.kind === "clear") {
+      return { kind: "op", board, op: op as unknown as BoardOp };
+    }
+  }
   return null;
 }
 
@@ -58,10 +83,11 @@ export function parseBoardOp(raw: Uint8Array, senderIdentity: string): BoardOp |
 export function parseInk(raw: Uint8Array, senderIdentity: string): InkPreview | null {
   if (!senderIdentity) return null;
   const ink = json(raw);
-  if (!ink || typeof ink.strokeId !== "string" || !Array.isArray(ink.points)) return null;
+  const board = ink ? boardOf(ink.board) : null;
+  if (!ink || !board || typeof ink.strokeId !== "string" || !Array.isArray(ink.points)) return null;
   const color = WHITEBOARD_COLORS.find((item) => item === ink.color);
   if (!color || !Number.isInteger(ink.width)) return null;
   const points = ink.points.slice(0, 200).filter((point): point is [number, number] => Array.isArray(point) && Number.isInteger(point[0]) && Number.isInteger(point[1]))
     .map(([x, y]) => [Math.min(BOARD.width, Math.max(0, x)), Math.min(BOARD.height, Math.max(0, y))] as [number, number]);
-  return { strokeId: ink.strokeId.slice(0, 64), color, width: Math.min(120, Math.max(1, ink.width as number)), points, ...(ink.done === true ? { done: true } : {}) };
+  return { board, strokeId: ink.strokeId.slice(0, 64), color, width: Math.min(160, Math.max(1, ink.width as number)), points, ...(ink.done === true ? { done: true } : {}) };
 }

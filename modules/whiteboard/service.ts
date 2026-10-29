@@ -1,87 +1,137 @@
-import { canDraw, parseStroke, replay, WhiteboardError, WHITEBOARD_LIMITS, type Board, type BoardOp, type BoardOpInput, type DrawMode } from "./domain";
+import { parseStroke, replay, WhiteboardError, WHITEBOARD_LIMITS, type BoardOp, type BoardOpInput } from "./domain";
+import { applyStageCommand, audience, boardKey, canDraw, canSee, initialStage, parseBoardKey, parseStageCommand, type Role, type Stage } from "./stage";
+import type { WhiteboardMessage } from "./wire";
 
 // Ports. The prototype ships an in-memory store; production keeps the same
-// interface on PostgreSQL: one row per op, primary key (session, seq), and a
-// unique key (session, stroke id) so a retried stroke is stored once.
+// interface on PostgreSQL: one stage row per session (version column for the
+// compare-and-set), one row per op with primary key (session, board, seq) and
+// a unique key (session, board, stroke id) so a retried stroke is stored once.
+// The permission check and the append then run in one transaction.
 export interface WhiteboardStore {
-  // Appends `op` as seq = current + 1. A stroke whose id is already stored is
-  // not appended again; the stored op is returned with `duplicate: true`.
-  append(sessionId: string, op: BoardOpInput): Promise<{ op: BoardOp; duplicate: boolean }>;
+  readStage(sessionId: string): Promise<Stage | null>;
+  // Writes `next` only while the stored version is still `expectedVersion`
+  // (-1 = no stage yet).
+  writeStage(sessionId: string, expectedVersion: number, next: Stage): Promise<boolean>;
+  // Appends `op` as seq = current + 1. A stroke whose id is already in this
+  // board is not appended again; the stored op comes back with duplicate.
+  append(sessionId: string, board: string, op: BoardOpInput): Promise<{ op: BoardOp; duplicate: boolean }>;
   // Ops with seq > `after`, in order.
-  opsAfter(sessionId: string, after: number): Promise<BoardOp[]>;
+  opsAfter(sessionId: string, board: string, after: number): Promise<BoardOp[]>;
 }
 
-// The actor's role in the session, read from the Study Group service; null
-// for anyone who is not a member of this session.
-export type WhiteboardMembership = (sessionId: string, userId: string) => Promise<"host" | "member" | null>;
+// The session's people, read from the Study Group service.
+export type WhiteboardRoster = (sessionId: string) => Promise<{ hostIds: string[]; memberIds: string[] }>;
 
 // The only path to the room. A failed broadcast never fails the write:
-// browsers repair a missing op by reading opsAfter.
-export type WhiteboardBroadcaster = (input: { sessionId: string; op: BoardOp }) => Promise<void>;
+// browsers repair what they missed from the stage and the logs.
+export type WhiteboardBroadcaster = (input: { sessionId: string; message: WhiteboardMessage; destinationIdentities?: string[] }) => Promise<void>;
 
-export function createWhiteboardService(deps: { store: WhiteboardStore; membership: WhiteboardMembership; broadcast: WhiteboardBroadcaster }) {
-  async function role(sessionId: string, userId: string) {
-    const value = await deps.membership(sessionId, userId);
-    if (!value) throw new WhiteboardError("forbidden");
-    return value;
+export function createWhiteboardService(deps: { store: WhiteboardStore; roster: WhiteboardRoster; broadcast: WhiteboardBroadcaster }) {
+  async function role(sessionId: string, userId: string): Promise<{ role: Role; hostIds: string[]; memberIds: string[] }> {
+    const roster = await deps.roster(sessionId);
+    if (roster.hostIds.includes(userId)) return { role: "host", ...roster };
+    if (roster.memberIds.includes(userId)) return { role: "member", ...roster };
+    throw new WhiteboardError("forbidden");
   }
 
-  async function board(sessionId: string): Promise<Board> {
-    return replay(await deps.store.opsAfter(sessionId, 0));
+  async function stage(sessionId: string) {
+    const stored = await deps.store.readStage(sessionId);
+    if (!stored) throw new WhiteboardError("not_found");
+    return stored;
   }
 
-  async function commit(sessionId: string, input: BoardOpInput) {
-    const { op, duplicate } = await deps.store.append(sessionId, input);
-    if (!duplicate) {
-      try {
-        await deps.broadcast({ sessionId, op });
-      } catch {
-        console.info(JSON.stringify({ type: "whiteboard.broadcast_failed", kind: op.kind }));
-      }
+  async function send(sessionId: string, message: WhiteboardMessage, destinationIdentities?: string[]) {
+    try {
+      await deps.broadcast({ sessionId, message, ...(destinationIdentities ? { destinationIdentities } : {}) });
+    } catch {
+      console.info(JSON.stringify({ type: "whiteboard.broadcast_failed", kind: message.kind }));
     }
+  }
+
+  async function commit(sessionId: string, current: Stage, hostIds: string[], board: string, input: BoardOpInput) {
+    const { op, duplicate } = await deps.store.append(sessionId, board, input);
+    if (!duplicate) await send(sessionId, { kind: "op", board, op }, audience(current, parseBoardKey(board), hostIds));
     return op;
   }
 
   return {
-    // Join and resync: everything after the sequence the browser already has.
-    async ops(input: { actorUserId: string; sessionId: string; after: number }) {
-      const actorRole = await role(input.sessionId, input.actorUserId);
+    // Idempotent: the host opening the board twice gets the same stage.
+    async open(input: { actorUserId: string; sessionId: string; pageCount: number }) {
+      if ((await role(input.sessionId, input.actorUserId)).role !== "host") throw new WhiteboardError("forbidden");
+      const existing = await deps.store.readStage(input.sessionId);
+      if (existing) return existing;
+      await deps.store.writeStage(input.sessionId, -1, initialStage(input.sessionId, input.pageCount));
+      const opened = await stage(input.sessionId);
+      await send(input.sessionId, { kind: "stage", stage: opened });
+      return opened;
+    },
+
+    async stage(input: { actorUserId: string; sessionId: string }) {
+      const actor = await role(input.sessionId, input.actorUserId);
+      return { role: actor.role, stage: await stage(input.sessionId) };
+    },
+
+    async command(input: { actorUserId: string; sessionId: string; command: unknown }) {
+      const actor = await role(input.sessionId, input.actorUserId);
+      if (actor.role !== "host") throw new WhiteboardError("forbidden");
+      const command = parseStageCommand(input.command);
+      // One retry on a version race between two host tabs; a second loss is
+      // reported, not hidden.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const current = await stage(input.sessionId);
+        const next = applyStageCommand(current, command, actor.memberIds);
+        if (!next) return current;
+        if (await deps.store.writeStage(input.sessionId, current.version, next)) {
+          await send(input.sessionId, { kind: "stage", stage: next });
+          return next;
+        }
+      }
+      throw new WhiteboardError("version_conflict");
+    },
+
+    // Join, resync and opening a newly visible board: everything after `after`.
+    async ops(input: { actorUserId: string; sessionId: string; board: unknown; after: number }) {
+      const actor = await role(input.sessionId, input.actorUserId);
+      const board = parseBoardKey(input.board);
+      if (!canSee(await stage(input.sessionId), actor.role, input.actorUserId, board)) throw new WhiteboardError("forbidden");
       const after = Number.isInteger(input.after) && input.after >= 0 ? input.after : 0;
-      return { role: actorRole, ops: await deps.store.opsAfter(input.sessionId, after) };
+      return deps.store.opsAfter(input.sessionId, boardKey(board), after);
     },
 
-    async draw(input: { actorUserId: string; sessionId: string; stroke: unknown }) {
-      const actorRole = await role(input.sessionId, input.actorUserId);
+    async draw(input: { actorUserId: string; sessionId: string; board: unknown; stroke: unknown }) {
+      const actor = await role(input.sessionId, input.actorUserId);
+      const board = parseBoardKey(input.board);
+      const current = await stage(input.sessionId);
+      if (board.page >= current.pageCount) throw new WhiteboardError("invalid_command");
+      if (board.owner !== "main" && !actor.memberIds.includes(board.owner)) throw new WhiteboardError("not_found");
+      if (!canDraw(current, actor.role, input.actorUserId, board)) throw new WhiteboardError("forbidden");
       const stroke = parseStroke(input.stroke, input.actorUserId);
-      const current = await board(input.sessionId);
-      if (!canDraw(current, actorRole)) throw new WhiteboardError("forbidden");
-      if (current.strokes.length >= WHITEBOARD_LIMITS.maxStrokes) throw new WhiteboardError("board_full");
-      return commit(input.sessionId, { kind: "stroke", stroke });
+      const key = boardKey(board);
+      if (replay(await deps.store.opsAfter(input.sessionId, key, 0)).strokes.length >= WHITEBOARD_LIMITS.maxStrokes) throw new WhiteboardError("board_full");
+      return commit(input.sessionId, current, actor.hostIds, key, { kind: "stroke", stroke });
     },
 
-    // Members erase their own strokes; the host erases any.
-    async erase(input: { actorUserId: string; sessionId: string; strokeId: string }) {
-      const actorRole = await role(input.sessionId, input.actorUserId);
-      const current = await board(input.sessionId);
-      const stroke = current.strokes.find((item) => item.id === input.strokeId);
+    // Members erase their own strokes where they may draw; the host any.
+    async erase(input: { actorUserId: string; sessionId: string; board: unknown; strokeId: string }) {
+      const actor = await role(input.sessionId, input.actorUserId);
+      const board = parseBoardKey(input.board);
+      const current = await stage(input.sessionId);
+      const key = boardKey(board);
+      const stroke = replay(await deps.store.opsAfter(input.sessionId, key, 0)).strokes.find((item) => item.id === input.strokeId);
       if (!stroke) throw new WhiteboardError("not_found");
-      if (actorRole !== "host" && (stroke.authorId !== input.actorUserId || !canDraw(current, actorRole))) throw new WhiteboardError("forbidden");
-      return commit(input.sessionId, { kind: "erase", strokeId: stroke.id, byId: input.actorUserId });
+      if (actor.role !== "host" && (stroke.authorId !== input.actorUserId || !canDraw(current, actor.role, input.actorUserId, board))) throw new WhiteboardError("forbidden");
+      return commit(input.sessionId, current, actor.hostIds, key, { kind: "erase", strokeId: stroke.id, byId: input.actorUserId });
     },
 
-    async clear(input: { actorUserId: string; sessionId: string }) {
-      if ((await role(input.sessionId, input.actorUserId)) !== "host") throw new WhiteboardError("forbidden");
-      const current = await board(input.sessionId);
-      if (current.strokes.length === 0) return null;
-      return commit(input.sessionId, { kind: "clear", byId: input.actorUserId });
-    },
-
-    async setMode(input: { actorUserId: string; sessionId: string; mode: unknown }) {
-      if ((await role(input.sessionId, input.actorUserId)) !== "host") throw new WhiteboardError("forbidden");
-      if (input.mode !== "host" && input.mode !== "everyone") throw new WhiteboardError("invalid_stroke");
-      const current = await board(input.sessionId);
-      if (current.mode === input.mode) return null;
-      return commit(input.sessionId, { kind: "mode", mode: input.mode as DrawMode });
+    // The host clears any board; a student clears their own board.
+    async clear(input: { actorUserId: string; sessionId: string; board: unknown }) {
+      const actor = await role(input.sessionId, input.actorUserId);
+      const board = parseBoardKey(input.board);
+      const current = await stage(input.sessionId);
+      if (actor.role !== "host" && !(board.owner === input.actorUserId && canDraw(current, actor.role, input.actorUserId, board))) throw new WhiteboardError("forbidden");
+      const key = boardKey(board);
+      if (replay(await deps.store.opsAfter(input.sessionId, key, 0)).strokes.length === 0) return null;
+      return commit(input.sessionId, current, actor.hostIds, key, { kind: "clear", byId: input.actorUserId });
     }
   };
 }
@@ -89,20 +139,31 @@ export function createWhiteboardService(deps: { store: WhiteboardStore; membersh
 export type WhiteboardService = ReturnType<typeof createWhiteboardService>;
 
 export function createMemoryWhiteboardStore(): WhiteboardStore {
+  const stages = new Map<string, Stage>();
   const logs = new Map<string, BoardOp[]>();
+  const logKey = (sessionId: string, board: string) => `${sessionId}\u0000${board}`;
   return {
-    async append(sessionId, input) {
-      const log = logs.get(sessionId) ?? [];
+    async readStage(sessionId) {
+      return stages.get(sessionId) ?? null;
+    },
+    async writeStage(sessionId, expectedVersion, next) {
+      if ((stages.get(sessionId)?.version ?? -1) !== expectedVersion) return false;
+      stages.set(sessionId, next);
+      return true;
+    },
+    async append(sessionId, board, input) {
+      const key = logKey(sessionId, board);
+      const log = logs.get(key) ?? [];
       if (input.kind === "stroke") {
         const stored = log.find((op) => op.kind === "stroke" && op.stroke.id === input.stroke.id);
         if (stored) return { op: stored, duplicate: true };
       }
       const op = { ...input, seq: log.length + 1 } as BoardOp;
-      logs.set(sessionId, [...log, op]);
+      logs.set(key, [...log, op]);
       return { op, duplicate: false };
     },
-    async opsAfter(sessionId, after) {
-      return (logs.get(sessionId) ?? []).filter((op) => op.seq > after);
+    async opsAfter(sessionId, board, after) {
+      return (logs.get(logKey(sessionId, board)) ?? []).filter((op) => op.seq > after);
     }
   };
 }
