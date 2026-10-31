@@ -166,6 +166,18 @@ export function AssistantChat({ locale, copy, questionMax, accountId, chips, onI
   const restored = useRef(Number.POSITIVE_INFINITY);
   /** The log has scrolled: the header hairline shows. */
   const [scrolled, setScrolled] = useState(false);
+  /** A reply just landed: the panel's glow flares once (1 s). */
+  const [flare, setFlare] = useState(false);
+  const wasPending = useRef(false);
+  useEffect(() => {
+    const ended = wasPending.current && !pending;
+    wasPending.current = pending;
+    // A new question while the flare runs: the thinking glow takes over.
+    if (!ended) { if (pending) setFlare(false); return; }
+    setFlare(true);
+    const timer = setTimeout(() => setFlare(false), 1000);
+    return () => clearTimeout(timer);
+  }, [pending]);
   const report = useRef(onAssistIds);
   report.current = onAssistIds;
   /** v4: the learner's last input in the panel (epoch ms: typing, a question, a vote, a card button); 0 while the shown times say enough. */
@@ -610,7 +622,7 @@ export function AssistantChat({ locale, copy, questionMax, accountId, chips, onI
     </section>;
   };
 
-  return <section className="helpdesk-chat" aria-labelledby={`${ids}-title`} data-scrolled={scrolled ? "true" : undefined}>
+  return <section className="helpdesk-chat" aria-labelledby={`${ids}-title`} data-scrolled={scrolled ? "true" : undefined} data-state={pending ? "thinking" : undefined} data-flare={flare ? "true" : undefined}>
     <header className="helpdesk-chat-header">
       <Spark />
       <div className="helpdesk-chat-header-text">

@@ -352,9 +352,13 @@
      focused and a faster one while the assistant works;
    - thinking: the spark turns with a breathing halo, "Thinking" and the current step shimmer, gradient skeleton
      lines flow; the answer then reveals top-down like streamed text and its parts follow in a stagger;
-   - chips nudge their arrow, a vote pops, the header hairline fades in once the log scrolls.
+   - chips nudge their arrow, a vote pops, the header hairline fades in once the log scrolls;
+   - the panel itself: a fluorescent spectrum edge on all four sides with a soft scatter around it (owner
+     2026-10-31) that turns and breathes; it spreads and pulses while the assistant works and flares once when
+     a reply lands.
    ============================================================================================================ */
 @property --hc-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@property --hc-comet { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 .helpdesk-chat {
   /* Surfaces: white canvas, then tinted greys that carry a little of the brand blue. */
   --hc-canvas: #ffffff;
@@ -388,14 +392,43 @@
   --hc-fast: .15s;
   --hc-med: .3s;
   --hc-slow: .6s;
-  display: flex; flex: 0 0 455px; flex-direction: column; width: 455px; height: 800px; box-sizing: border-box; overflow: hidden;
-  border: 1px solid var(--hc-outline-soft); border-radius: 24px; background: var(--hc-canvas); color: var(--hc-ink);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 12px 32px -12px rgba(37, 52, 99, .14);
+  /* The glow around the panel (owner 2026-10-31: "四边都有的荧光，有散射"): fluorescent spectrum with a cyan note. */
+  /* Mixed in OKLCH where supported (below), so no stop turns grey on the way to the next; the sRGB fallback adds a rose stop for that. */
+  --hc-glow-ring: conic-gradient(from var(--hc-angle), #3b82f6, #22d3ee, #8b5cf6, #ec4899, #f59e0b, #f43f5e, #3b82f6);
+  /* The panel is its own stacking context, so the glow (z-index below its content) paints above the page card. */
+  position: relative; isolation: isolate;
+  display: flex; flex: 0 0 455px; flex-direction: column; width: 455px; height: 800px; box-sizing: border-box; overflow: visible;
+  border: 1px solid transparent; border-radius: 24px; background: transparent; color: var(--hc-ink);
 }
+@supports (background: conic-gradient(in oklch, red, blue)) {
+  .helpdesk-chat { --hc-glow-ring: conic-gradient(from var(--hc-angle) in oklch, #3b82f6, #22d3ee, #8b5cf6, #ec4899, #f59e0b, #3b82f6); }
+}
+/* Scatter: the same spectrum, blurred, all four sides; it breathes, turns slowly, and wakes up while the assistant works. */
+.helpdesk-chat::before {
+  position: absolute; z-index: -2; inset: -4px; border-radius: 28px; background: var(--hc-glow-ring); content: ""; filter: blur(16px); opacity: .5; pointer-events: none;
+  animation: hc-angle 6s linear infinite, hc-breathe 5s ease-in-out infinite;
+  transition: inset var(--hc-slow) var(--hc-ease-out), filter var(--hc-slow) var(--hc-ease-out);
+}
+/* The crisp fluorescent edge on all four sides, with the white panel surface inside it. */
+.helpdesk-chat::after {
+  position: absolute; z-index: -1; inset: -1px; box-sizing: border-box; border: 2px solid transparent; border-radius: 24px; content: ""; pointer-events: none;
+  background: linear-gradient(var(--hc-canvas), var(--hc-canvas)) padding-box, var(--hc-glow-ring) border-box;
+  animation: hc-angle 6s linear infinite;
+}
+.helpdesk-chat:focus-within::before { inset: -6px; }
+/* Thinking: a bright comet runs round the edge, faster than the colours turn (our own touch). */
+.helpdesk-chat[data-state="thinking"]::after {
+  background: linear-gradient(var(--hc-canvas), var(--hc-canvas)) padding-box, conic-gradient(from var(--hc-comet), transparent 0 70%, rgba(255, 255, 255, .95) 90%, transparent 100%) border-box, var(--hc-glow-ring) border-box;
+  animation: hc-angle 6s linear infinite, hc-comet 1.6s linear infinite;
+}
+/* Thinking: the scatter spreads and pulses faster; the turn keeps its pace, so the colours never jump. */
+.helpdesk-chat[data-state="thinking"]::before { inset: -8px; filter: blur(18px); animation: hc-angle 6s linear infinite, hc-breathe-fast 1.4s ease-in-out infinite; }
+/* A reply landed: one flare, then back to breathing. */
+.helpdesk-chat[data-flare="true"]::before { animation: hc-angle 6s linear infinite, hc-flare 1s var(--hc-ease-out) 1; }
 .helpdesk-chat p { margin: 0; }
 
 /* ---- header: the spark, the title and the subtitle; the hairline appears only once the log scrolls ---- */
-.helpdesk-chat-header { position: relative; z-index: 1; display: flex; flex: 0 0 auto; align-items: center; gap: 12px; box-sizing: border-box; padding: 16px 20px 14px; background: var(--hc-canvas); }
+.helpdesk-chat-header { position: relative; z-index: 1; display: flex; flex: 0 0 auto; align-items: center; gap: 12px; box-sizing: border-box; padding: 16px 20px 14px; border-radius: 23px 23px 0 0; background: var(--hc-canvas); }
 .helpdesk-chat-header-text { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .helpdesk-chat-header h2 { margin: 0; color: var(--hc-ink); font-size: 16px; font-weight: 600; line-height: 20px; letter-spacing: -.005em; }
 .helpdesk-chat-header p { color: var(--hc-ink-3); font-size: 12px; line-height: 16px; }
@@ -568,7 +601,7 @@
 .helpdesk-chat-rated { color: var(--hc-success); }
 
 /* ---- the composer: a filled pill that grows with the text; a flowing spectrum ring while focused, faster while the assistant works ---- */
-.helpdesk-chat-footer { position: relative; display: flex; flex: 0 0 auto; flex-direction: column; box-sizing: border-box; padding: 6px 16px 16px; background: var(--hc-canvas); }
+.helpdesk-chat-footer { position: relative; display: flex; flex: 0 0 auto; flex-direction: column; box-sizing: border-box; padding: 6px 16px 16px; border-radius: 0 0 23px 23px; background: var(--hc-canvas); }
 .helpdesk-chat-composer { position: relative; display: flex; align-items: flex-end; border-radius: 28px; background: var(--hc-surface-2); transition: background-color var(--hc-med) var(--hc-ease-std), box-shadow var(--hc-med) var(--hc-ease-std); }
 .helpdesk-chat-composer::before { position: absolute; inset: -1.5px; box-sizing: border-box; padding: 1.5px; border-radius: inherit; background: var(--hc-spectrum-ring); content: ""; opacity: 0; pointer-events: none; transition: opacity var(--hc-med) var(--hc-ease-std); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
 .helpdesk-chat-composer:hover { background: var(--hc-surface-3); }
@@ -602,6 +635,10 @@
 @keyframes hc-land { from { opacity: 0; transform: rotate(-120deg) scale(.4); } to { opacity: 1; transform: none; } }
 @keyframes hc-halo { 0%, 100% { opacity: .3; transform: scale(.85); } 50% { opacity: .6; transform: scale(1.1); } }
 @keyframes hc-angle { to { --hc-angle: 360deg; } }
+@keyframes hc-breathe { 0%, 100% { opacity: .42; } 50% { opacity: .68; } }
+@keyframes hc-comet { to { --hc-comet: 360deg; } }
+@keyframes hc-breathe-fast { 0%, 100% { opacity: .55; } 50% { opacity: .9; } }
+@keyframes hc-flare { 0% { opacity: .9; } 30% { opacity: 1; } 100% { opacity: .5; } }
 @keyframes hc-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
 
 /* ---- smaller screens: the panel stacks under the form at full width (up to 455 px) ---- */
@@ -618,7 +655,7 @@
 
 /* ---- reduced motion: no movement at all; shimmer and flow hold still, the ring stays (static) on focus ---- */
 @media (prefers-reduced-motion: reduce) {
-  .helpdesk-chat *, .helpdesk-chat *::before, .helpdesk-chat *::after { animation: none !important; transition: none !important; }
+  .helpdesk-chat *, .helpdesk-chat *::before, .helpdesk-chat *::after, .helpdesk-chat::before, .helpdesk-chat::after { animation: none !important; transition: none !important; }
   .helpdesk-chat .helpdesk-chat-chip:hover:not(:disabled) svg, .helpdesk-chat-send:hover:not(:disabled) svg { transform: none; }
   .helpdesk-chat .helpdesk-chat-chip:active:not(:disabled), .helpdesk-chat-send:active:not(:disabled), .helpdesk-chat .helpdesk-submit-button:active, .helpdesk-chat .helpdesk-secondary-button:active, .helpdesk-chat-rating .helpdesk-stars button:hover, .helpdesk-chat-rating .helpdesk-stars button:focus-visible { transform: none; }
   .helpdesk-chat-greeting-title { background-position: 0 0; }

@@ -8,7 +8,10 @@
 // 3. the header hairline shows only once the log scrolls;
 // 4. the marks are decoration (hidden from screen readers, never focusable) and the text colours read at
 //    WCAG AA (4.5:1) on the surfaces they sit on;
-// 5. under prefers-reduced-motion nothing animates.
+// 5. the panel's own glow (owner 2026-10-31: "四边都有的荧光，有散射"): a crisp spectrum edge on all four sides and a
+//    blurred scatter round it; it spreads, pulses and runs a comet while the assistant works, flares once when the
+//    reply lands, and stays under the panel's content;
+// 6. under prefers-reduced-motion nothing animates.
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { chromium, type Browser, type Page } from "playwright";
@@ -166,7 +169,45 @@ test("under prefers-reduced-motion nothing animates: no rise, reveal, stagger, s
   await ask(page, input, "reset password", 1);
   const names = await page.evaluate(() => [...document.querySelectorAll(".helpdesk-chat *")].map((node) => getComputedStyle(node).animationName).filter((name) => name !== "none"));
   assert.deepEqual(names, [], "no element animates");
-  const pseudo = await page.evaluate(() => [...document.querySelectorAll(".helpdesk-chat-composer, .helpdesk-chat-avatar")].map((node) => getComputedStyle(node, "::before").animationName).filter((name) => name !== "none"));
+  const pseudo = await page.evaluate(() => [...document.querySelectorAll(".helpdesk-chat, .helpdesk-chat-composer, .helpdesk-chat-avatar")].map((node) => getComputedStyle(node, "::before").animationName).filter((name) => name !== "none"));
   assert.deepEqual(pseudo, []);
+  await page.close();
+});
+
+test("the panel glows on all four sides with a scatter; it wakes up while the assistant works, runs a comet, flares once on the reply, and never covers the content", async () => {
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  const { page, panel, input } = await open("en-GB", async (call) => {
+    if (!isAssistant(call)) return { status: 500 };
+    await held;
+    return reply(1);
+  });
+  const pseudo = (which: "::before" | "::after", property: string) => panel.evaluate((node, [after, name]) => getComputedStyle(node, after).getPropertyValue(name), [which, property] as const);
+  // The edge: 2 px of the spectrum on every side, the white surface inside it, just outside the panel's box.
+  assert.deepEqual(await Promise.all(["border-top-width", "border-right-width", "border-bottom-width", "border-left-width"].map((side) => pseudo("::after", side))), ["2px", "2px", "2px", "2px"]);
+  assert.match(await pseudo("::after", "background-image"), /conic-gradient/);
+  assert.equal(await pseudo("::after", "top"), "-1px");
+  // The scatter: the same spectrum, blurred, a little larger than the panel on every side.
+  assert.match(await pseudo("::before", "background-image"), /conic-gradient/);
+  assert.match(await pseudo("::before", "filter"), /^blur\(1[4-8]px\)$/);
+  assert.ok(Number.parseFloat(await pseudo("::before", "top")) < 0 && Number.parseFloat(await pseudo("::before", "left")) < 0);
+  assert.match(await pseudo("::before", "animation-name"), /^hc-angle, hc-breathe$/, "idle: it turns and breathes");
+  // Both sit under the content: the panel is its own stacking context.
+  assert.equal(await panel.evaluate((node) => getComputedStyle(node).isolation), "isolate");
+  assert.deepEqual([await pseudo("::before", "z-index"), await pseudo("::after", "z-index")], ["-2", "-1"]);
+  assert.equal(await panel.locator(".helpdesk-chat-chip").first().evaluate((node) => { const box = node.getBoundingClientRect(); return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === node || node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)); }), true, "the chips stay clickable");
+  // Thinking: it spreads, pulses faster and a comet runs round the edge; the colours keep turning.
+  await input.fill("reset password");
+  await input.press("Enter");
+  await page.waitForFunction(() => document.querySelector(".helpdesk-chat")?.getAttribute("data-state") === "thinking");
+  assert.equal(await pseudo("::before", "animation-name"), "hc-angle, hc-breathe-fast");
+  assert.equal(await pseudo("::after", "animation-name"), "hc-angle, hc-comet");
+  release();
+  // The reply lands: one flare, then back to breathing.
+  await page.waitForFunction(() => document.querySelector(".helpdesk-chat")?.getAttribute("data-flare") === "true");
+  assert.equal(await panel.getAttribute("data-state"), null);
+  assert.equal(await pseudo("::before", "animation-name"), "hc-angle, hc-flare");
+  await page.waitForFunction(() => !document.querySelector(".helpdesk-chat")?.hasAttribute("data-flare"), undefined, { timeout: 3000 });
+  assert.equal(await pseudo("::before", "animation-name"), "hc-angle, hc-breathe");
   await page.close();
 });

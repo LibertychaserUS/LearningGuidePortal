@@ -1207,6 +1207,14 @@ test("Gemini-style chat panel: the spark, the spectrum greeting, a question rise
     await openSupport(page, locale);
     const panel = page.getByRole("region", { name: text.chat.title });
     const input = panel.getByRole("textbox", { name: text.chat.inputLabel });
+    // The panel glows past its box: shoot it with 32 px around it.
+    const glowShot = async (path: string) => {
+      const box = (await panel.boundingBox())!;
+      const scrollY = await page.evaluate(() => window.scrollY);
+      await page.screenshot({ path, fullPage: true, clip: { x: Math.max(0, box.x - 32), y: Math.max(0, box.y + scrollY - 32), width: box.width + 64, height: box.height + 64 } });
+    };
+    // The fluorescent edge on all four sides and its scatter (owner 2026-10-31).
+    expect(await panel.evaluate((node) => [getComputedStyle(node, "::after").borderTopWidth, getComputedStyle(node, "::after").backgroundImage.includes("conic-gradient"), getComputedStyle(node, "::before").filter.startsWith("blur")])).toEqual(["2px", true, true]);
     // The spark in the header and next to the greeting: decoration, hidden from screen readers.
     await expect(panel.locator(".helpdesk-chat-header .helpdesk-chat-spark")).toHaveAttribute("aria-hidden", "true");
     await expect(panel.locator(".helpdesk-chat-greeting-row .helpdesk-chat-avatar")).toHaveAttribute("aria-hidden", "true");
@@ -1214,7 +1222,7 @@ test("Gemini-style chat panel: the spark, the spectrum greeting, a question rise
     await expect(title).toHaveText(text.chat.greetingTitle);
     expect(await title.evaluate((node) => [getComputedStyle(node).backgroundImage.startsWith("linear-gradient"), getComputedStyle(node).color])).toEqual([true, "rgba(0, 0, 0, 0)"]);
     await page.waitForTimeout(1800);
-    await panel.screenshot({ path: `${SHOTS}/gemini-1-greeting-${locale}.png` });
+    await glowShot(`${SHOTS}/gemini-1-greeting-${locale}.png`);
     // A question rises from the composer; the reply reveals top-down next to the spark.
     await input.fill(locale === "zh-CN" ? "我付款成功了，但是课程没开通" : "How can I access course materials?");
     await input.press("Enter");
@@ -1227,13 +1235,13 @@ test("Gemini-style chat panel: the spark, the spectrum greeting, a question rise
     await answer.getByRole("button", { name: text.chat.yes, exact: true }).click();
     await expect(answer.getByRole("button", { name: text.chat.yes, exact: true })).toHaveAttribute("aria-pressed", "true");
     await page.waitForTimeout(600);
-    await panel.screenshot({ path: `${SHOTS}/gemini-2-answer-${locale}.png` });
+    await glowShot(`${SHOTS}/gemini-2-answer-${locale}.png`);
     // The composer grows with the text and the ring shows while it has focus.
     await input.fill(locale === "zh-CN" ? "我想找人工客服\n订单号在付款记录里\n输入框会随文字变高" : "I'd like to talk to a person\nthe order is in my payment records\nthe composer grows with the text");
     await expect.poll(async () => (await input.boundingBox())!.height).toBe(100);
     await expect(panel.locator(".helpdesk-chat-send")).toHaveCSS("background-color", "rgb(37, 99, 235)");
     await page.waitForTimeout(400);
-    await panel.screenshot({ path: `${SHOTS}/gemini-3-composer-${locale}.png` });
+    await glowShot(`${SHOTS}/gemini-3-composer-${locale}.png`);
     // A request for a person: the handover card in the tonal style.
     await input.fill(locale === "zh-CN" ? "我要投诉，发票不对" : "I want to SPEAK TO SOMEONE about my invoice");
     await input.press("Enter");
@@ -1241,7 +1249,7 @@ test("Gemini-style chat panel: the spark, the spectrum greeting, a question rise
     await expect(card).toBeVisible();
     await expect.poll(async () => (await input.boundingBox())!.height, { message: "sent: back to one line" }).toBe(56);
     await page.waitForTimeout(1500);
-    await panel.screenshot({ path: `${SHOTS}/gemini-4-handover-${locale}.png` });
+    await glowShot(`${SHOTS}/gemini-4-handover-${locale}.png`);
     // Reduced motion: after a reload the restored chat does not replay, and nothing animates.
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.reload();
@@ -1253,7 +1261,7 @@ test("Gemini-style chat panel: the spark, the spectrum greeting, a question rise
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
     await panel.scrollIntoViewIfNeeded();
-    await panel.screenshot({ path: `${SHOTS}/gemini-5-mobile-${locale}.png` });
+    await glowShot(`${SHOTS}/gemini-5-mobile-${locale}.png`);
     await context.close();
   }
 });
