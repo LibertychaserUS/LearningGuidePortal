@@ -139,7 +139,8 @@ test("idempotency: a replay that races the first call answers with the ticket th
     log: () => {}
   });
   const second = await racing.learnerMessage(learner, ticket.id, input, key);
-  const applied = (await first) as Awaited<typeof second>;
+  // first is set inside the callback, so TypeScript still sees the null it started with
+  const applied = (await (first as Promise<unknown> | null)) as Awaited<typeof second>;
   assert.equal(applied.replayed, false);
   assert.equal(second.replayed, true);
   assert.equal(second.ticket.sequence, applied.ticket.sequence, "the replay shows the message it replays");
