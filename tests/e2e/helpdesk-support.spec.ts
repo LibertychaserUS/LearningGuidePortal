@@ -1173,3 +1173,65 @@ test("v5 FAQ tree: a 3-level follow-up chain and an A/B/C/D choice are walked by
   expect(asked.map((entry) => entry.request.message), "only the typed question asked Admin").toEqual(["付款有问题"]);
   await context.close();
 });
+
+// ---- Gemini-style chat panel (owner 2026-10-31: "像 Gemini 的设计和动效", colour and motion in depth; original work,
+// our spark mark and palette). UI only: the same copy, behaviour and reading order; this locks the look on the real
+// page and takes the screenshots for the visual check.
+test("Gemini-style chat panel: the spark, the spectrum greeting, a question rises and the reply reveals, the composer grows; nothing moves under reduced motion", async ({ browser }) => {
+  await mkdir(SHOTS, { recursive: true });
+  for (const locale of ["zh-CN", "en-GB"] as const) {
+    const { context, page } = await newLearner(browser, locale);
+    const text = copy(locale);
+    await openSupport(page, locale);
+    const panel = page.getByRole("region", { name: text.chat.title });
+    const input = panel.getByRole("textbox", { name: text.chat.inputLabel });
+    // The spark in the header and next to the greeting: decoration, hidden from screen readers.
+    await expect(panel.locator(".helpdesk-chat-header .helpdesk-chat-spark")).toHaveAttribute("aria-hidden", "true");
+    await expect(panel.locator(".helpdesk-chat-greeting-row .helpdesk-chat-avatar")).toHaveAttribute("aria-hidden", "true");
+    const title = panel.locator(".helpdesk-chat-greeting-title");
+    await expect(title).toHaveText(text.chat.greetingTitle);
+    expect(await title.evaluate((node) => [getComputedStyle(node).backgroundImage.startsWith("linear-gradient"), getComputedStyle(node).color])).toEqual([true, "rgba(0, 0, 0, 0)"]);
+    await page.waitForTimeout(1800);
+    await panel.screenshot({ path: `${SHOTS}/gemini-1-greeting-${locale}.png` });
+    // A question rises from the composer; the reply reveals top-down next to the spark.
+    await input.fill(locale === "zh-CN" ? "我付款成功了，但是课程没开通" : "How can I access course materials?");
+    await input.press("Enter");
+    await expect(panel.locator(".helpdesk-chat-mine.is-new")).toHaveCount(1);
+    const answer = panel.locator(".helpdesk-chat-answer").first();
+    await expect(answer).toBeVisible();
+    await expect(panel.locator(".helpdesk-chat-row.is-new .helpdesk-chat-answer")).toHaveCount(1);
+    await page.waitForTimeout(1500);
+    await expect(answer).toHaveCSS("mask-image", "none");
+    await answer.getByRole("button", { name: text.chat.yes, exact: true }).click();
+    await expect(answer.getByRole("button", { name: text.chat.yes, exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.waitForTimeout(600);
+    await panel.screenshot({ path: `${SHOTS}/gemini-2-answer-${locale}.png` });
+    // The composer grows with the text and the ring shows while it has focus.
+    await input.fill(locale === "zh-CN" ? "我想找人工客服\n订单号在付款记录里\n输入框会随文字变高" : "I'd like to talk to a person\nthe order is in my payment records\nthe composer grows with the text");
+    await expect.poll(async () => (await input.boundingBox())!.height).toBe(100);
+    await expect(panel.locator(".helpdesk-chat-send")).toHaveCSS("background-color", "rgb(37, 99, 235)");
+    await page.waitForTimeout(400);
+    await panel.screenshot({ path: `${SHOTS}/gemini-3-composer-${locale}.png` });
+    // A request for a person: the handover card in the tonal style.
+    await input.fill(locale === "zh-CN" ? "我要投诉，发票不对" : "I want to SPEAK TO SOMEONE about my invoice");
+    await input.press("Enter");
+    const card = panel.getByRole("group", { name: text.chat.handoverTitle, exact: true });
+    await expect(card).toBeVisible();
+    await expect.poll(async () => (await input.boundingBox())!.height, { message: "sent: back to one line" }).toBe(56);
+    await page.waitForTimeout(1500);
+    await panel.screenshot({ path: `${SHOTS}/gemini-4-handover-${locale}.png` });
+    // Reduced motion: after a reload the restored chat does not replay, and nothing animates.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.reload();
+    await expect(panel.locator(".helpdesk-chat-question")).toHaveCount(2);
+    await expect(panel.locator(".is-new")).toHaveCount(0);
+    expect(await panel.evaluate((node) => [...node.querySelectorAll("*")].map((child) => getComputedStyle(child).animationName).filter((name) => name !== "none"))).toEqual([]);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    // Phone width: the panel stacks under the form without overflow.
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+    await panel.scrollIntoViewIfNeeded();
+    await panel.screenshot({ path: `${SHOTS}/gemini-5-mobile-${locale}.png` });
+    await context.close();
+  }
+});
