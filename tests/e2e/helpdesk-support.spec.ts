@@ -24,6 +24,17 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 
 test.describe.configure({ timeout: 180_000 });
 
+// next dev compiles an API route on its first request, which can take longer than the page's own 5 s limits for
+// the suggestion check and the rating save (RATING_TIMEOUT_MS): the first rating in a fresh run then showed "your
+// rating wasn't saved" although the product was right. Compile those routes once before the tests (signed out:
+// only the status comes back, nothing is stored).
+test.beforeAll(async ({ request }) => {
+  for (const path of ["/api/helpdesk/suggestions", `/api/helpdesk/assistant/${randomUUID()}/rating`]) {
+    const response = await request.post(path, { data: {}, timeout: 120_000 });
+    expect(response.status(), `${path} answered after compiling`).toBeGreaterThanOrEqual(400);
+  }
+});
+
 /** A small visible PNG (a blue-to-white gradient) for the screenshots. */
 function gradientPng(width = 96, height = 64) {
   const chunk = (type: string, data: Buffer) => {
