@@ -24,15 +24,26 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 
 test.describe.configure({ timeout: 180_000 });
 
-// next dev compiles an API route on its first request, which can take longer than the page's own 5 s limits for
-// the suggestion check and the rating save (RATING_TIMEOUT_MS): the first rating in a fresh run then showed "your
-// rating wasn't saved" although the product was right. Compile those routes once before the tests (signed out:
-// only the status comes back, nothing is stored).
-test.beforeAll(async ({ request }) => {
-  for (const path of ["/api/helpdesk/suggestions", `/api/helpdesk/assistant/${randomUUID()}/rating`]) {
-    const response = await request.post(path, { data: {}, timeout: 120_000 });
-    expect(response.status(), `${path} answered after compiling`).toBeGreaterThanOrEqual(400);
+// next dev compiles a page or an API route on its first request and stalls the server meanwhile; in a fresh run that
+// pushed requests past the page's own limits (the 4 s suggestion check, the 5 s rating save): the first enquiry showed
+// no suggestion, or the first rating "wasn't saved" while My Learning compiled behind it, although the product was
+// right. Compile the pages and routes these tests use once, signed in as a throwaway learner (the rating goes to an
+// unknown answer: 4xx, nothing stored).
+test.beforeAll(async ({ browser }, testInfo) => {
+  testInfo.setTimeout(600_000);
+  const { context, page } = await newLearner(browser, "en-GB", "Warm Up");
+  const headers = () => ({ Origin: origin(page), "Idempotency-Key": randomUUID() });
+  const check = await page.request.post("/api/helpdesk/suggestions", { headers: headers(), data: { category: "technical_support", subject: "Warm-up check", message: "Warm-up check", locale: "en-GB" }, timeout: 120_000 });
+  expect(check.status(), "the suggestion route answered").toBe(200);
+  for (const path of ["/api/helpdesk/assistant", `/api/helpdesk/assistant/${randomUUID()}/rating`, `/api/helpdesk/assistant/${randomUUID()}/feedback`, `/api/helpdesk/suggestions/${randomUUID()}/outcome`]) {
+    const unknown = await page.request.post(path, { headers: headers(), data: {}, timeout: 120_000 });
+    expect(unknown.status(), `${path} answered`).toBeGreaterThanOrEqual(400);
   }
+  for (const path of ["/en-GB/account/my-learning", "/en-GB/account/my-learning/support", "/en-GB/account/my-learning/support/enquiries", `/en-GB/account/my-learning/support/${randomUUID()}`, "/en-GB/help"]) {
+    await page.goto(path, { timeout: 120_000 });
+    await page.waitForLoadState("networkidle", { timeout: 120_000 });
+  }
+  await context.close();
 });
 
 /** A small visible PNG (a blue-to-white gradient) for the screenshots. */
