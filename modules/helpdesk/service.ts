@@ -453,7 +453,9 @@ export function createHelpdeskService(deps: HelpdeskDeps) {
 
   async function runCommand(spec: CommandSpec): Promise<{ aggregate: TicketAggregate; replayed: boolean }> {
     let aggregate = await load(spec.ticketId, spec.ownerId);
-    if (await replayed(spec.key, spec.hash, spec.ticketId)) return { aggregate: await fresh(aggregate), replayed: true };
+    // A replay reloads: the first call with this key may have committed after the load above (two sends at once),
+    // and the replay must answer with the ticket as that call left it, not the one read before it.
+    if (await replayed(spec.key, spec.hash, spec.ticketId)) return { aggregate: await fresh(await load(spec.ticketId, spec.ownerId)), replayed: true };
     aggregate = await fresh(aggregate);
     const ticket = aggregate.ticket;
     checkSequence(aggregate, spec.expectedSequence, spec.actor.kind);
